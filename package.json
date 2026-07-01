@@ -1,0 +1,31 @@
+{
+  "name": "paypoq-os",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm --filter @paypoq/web dev",
+    "build": "pnpm --filter @paypoq/web build",
+    "start": "pnpm --filter @paypoq/web start",
+    "lint": "pnpm --filter @paypoq/web lint",
+    "api:dev": "pnpm --filter @paypoq/api start:dev",
+    "api:build": "pnpm --filter @paypoq/api build",
+    "api:start": "pnpm --filter @paypoq/api start",
+    "bot:dev": "pnpm --filter @paypoq/bot dev",
+    "bot:build": "pnpm --filter @paypoq/bot build",
+    "bot:start": "pnpm --filter @paypoq/bot start",
+    "prisma:generate": "pnpm --filter @paypoq/api prisma:generate",
+    "prisma:migrate:dev": "pnpm --filter @paypoq/api prisma:migrate:dev",
+    "prisma:migrate:deploy": "pnpm --filter @paypoq/api prisma:migrate:deploy",
+    "prisma:studio": "pnpm --filter @paypoq/api prisma:studio",
+    "prisma:seed": "pnpm --filter @paypoq/api prisma:seed",
+    "demo:reset": "pnpm --filter @paypoq/api demo:reset",
+    "demo:seed": "pnpm --filter @paypoq/api demo:seed",
+    "demo:prepare": "pnpm --filter @paypoq/api demo:prepare",
+    "backup:db": "bash scripts/backup-db.sh",
+    "restore:db": "bash scripts/restore-db.sh",
+    "deploy:smoke": "bash scripts/deploy-smoke.sh",
+    "smoke:mvp": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/mvp-smoke-test.mjs",
+    "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/telegram-smoke-test.mjs"
+  }
+}

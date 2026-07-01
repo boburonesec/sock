@@ -1,0 +1,158 @@
+import { InfoCard } from "@/components/cards/info-card";
+import {
+  DataTable,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/data-display/data-table";
+import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { StatusBadge } from "@/components/data-display/status-badge";
+import { Drawer } from "@/components/overlays/drawer";
+import { Button } from "@/components/ui/button";
+import type { ClientPayment } from "@/lib/api/sales";
+
+const methodLabel: Record<string, string> = {
+  CASH: "Naqd",
+  TRANSFER: "O‘tkazma",
+  OTHER: "Boshqa",
+};
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat("uz-UZ", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+interface PaymentDetailsDrawerProps {
+  payment: ClientPayment | null;
+  isReversing: boolean;
+  onReverseClick: () => void;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function PaymentDetailsDrawer({
+  payment,
+  isReversing,
+  onReverseClick,
+  onOpenChange,
+}: PaymentDetailsDrawerProps) {
+  if (!payment) return null;
+
+  return (
+    <Drawer
+      open={Boolean(payment)}
+      onOpenChange={onOpenChange}
+      title={payment.id}
+      description={formatDate(payment.paymentDate)}
+      className="max-w-4xl"
+    >
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-2">
+          <Button disabled>Clientga o‘tish · Keyingi bosqich</Button>
+          <Button disabled variant="outline">
+            Orderga o‘tish · Keyingi bosqich
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={Boolean(payment.reversedAt) || isReversing}
+            onClick={onReverseClick}
+          >
+            {payment.reversedAt
+              ? "To‘lov bekor qilingan"
+              : "To‘lovni bekor qilish"}
+          </Button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InfoCard title="Client ma’lumoti">
+            <p className="font-semibold">{payment.client.name}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {payment.client.phone ?? "Telefon kiritilmagan"}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {payment.client.address ?? "Manzil kiritilmagan"}
+            </p>
+          </InfoCard>
+          <InfoCard title="To‘lov ma’lumoti">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xl font-bold">{payment.amount} so‘m</p>
+              <StatusBadge tone={payment.reversedAt ? "danger" : "success"}>
+                {payment.reversedAt ? "Bekor qilingan" : "Aktiv"}
+              </StatusBadge>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {methodLabel[payment.method] ?? payment.method} ·{" "}
+              {payment.recordedBy?.name ?? "Qayd qiluvchi ko‘rsatilmagan"}
+            </p>
+            {payment.reversedAt ? (
+              <p className="mt-2 text-xs text-rose-300">
+                Bekor qilingan: {formatDate(payment.reversedAt)} ·{" "}
+                {payment.reversedBy?.name ?? "Noma’lum foydalanuvchi"}
+              </p>
+            ) : null}
+          </InfoCard>
+        </div>
+
+        <InfoCard title="Qarz xulosasi">
+          <p className="text-sm text-muted-foreground">
+            Bu endpoint faqat to‘lov yozuvlarini qaytaradi. Client qarzi
+            alohida backend projection orqali olinadi; frontend bu yerda qarz
+            yoki qoldiqni hisoblamaydi.
+          </p>
+        </InfoCard>
+
+        <section>
+          <p className="mb-3 text-sm font-semibold">Bog‘langan buyurtmalar</p>
+          <DataTable
+            label="To‘lov allocationlari"
+            className="border-0 shadow-none"
+          >
+            <DataTableHead>
+              <DataTableRow>
+                <DataTableHeader>Buyurtma raqami</DataTableHeader>
+                <DataTableHeader>Allocation summasi</DataTableHeader>
+              </DataTableRow>
+            </DataTableHead>
+            <tbody>
+              {payment.allocations.length > 0 ? (
+                payment.allocations.map((allocation) => (
+                  <DataTableRow key={allocation.id}>
+                    <DataTableCell>
+                      {allocation.order.orderNumber}
+                    </DataTableCell>
+                    <DataTableCell className="font-semibold">
+                      {allocation.amount} so‘m
+                    </DataTableCell>
+                  </DataTableRow>
+                ))
+              ) : (
+                <EmptyTableState
+                  colSpan={2}
+                  title="Bog‘langan buyurtma yo‘q"
+                  description="V1’da to‘lovlar to‘liq allocation bilan yaratiladi. Agar bu holat ko‘rinsa, ma’lumotni tekshirish kerak."
+                />
+              )}
+            </tbody>
+          </DataTable>
+        </section>
+
+        <InfoCard title="Izoh">
+          <p className="text-sm text-muted-foreground">
+            {payment.note ?? "Izoh kiritilmagan"}
+          </p>
+        </InfoCard>
+
+        {payment.reversedAt ? (
+          <InfoCard title="Reversal sababi">
+            <p className="text-sm text-muted-foreground">
+              {payment.reversalReason ?? "Sabab kiritilmagan"}
+            </p>
+          </InfoCard>
+        ) : null}
+      </div>
+    </Drawer>
+  );
+}

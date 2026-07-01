@@ -1,0 +1,59 @@
+import {
+  DataTable,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/data-display/data-table";
+import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import type { ClientDebt } from "@/lib/api/sales";
+
+export function ClientDebtsTable({
+  debts,
+  onSelect,
+}: {
+  debts: ClientDebt[];
+  onSelect: (debt: ClientDebt) => void;
+}) {
+  return (
+    <DataTable label="Client qarzdorligi">
+      <DataTableHead>
+        <DataTableRow>
+          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Telefon</DataTableHeader>
+          <DataTableHeader>Jami buyurtma</DataTableHeader>
+          <DataTableHeader>To‘langan</DataTableHeader>
+          <DataTableHeader>Qarz</DataTableHeader>
+        </DataTableRow>
+      </DataTableHead>
+      <tbody>
+        {debts.length > 0 ? (
+          debts.map((debt) => (
+            <DataTableRow key={debt.client.id} className="hover:bg-muted/40">
+              <DataTableCell>
+                <button
+                  onClick={() => onSelect(debt)}
+                  className="text-left font-semibold hover:text-primary"
+                >
+                  {debt.client.name}
+                </button>
+              </DataTableCell>
+              <DataTableCell>{debt.client.phone ?? "—"}</DataTableCell>
+              <DataTableCell>{debt.totalOrders} so‘m</DataTableCell>
+              <DataTableCell>{debt.totalPaid} so‘m</DataTableCell>
+              <DataTableCell className="font-semibold">
+                {debt.debt} so‘m
+              </DataTableCell>
+            </DataTableRow>
+          ))
+        ) : (
+          <EmptyTableState
+            colSpan={5}
+            title="Client qarzlari mavjud emas"
+            description="Buyurtma va to‘lovlar paydo bo‘lgach, backend projection shu yerda ko‘rinadi."
+          />
+        )}
+      </tbody>
+    </DataTable>
+  );
+}

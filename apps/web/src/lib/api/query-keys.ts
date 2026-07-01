@@ -1,0 +1,80 @@
+export const queryKeys = {
+  auth: {
+    all: ["auth"] as const,
+    me: () => ["auth", "me"] as const,
+  },
+  dashboard: {
+    all: ["dashboard"] as const,
+    executiveSummary: () => ["dashboard", "executive-summary"] as const,
+    factoryTvSummary: () => ["dashboard", "factory-tv-summary"] as const,
+  },
+  product: {
+    all: ["product"] as const,
+    colors: () => ["product", "colors"] as const,
+    materials: () => ["product", "materials"] as const,
+    seasons: () => ["product", "seasons"] as const,
+    stages: () => ["product", "stages"] as const,
+    products: () => ["product", "products"] as const,
+    variantPrices: (variantId: string) =>
+      ["product", "variants", variantId, "prices"] as const,
+  },
+  production: {
+    all: ["production"] as const,
+    stageInventory: () => ["production", "stage-inventory"] as const,
+    recentMovements: () => ["production", "recent-movements"] as const,
+    workerActivities: () => ["production", "worker-activities"] as const,
+    defects: () => ["production", "defects"] as const,
+    operationsSummary: () => ["production", "operations-summary"] as const,
+  },
+  warehouse: {
+    all: ["warehouse"] as const,
+    stock: () => ["warehouse", "stock"] as const,
+    materialStock: () => ["warehouse", "material-stock"] as const,
+    movements: () => ["warehouse", "movements"] as const,
+    zones: () => ["warehouse", "zones"] as const,
+    stockSummary: () => ["warehouse", "stock-summary"] as const,
+  },
+  sales: {
+    all: ["sales"] as const,
+    summary: () => ["sales", "summary"] as const,
+    clients: () => ["sales", "clients"] as const,
+    orders: () => ["sales", "orders"] as const,
+    payments: () => ["sales", "payments"] as const,
+    debts: () => ["sales", "debts"] as const,
+  },
+  supplier: {
+    all: ["supplier"] as const,
+    suppliers: () => ["supplier", "suppliers"] as const,
+    purchases: () => ["supplier", "purchases"] as const,
+    payments: () => ["supplier", "payments"] as const,
+    debts: () => ["supplier", "debts"] as const,
+  },
+  finance: {
+    all: ["finance"] as const,
+    summary: () => ["finance", "summary"] as const,
+    expenses: () => ["finance", "expenses"] as const,
+    advances: () => ["finance", "advances"] as const,
+    payrollPeriods: () => ["finance", "payroll-periods"] as const,
+    payrollPeriodItems: (payrollPeriodId: string) =>
+      ["finance", "payroll-periods", payrollPeriodId, "items"] as const,
+  },
+  employees: {
+    all: ["employees"] as const,
+    list: () => ["employees", "list"] as const,
+  },
+  settings: {
+    all: ["settings"] as const,
+    overview: () => ["settings", "overview"] as const,
+    salaryRates: () => ["settings", "salary-rates"] as const,
+  },
+  reports: {
+    all: ["reports"] as const,
+    overview: () => ["reports", "overview"] as const,
+  },
+  telegram: {
+    all: ["telegram"] as const,
+    linkTokens: () => ["telegram", "link-tokens"] as const,
+    accounts: () => ["telegram", "accounts"] as const,
+    health: () => ["telegram", "health"] as const,
+  },
+} as const;

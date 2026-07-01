@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: paypoq_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d paypoq_os"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/paypoq_os?schema=public
+      NODE_ENV: test
+      CORS_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      JWT_ACCESS_SECRET: local-ci-jwt-secret-change-me
+      PLATFORM_JWT_ACCESS_SECRET: local-ci-platform-jwt-secret-change-me
+      TELEGRAM_LINK_TOKEN_SECRET: local-ci-telegram-link-token-secret
+      BOT_INTERNAL_API_KEY: local-ci-bot-internal-api-key-change-me
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma:generate
+
+      - name: Apply migrations for smoke database
+        run: pnpm prisma:migrate:deploy
+
+      - name: Build API
+        run: pnpm api:build
+
+      - name: Build Web
+        run: pnpm build
+
+      - name: Build Bot
+        run: pnpm bot:build
+
+      - name: Verify Docker image builds
+        run: |
+          docker build -f apps/api/Dockerfile -t paypoq-api:ci .
+          docker build -f apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 -t paypoq-web:ci .
+          docker build -f apps/bot/Dockerfile -t paypoq-bot:ci .
+
+      - name: Run Telegram smoke suite
+        run: pnpm smoke:telegram
+
+      - name: Run MVP smoke suite
+        run: pnpm smoke:mvp

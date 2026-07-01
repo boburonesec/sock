@@ -1,0 +1,66 @@
+import { MapPin } from "lucide-react";
+import { InfoCard } from "@/components/cards/info-card";
+import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
+import { EmptyState } from "@/components/shared/empty-state";
+import type { WarehouseStockSummary } from "@/lib/api/warehouse";
+
+type ZoneSummary = WarehouseStockSummary["zoneSummaries"][number];
+
+const statusTone: Record<string, StatusTone> = {
+  NORMAL: "success",
+  ATTENTION: "warning",
+};
+
+export function ZonesOverview({
+  zones,
+  onSelect,
+}: {
+  zones: ZoneSummary[];
+  onSelect: (zone: ZoneSummary) => void;
+}) {
+  if (zones.length === 0) {
+    return (
+      <EmptyState
+        title="Ombor zonalari mavjud emas"
+        description="Backend zone summary qaytargach, zonalar shu yerda ko‘rinadi."
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      {zones.map((zone) => (
+        <button
+          key={zone.zoneId}
+          onClick={() => onSelect(zone)}
+          className="text-left"
+        >
+          <InfoCard title={zone.zoneName} className="h-full transition hover:bg-muted/40">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+                <MapPin size={18} />
+              </span>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {zone.warehouseName}
+                </p>
+                <p className="mt-3 font-semibold">
+                  {zone.productQuantity} dona
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Product: {zone.productRecordCount} · Material:{" "}
+                  {zone.materialRecordCount}
+                </p>
+                <div className="mt-3">
+                  <StatusBadge tone={statusTone[zone.status] ?? "neutral"}>
+                    {zone.status}
+                  </StatusBadge>
+                </div>
+              </div>
+            </div>
+          </InfoCard>
+        </button>
+      ))}
+    </div>
+  );
+}
