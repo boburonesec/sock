@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PlatformAdmin } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
@@ -10,14 +15,24 @@ import {
   PlatformAuthSessionResult,
   PlatformJwtAccessPayload,
 } from './platform-auth.types';
+import { AuthRateLimiterService } from '../auth/auth-rate-limiter.service';
 
 const INVALID_PLATFORM_CREDENTIALS_MESSAGE = 'Invalid platform admin credentials.';
+const PLATFORM_LOGIN_RATE_LIMIT = {
+  maxAttempts: 8,
+  windowMs: 10 * 60 * 1000,
+};
+const PLATFORM_REFRESH_RATE_LIMIT = {
+  maxAttempts: 60,
+  windowMs: 10 * 60 * 1000,
+};
 
 @Injectable()
 export class PlatformAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly authRateLimiter: AuthRateLimiterService,
   ) {}
 
   async login(
@@ -27,6 +42,31 @@ export class PlatformAuthService {
     ipAddress?: string,
   ): Promise<PlatformAuthSessionResult> {
     const normalizedEmail = email.trim().toLowerCase();
+    const rateLimitKey = this.buildRateLimitKey('platform-login', normalizedEmail, ipAddress);
+    const rateLimit = this.authRateLimiter.consume(
+      rateLimitKey,
+      PLATFORM_LOGIN_RATE_LIMIT,
+    );
+
+    if (!rateLimit.allowed) {
+      const auditAdmin = await this.prisma.platformAdmin.findUnique({
+        where: { email: normalizedEmail },
+      });
+      await this.recordBlockedPlatformLogin(
+        auditAdmin,
+        'RATE_LIMITED_LOGIN',
+        userAgent,
+        ipAddress,
+        {
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        },
+      );
+      throw new HttpException(
+        `Too many platform login attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const platformAdmin = await this.prisma.platformAdmin.findUnique({
       where: {
         email: normalizedEmail,
@@ -42,6 +82,12 @@ export class PlatformAuthService {
       platformAdmin.deletedAt ||
       platformAdmin.status !== 'ACTIVE'
     ) {
+      await this.recordBlockedPlatformLogin(
+        platformAdmin,
+        'INVALID_OR_INACTIVE_PLATFORM_ADMIN',
+        userAgent,
+        ipAddress,
+      );
       throw new UnauthorizedException(INVALID_PLATFORM_CREDENTIALS_MESSAGE);
     }
 
@@ -51,8 +97,16 @@ export class PlatformAuthService {
     );
 
     if (!isPasswordValid) {
+      await this.recordBlockedPlatformLogin(
+        platformAdmin,
+        'INVALID_PASSWORD',
+        userAgent,
+        ipAddress,
+      );
       throw new UnauthorizedException(INVALID_PLATFORM_CREDENTIALS_MESSAGE);
     }
+
+    this.authRateLimiter.reset(rateLimitKey);
 
     return this.createSession(platformAdmin, userAgent, ipAddress);
   }
@@ -63,6 +117,28 @@ export class PlatformAuthService {
     ipAddress?: string,
   ): Promise<PlatformAuthSessionResult> {
     const tokenHash = this.hashRefreshToken(refreshToken);
+    const rateLimitKey = this.buildRateLimitKey('platform-refresh', tokenHash, ipAddress);
+    const rateLimit = this.authRateLimiter.consume(
+      rateLimitKey,
+      PLATFORM_REFRESH_RATE_LIMIT,
+    );
+
+    if (!rateLimit.allowed) {
+      await this.recordBlockedPlatformRefresh(
+        tokenHash,
+        'RATE_LIMITED_REFRESH',
+        userAgent,
+        ipAddress,
+        {
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        },
+      );
+      throw new HttpException(
+        `Too many platform refresh attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const now = new Date();
     const existingSession = await this.prisma.platformRefreshSession.findUnique({
       where: { tokenHash },
@@ -108,6 +184,8 @@ export class PlatformAuthService {
         },
       }),
     ]);
+
+    this.authRateLimiter.reset(rateLimitKey);
 
     const platformAdmin = existingSession.platformAdmin;
 
@@ -295,4 +373,67 @@ export class PlatformAuthService {
     );
   }
 
+  private buildRateLimitKey(scope: string, subject: string, ipAddress?: string): string {
+    return `${scope}:${ipAddress ?? 'unknown-ip'}:${subject}`;
+  }
+
+  private async recordBlockedPlatformRefresh(
+    tokenHash: string,
+    reason: string,
+    userAgent?: string,
+    ipAddress?: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    const session = await this.prisma.platformRefreshSession.findUnique({
+      where: { tokenHash },
+      include: {
+        platformAdmin: true,
+      },
+    });
+
+    if (!session) {
+      return;
+    }
+
+    await this.recordBlockedPlatformLogin(
+      session.platformAdmin,
+      reason,
+      userAgent,
+      ipAddress,
+      {
+        ...metadata,
+        platformRefreshSessionId: session.id,
+      },
+    );
+  }
+
+  private async recordBlockedPlatformLogin(
+    platformAdmin: PlatformAdmin | null,
+    reason: string,
+    userAgent?: string,
+    ipAddress?: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    try {
+      await this.prisma.platformAuditLog.create({
+        data: {
+          platformAdminId: platformAdmin?.id,
+          action: 'PLATFORM_AUTH_LOGIN_BLOCKED',
+          entityType: 'PlatformAuth',
+          entityId: platformAdmin?.id,
+          metadata: {
+            reason,
+            email: platformAdmin?.email,
+            ipAddress,
+            userAgent,
+            platformAdminStatus: platformAdmin?.status,
+            platformAdminDeleted: Boolean(platformAdmin?.deletedAt),
+            ...metadata,
+          },
+        },
+      });
+    } catch {
+      // Auth must not fail because forensic logging failed.
+    }
+  }
 }

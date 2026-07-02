@@ -6,6 +6,7 @@ import { ProductionModule } from '../production/production.module';
 import { WarehouseModule } from '../warehouse/warehouse.module';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
+import { FactoryTvAccessGuard } from './factory-tv-access.guard';
 
 /**
  * Read-only cross-domain dashboard projections.
@@ -17,6 +18,6 @@ import { DashboardService } from './dashboard.service';
 @Module({
   imports: [PrismaModule, IdentityModule, ProductionModule, WarehouseModule],
   controllers: [DashboardController],
-  providers: [DevContextService, DashboardService],
+  providers: [DevContextService, DashboardService, FactoryTvAccessGuard],
 })
 export class DashboardModule {}

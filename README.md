@@ -22,6 +22,7 @@ paypoq-os/
 ├── apps/
 │   ├── api/           # NestJS + Prisma backend
 │   ├── bot/           # Telegram employee/client read-only bot
+│   ├── mobile/        # Expo React Native mobile foundation
 │   └── web/           # Next.js App Router frontend
 ├── packages/
 │   └── shared/        # Kelajakdagi shared types/constants/schemas
@@ -93,6 +94,20 @@ Bot:
 - business-critical qiymatlarni o‘zi hisoblamaydi
 - Paypoq OS API’dagi internal bot endpointlarni `BOT_INTERNAL_API_KEY` bilan chaqiradi
 
+## apps/mobile vazifasi
+
+`apps/mobile` — Paypoq Mobile uchun Expo React Native foundation.
+
+Mobile:
+
+- mavjud `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` va `GET /auth/me` APIlarini ishlatadi
+- Expo Router bilan auth/protected route guard beradi
+- TanStack Query’ni backend data uchun tayyorlaydi
+- Zustand’dan faqat auth va UI state uchun foydalanadi
+- token session metadatasini Expo SecureStore’da saqlaydi
+- business-critical qiymatlarni hisoblamaydi
+- V1’da FaceID, IoT, offline writes, push notification va client mobile auth o‘zgarishlarini kiritmaydi
+
 ## packages/shared vazifasi
 
 `packages/shared` hozircha minimal placeholder.
@@ -141,6 +156,7 @@ JWT_ACCESS_SECRET=replace-with-long-random-secret
 JWT_ACCESS_TTL_SECONDS=900
 REFRESH_TOKEN_TTL_DAYS=30
 AUTH_COOKIE_NAME=paypoq_refresh_token
+FACTORY_TV_ACCESS_TOKEN=replace-with-long-random-factory-tv-display-token
 ```
 
 Local development uchun misol:
@@ -155,6 +171,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:55432/paypoq_os?schema=pub
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN=replace-with-same-factory-tv-display-token
 ```
 
 ### Telegram bot
@@ -169,6 +186,20 @@ BOT_INTERNAL_API_KEY=replace-with-same-secret-as-api
 
 `BOT_INTERNAL_API_KEY` qiymati `apps/api/.env` va bot runtime muhitida bir xil
 bo‘lishi kerak.
+
+### Mobile
+
+Mobile API URL Expo public env orqali beriladi:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
+```
+
+Runtime bo‘yicha backend manzili:
+
+- iOS simulator: `http://localhost:3001`
+- Android emulator: `http://10.0.2.2:3001`
+- Real device: `http://YOUR_COMPUTER_LAN_IP:3001`
 
 ## Database setup
 

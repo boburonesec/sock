@@ -31,6 +31,7 @@ export class HealthController {
       jwtConfig: this.hasSecret('auth.jwtAccessSecret') ? 'ok' : 'failed',
       platformJwtConfig: this.hasSecret('platformAuth.jwtAccessSecret') ? 'ok' : 'failed',
       botInternalApiKey: this.hasSecret('bot.internalApiKey') ? 'ok' : 'failed',
+      factoryTvAccessToken: this.hasSecret('factoryTv.accessToken') ? 'ok' : 'failed',
     };
 
     try {

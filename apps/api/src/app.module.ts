@@ -9,6 +9,7 @@ import { EmployeeModule } from './modules/employee/employee.module';
 import { FactoryModule } from './modules/factory/factory.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { MobileModule } from './modules/mobile/mobile.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { ProductModule } from './modules/product/product.module';
@@ -34,6 +35,7 @@ import { PrismaModule } from './prisma/prisma.module';
     HealthModule,
     DashboardModule,
     IdentityModule,
+    MobileModule,
     TenantModule,
     FactoryModule,
     ProductModule,

@@ -1,5 +1,7 @@
 import {
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,20 +16,57 @@ import {
   AuthSessionResult,
   JwtAccessPayload,
 } from './auth.types';
+import { AuthRateLimiterService } from './auth-rate-limiter.service';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
 const BLOCKED_TENANT_MESSAGE = 'Tenant is not active.';
 const ALLOWED_TENANT_STATUSES = ['ACTIVE', 'PILOT'] as const;
+const LOGIN_RATE_LIMIT = {
+  maxAttempts: 10,
+  windowMs: 10 * 60 * 1000,
+};
+const REFRESH_RATE_LIMIT = {
+  maxAttempts: 60,
+  windowMs: 10 * 60 * 1000,
+};
+
+type TenantAuthAuditUser = {
+  id: string;
+  tenantId: string;
+  email: string;
+  tenant: {
+    status: string;
+    deletedAt: Date | null;
+  };
+};
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly authRateLimiter: AuthRateLimiterService,
   ) {}
 
   async login(email: string, password: string, userAgent?: string, ipAddress?: string): Promise<AuthSessionResult> {
     const normalizedEmail = email.trim().toLowerCase();
+    const rateLimitKey = this.buildRateLimitKey('tenant-login', normalizedEmail, ipAddress);
+    const rateLimit = this.authRateLimiter.consume(
+      rateLimitKey,
+      LOGIN_RATE_LIMIT,
+    );
+
+    if (!rateLimit.allowed) {
+      const auditUser = await this.findSingleUserForAuthAudit(normalizedEmail);
+      await this.recordBlockedLogin(auditUser, 'RATE_LIMITED_LOGIN', userAgent, ipAddress, {
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+      });
+      throw new HttpException(
+        `Too many login attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const users = await this.prisma.user.findMany({
       where: {
         email: normalizedEmail,
@@ -53,13 +92,16 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
-    this.assertTenantCanAuthenticate(user.tenant);
+    await this.assertTenantCanAuthenticate(user, userAgent, ipAddress);
 
     const isPasswordValid = await argon2.verify(credential.passwordHash, password);
 
     if (!isPasswordValid) {
+      await this.recordBlockedLogin(user, 'INVALID_PASSWORD', userAgent, ipAddress);
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
+
+    this.authRateLimiter.reset(rateLimitKey);
 
     await this.prisma.user.update({
       where: {
@@ -75,6 +117,22 @@ export class AuthService {
 
   async refresh(refreshToken: string, userAgent?: string, ipAddress?: string): Promise<AuthSessionResult> {
     const tokenHash = this.hashRefreshToken(refreshToken);
+    const rateLimitKey = this.buildRateLimitKey('tenant-refresh', tokenHash, ipAddress);
+    const rateLimit = this.authRateLimiter.consume(
+      rateLimitKey,
+      REFRESH_RATE_LIMIT,
+    );
+
+    if (!rateLimit.allowed) {
+      await this.recordBlockedRefresh(tokenHash, 'RATE_LIMITED_REFRESH', userAgent, ipAddress, {
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+      });
+      throw new HttpException(
+        `Too many refresh attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const now = new Date();
     const existingSession = await this.prisma.refreshSession.findUnique({
       where: { tokenHash },
@@ -102,7 +160,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh session.');
     }
 
-    this.assertTenantCanAuthenticate(existingSession.user.tenant);
+    await this.assertTenantCanAuthenticate(existingSession.user, userAgent, ipAddress);
 
     const nextRefreshToken = this.createOpaqueRefreshToken();
     const nextRefreshTokenHash = this.hashRefreshToken(nextRefreshToken);
@@ -124,6 +182,8 @@ export class AuthService {
         },
       }),
     ]);
+
+    this.authRateLimiter.reset(rateLimitKey);
 
     const context = await this.buildRequestContext(existingSession.userId);
 
@@ -303,7 +363,7 @@ export class AuthService {
       throw new UnauthorizedException('User is not active.');
     }
 
-    this.assertTenantCanAuthenticate(user.tenant);
+    await this.assertTenantCanAuthenticate(user.tenant);
 
     const accessibleFactoryIds = user.factoryAccesses.map((access) => access.factoryId);
     const activeFactoryId = requestedFactoryId ?? accessibleFactoryIds[0] ?? null;
@@ -391,12 +451,123 @@ export class AuthService {
     return this.configService.get<string>('auth.jwtAccessSecret', 'dev-only-change-me');
   }
 
-  private assertTenantCanAuthenticate(tenant: {
-    status: string;
-    deletedAt: Date | null;
-  }): void {
+  private async assertTenantCanAuthenticate(
+    userOrTenant:
+      | TenantAuthAuditUser
+      | {
+          status: string;
+          deletedAt: Date | null;
+        },
+    userAgent?: string,
+    ipAddress?: string,
+  ): Promise<void> {
+    const tenant = 'tenant' in userOrTenant ? userOrTenant.tenant : userOrTenant;
+
     if (tenant.deletedAt || !ALLOWED_TENANT_STATUSES.includes(tenant.status as 'ACTIVE' | 'PILOT')) {
+      if ('tenant' in userOrTenant) {
+        await this.recordBlockedLogin(userOrTenant, 'TENANT_NOT_ACTIVE', userAgent, ipAddress);
+      }
+
       throw new ForbiddenException(BLOCKED_TENANT_MESSAGE);
+    }
+  }
+
+  private buildRateLimitKey(scope: string, subject: string, ipAddress?: string): string {
+    return `${scope}:${ipAddress ?? 'unknown-ip'}:${subject}`;
+  }
+
+  private async findSingleUserForAuthAudit(email: string): Promise<TenantAuthAuditUser | null> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        email,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        tenant: {
+          select: {
+            status: true,
+            deletedAt: true,
+          },
+        },
+      },
+      take: 2,
+    });
+
+    return users.length === 1 ? users[0] : null;
+  }
+
+  private async recordBlockedRefresh(
+    tokenHash: string,
+    reason: string,
+    userAgent?: string,
+    ipAddress?: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    const session = await this.prisma.refreshSession.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          select: {
+            id: true,
+            tenantId: true,
+            email: true,
+            tenant: {
+              select: {
+                status: true,
+                deletedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return;
+    }
+
+    await this.recordBlockedLogin(session.user, reason, userAgent, ipAddress, {
+      ...metadata,
+      refreshSessionId: session.id,
+    });
+  }
+
+  private async recordBlockedLogin(
+    user: TenantAuthAuditUser | null,
+    reason: string,
+    userAgent?: string,
+    ipAddress?: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    if (!user) {
+      return;
+    }
+
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'AUTH_LOGIN_BLOCKED',
+          entityType: 'Auth',
+          entityId: user.id,
+          metadata: {
+            reason,
+            email: user.email,
+            ipAddress,
+            userAgent,
+            tenantStatus: user.tenant.status,
+            tenantDeleted: Boolean(user.tenant.deletedAt),
+            ...metadata,
+          },
+        },
+      });
+    } catch {
+      // Auth must not fail because forensic logging failed.
     }
   }
 }

@@ -9,6 +9,7 @@ import {
   ExecutiveSummaryResponse,
   FactoryTvSummaryResponse,
 } from './dashboard.types';
+import { FactoryTvAccessGuard } from './factory-tv-access.guard';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -23,12 +24,8 @@ export class DashboardController {
     return this.dashboardService.getExecutiveSummary(context);
   }
 
-  /**
-   * Public exception for the factory monitor route. The frontend `/tv` route is
-   * intentionally outside the authenticated app shell in V1, so this endpoint
-   * remains on temporary dev context until a display-token design is approved.
-   */
   @Get('factory-tv-summary')
+  @UseGuards(FactoryTvAccessGuard)
   getFactoryTvSummary(): Promise<FactoryTvSummaryResponse> {
     return this.dashboardService.getFactoryTvSummary();
   }

@@ -14,6 +14,11 @@
     "bot:dev": "pnpm --filter @paypoq/bot dev",
     "bot:build": "pnpm --filter @paypoq/bot build",
     "bot:start": "pnpm --filter @paypoq/bot start",
+    "mobile:dev": "pnpm --filter @paypoq/mobile dev",
+    "mobile:android": "pnpm --filter @paypoq/mobile android",
+    "mobile:ios": "pnpm --filter @paypoq/mobile ios",
+    "mobile:typecheck": "pnpm --filter @paypoq/mobile typecheck",
+    "mobile:lint": "pnpm --filter @paypoq/mobile lint",
     "prisma:generate": "pnpm --filter @paypoq/api prisma:generate",
     "prisma:migrate:dev": "pnpm --filter @paypoq/api prisma:migrate:dev",
     "prisma:migrate:deploy": "pnpm --filter @paypoq/api prisma:migrate:deploy",
@@ -26,6 +31,7 @@
     "restore:db": "bash scripts/restore-db.sh",
     "deploy:smoke": "bash scripts/deploy-smoke.sh",
     "smoke:mvp": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/mvp-smoke-test.mjs",
-    "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/telegram-smoke-test.mjs"
+    "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/telegram-smoke-test.mjs",
+    "smoke:employee-self-service": "pnpm --filter @paypoq/api build && node apps/api/scripts/employee-self-service-smoke-test.mjs"
   }
 }

@@ -12,6 +12,9 @@ const baseUrl = process.env.MVP_SMOKE_BASE_URL ?? `http://localhost:${process.en
 const port = new URL(baseUrl).port || '3015';
 const shouldStartServer = !process.env.MVP_SMOKE_BASE_URL;
 const keepServer = process.env.MVP_SMOKE_KEEP_SERVER === '1';
+const factoryTvAccessToken =
+  process.env.FACTORY_TV_ACCESS_TOKEN ??
+  'local-development-factory-tv-token-change-me';
 const prisma = new PrismaClient();
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const checks = [];
@@ -141,6 +144,7 @@ function startServerIfNeeded() {
       ...process.env,
       NODE_ENV: process.env.NODE_ENV ?? 'development',
       PORT: port,
+      FACTORY_TV_ACCESS_TOKEN: factoryTvAccessToken,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -701,6 +705,8 @@ async function runPayrollFlow({ context, workerActivity }) {
 }
 
 async function verifyDashboards() {
+  await expectStatus('/dashboard/factory-tv-summary', 401);
+
   const [executive, operations, warehouseSummary, salesSummary, financeSummary, tv] =
     await Promise.all([
       request('/dashboard/executive-summary'),
@@ -708,7 +714,11 @@ async function verifyDashboards() {
       request('/warehouse/stock-summary'),
       request('/sales/summary'),
       request('/finance/summary'),
-      request('/dashboard/factory-tv-summary'),
+      request('/dashboard/factory-tv-summary', {
+        headers: {
+          'X-Factory-TV-Token': factoryTvAccessToken,
+        },
+      }),
     ]);
 
   assert(executive.data.kpis, 'executive summary should include kpis');
@@ -720,6 +730,7 @@ async function verifyDashboards() {
 
   pass('dashboard summaries', {
     executiveKpis: Object.keys(executive.data.kpis).length,
+    factoryTvProtected: true,
   });
 }
 

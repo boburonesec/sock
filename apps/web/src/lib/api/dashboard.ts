@@ -91,6 +91,18 @@ export interface FactoryTvSummary {
 export const dashboardApi = {
   getExecutiveSummary: () =>
     apiClient<{ data: ExecutiveSummary }>("/dashboard/executive-summary"),
-  getFactoryTvSummary: () =>
-    apiClient<{ data: FactoryTvSummary }>("/dashboard/factory-tv-summary"),
+  getFactoryTvSummary: () => {
+    const accessToken = process.env.NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      throw new Error("NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN is not configured.");
+    }
+
+    return apiClient<{ data: FactoryTvSummary }>("/dashboard/factory-tv-summary", {
+      skipAuth: true,
+      headers: {
+        "X-Factory-TV-Token": accessToken,
+      },
+    });
+  },
 };

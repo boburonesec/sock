@@ -51,6 +51,7 @@ services:
       PLATFORM_AUTH_COOKIE_NAME: ${PLATFORM_AUTH_COOKIE_NAME:-paypoq_platform_refresh_token}
       TELEGRAM_LINK_TOKEN_SECRET: ${TELEGRAM_LINK_TOKEN_SECRET:?TELEGRAM_LINK_TOKEN_SECRET is required}
       BOT_INTERNAL_API_KEY: ${BOT_INTERNAL_API_KEY:?BOT_INTERNAL_API_KEY is required}
+      FACTORY_TV_ACCESS_TOKEN: ${FACTORY_TV_ACCESS_TOKEN:?FACTORY_TV_ACCESS_TOKEN is required}
     ports:
       - "${API_PORT:-3001}:3001"
     healthcheck:
@@ -65,6 +66,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN: ${NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN:?NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN is required}
     restart: unless-stopped
     depends_on:
       api:
@@ -73,6 +75,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN: ${NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN:?NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN is required}
     ports:
       - "${WEB_PORT:-3000}:3000"
 

@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/bot/package.json apps/bot/package.json
+COPY apps/mobile/package.json apps/mobile/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -23,6 +24,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/bot/package.json apps/bot/package.json
+COPY apps/mobile/package.json apps/mobile/package.json
 RUN pnpm install --prod --frozen-lockfile
 
 FROM node:22-bookworm-slim AS runner

@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Paypoq Mobile",
+    "slug": "paypoq-mobile",
+    "scheme": "paypoq",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "uz.paypoq.mobile"
+    },
+    "android": {
+      "package": "uz.paypoq.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b1120"
+      }
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
+

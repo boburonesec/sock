@@ -30,4 +30,9 @@ export default () => ({
       process.env.BOT_INTERNAL_API_KEY ??
       'local-development-bot-internal-api-key-change-me',
   },
+  factoryTv: {
+    accessToken:
+      process.env.FACTORY_TV_ACCESS_TOKEN ??
+      'local-development-factory-tv-token-change-me',
+  },
 });

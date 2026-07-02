@@ -30,6 +30,11 @@ const environmentSchema = Joi.object({
     then: Joi.string().min(32).required(),
     otherwise: Joi.string().min(16).default('local-development-bot-internal-api-key-change-me'),
   }),
+  FACTORY_TV_ACCESS_TOKEN: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().min(16).default('local-development-factory-tv-token-change-me'),
+  }),
 });
 
 export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {

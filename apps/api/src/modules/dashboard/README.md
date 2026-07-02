@@ -21,7 +21,7 @@ this module provides thin read projections inside the modular monolith.
 ## Current endpoints
 
 - `GET /dashboard/executive-summary`
-- `GET /dashboard/factory-tv-summary`
+- `GET /dashboard/factory-tv-summary` with `X-Factory-TV-Token`
 
 ## Implementation notes
 
@@ -32,4 +32,6 @@ coupling domain modules to each other or creating circular dependencies.
 The Factory TV Summary endpoint reuses `ProductionService.getOperationsSummary()`
 and `WarehouseService.getStockSummary()`. It intentionally excludes salary,
 payroll, debt, expenses, and other sensitive finance data because workers may
-see the TV screen.
+see the TV screen. The endpoint is outside the authenticated app shell, so it
+requires the shared Factory TV display token and should still be deployed behind
+LAN/VPN/HTTPS controls.
