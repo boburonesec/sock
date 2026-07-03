@@ -19,11 +19,11 @@ const styles = {
 
 export function AttentionNeeded({ items }: { items: AttentionItem[] }) {
   return (
-    <InfoCard title="E’tibor kerak" description="Backend qaytargan muhim holatlar">
+    <InfoCard title="E’tibor kerak" description="Tizim qaytargan muhim holatlar">
       {items.length === 0 ? (
         <EmptyState
           title="E’tibor talab qiladigan holat yo‘q"
-          description="Backend attentionItems bo‘sh ro‘yxat qaytardi."
+          description="Tizim attentionItems bo‘sh ro‘yxat qaytardi."
           className="min-h-40"
         />
       ) : (

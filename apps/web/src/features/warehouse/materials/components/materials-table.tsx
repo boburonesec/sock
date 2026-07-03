@@ -31,7 +31,7 @@ export function MaterialsTable({
           <DataTableHeader>Zona</DataTableHeader>
           <DataTableHeader>Miqdor</DataTableHeader>
           <DataTableHeader>Birlik</DataTableHeader>
-          <DataTableHeader>Minimal threshold</DataTableHeader>
+          <DataTableHeader>Minimal limit</DataTableHeader>
           <DataTableHeader>Status</DataTableHeader>
           <DataTableHeader>Yangilangan</DataTableHeader>
         </DataTableRow>

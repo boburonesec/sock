@@ -19,7 +19,6 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.59.0",
-    "recharts": "^2.15.1",
     "tailwind-merge": "^3.3.0",
     "zod": "^3.25.67",
     "zustand": "^5.0.5"

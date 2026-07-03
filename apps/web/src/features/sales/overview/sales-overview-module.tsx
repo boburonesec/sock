@@ -40,7 +40,7 @@ export function SalesOverviewModule() {
     return (
       <ErrorState
         title="Sotuv xulosasi mavjud emas"
-        description="Backend kutilgan summary response qaytarmadi."
+        description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
             Qayta urinish
@@ -63,7 +63,7 @@ export function SalesOverviewModule() {
           <KpiCard
             label="Aktiv buyurtmalar"
             value={`${summary.kpis.activeOrderCount} ta`}
-            description="Backend hisoblagan aktiv buyurtmalar"
+            description="Tizim hisoblagan aktiv buyurtmalar"
             accent="success"
           />
           <KpiCard
@@ -75,7 +75,7 @@ export function SalesOverviewModule() {
           <KpiCard
             label="Jami client qarzi"
             value={`${summary.kpis.totalClientDebt} so‘m`}
-            description="Backend debt projection qiymati"
+            description="Tizim qarz hisob-kitobi qiymati"
             accent="warning"
           />
         </div>
@@ -84,7 +84,7 @@ export function SalesOverviewModule() {
       <div className="grid gap-6 xl:grid-cols-2">
         <PageSection
           title="Top clientlar"
-          description="Backend qaytargan top clientlar ro‘yxati"
+          description="Tizim qaytargan top clientlar ro‘yxati"
         >
           <TopClientsTable clients={summary.topClients} />
         </PageSection>

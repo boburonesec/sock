@@ -253,7 +253,7 @@ function MasterDataListPage<T extends MasterDataRecord>({
                         setRecordToArchive(record);
                       }}
                     >
-                      Archive qilish
+                      Arxivlash
                     </Button>
                   </div>
                 </DataTableCell>
@@ -282,20 +282,20 @@ function MasterDataListPage<T extends MasterDataRecord>({
         onOpenChange={(open) => {
           if (!open) setRecordToArchive(null);
         }}
-        title="Yozuvni archive qilish"
+        title="Yozuvni arxivlash"
         description={
           recordToArchive
-            ? `${recordToArchive.name} archive qilinadi. Yozuv o‘chirilmaydi, faqat faol ro‘yxatdan chiqadi.`
-            : "Yozuv archive qilinadi."
+            ? `${recordToArchive.name} arxivlanadi. Yozuv o‘chirilmaydi, faqat faol ro‘yxatdan chiqadi.`
+            : "Yozuv arxivlanadi."
         }
-        confirmLabel={archiveMutation.isPending ? "Bajarilmoqda..." : "Archive qilish"}
+        confirmLabel={archiveMutation.isPending ? "Bajarilmoqda..." : "Arxivlash"}
         destructive
         onConfirm={() => {
           if (!recordToArchive) return;
           const recordName = recordToArchive.name;
           archiveMutation.mutate(recordToArchive.id, {
             onSuccess: () => {
-              setFeedback({ tone: "success", message: `${recordName} archive qilindi.` });
+              setFeedback({ tone: "success", message: `${recordName} arxivlandi.` });
               setRecordToArchive(null);
             },
             onError: (mutationError) => {
@@ -304,7 +304,7 @@ function MasterDataListPage<T extends MasterDataRecord>({
                 message:
                   mutationError instanceof Error
                     ? mutationError.message
-                    : "Archive qilishda xatolik yuz berdi.",
+                    : "Arxivlashda xatolik yuz berdi.",
               });
             },
           });
@@ -366,7 +366,7 @@ function MasterDataFormDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? `${title}: yangi yozuv` : `${title}: tahrirlash`}
-      description="Master-data yozuvi backend orqali saqlanadi."
+      description="Master-data yozuvi tizim orqali saqlanadi."
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <FormField htmlFor="masterDataName" label="Nomi" error={errors.name?.message} required>
@@ -400,7 +400,7 @@ function MasterDataFormDrawer({
               type="number"
               min="1"
               disabled={isSubmitting}
-              placeholder="Bo‘sh qolsa, backend keyingi raqamni beradi"
+              placeholder="Bo‘sh qolsa, tizim keyingi raqamni beradi"
               aria-invalid={Boolean(errors.sortOrder)}
               {...register("sortOrder")}
             />

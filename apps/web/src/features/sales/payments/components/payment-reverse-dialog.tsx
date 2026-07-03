@@ -47,7 +47,7 @@ export function PaymentReverseDialog({
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Bu to‘lov reversal qilinadi. Client qarzi va buyurtma to‘lov holati
-          backend tomonidan qayta hisoblanadi. Yetkazilgan/yopilgan
+          tizim tomonidan qayta hisoblanadi. Yetkazilgan/yopilgan
           buyurtmalarga bog‘langan to‘lovlar bloklanadi.
         </p>
 

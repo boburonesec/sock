@@ -8,13 +8,13 @@ export function ProductionOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] })
     { label: "Aktiv xodimlar", value: `${kpis.activeEmployees} ta` },
     { label: "Aktiv buyurtmalar", value: `${kpis.activeOrders} ta` },
     { label: "Mahsulot modellari", value: `${kpis.totalProducts} ta` },
-    { label: "Low stock", value: `${kpis.lowStockMaterials} ta` },
+    { label: "Past qoldiq", value: `${kpis.lowStockMaterials} ta` },
   ];
 
   return (
     <InfoCard
       title="Operatsion ko‘rinish"
-      description="Backend executive summary qiymatlari"
+      description="Tizim executive summary qiymatlari"
       action={
         <Link
           href="/dashboard/operations"

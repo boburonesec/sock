@@ -87,7 +87,7 @@ export function MaterialReceiptDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Material qabul qilish"
-      description="Xomashyo kirimi MaterialStock snapshotini oshiradi va StockMovement tarixiga yoziladi."
+      description="Xomashyo kirimi ombor qoldig‘ini oshiradi va harakatlar tarixiga yoziladi."
     >
       <form
         className="space-y-4"

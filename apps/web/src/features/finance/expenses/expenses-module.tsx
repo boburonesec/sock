@@ -42,7 +42,7 @@ export function ExpensesModule() {
           <KpiCard
             label="Xarajat yozuvlari"
             value={`${expenses.length} ta`}
-            description="API qaytargan xarajat yozuvlari"
+            description="ma’lumot qaytargan xarajat yozuvlari"
             accent="primary"
           />
         </div>
@@ -53,7 +53,7 @@ export function ExpensesModule() {
         description="Kategoriya sozlamalari keyingi master data modulida boshqariladi."
       >
         <div className="mb-4 flex justify-end">
-          <Button disabled>Xarajat yaratish · Keyingi bosqich</Button>
+          <Button disabled>Xarajat yaratish · Tez orada</Button>
         </div>
         <ExpensesTable expenses={expenses} />
       </PageSection>

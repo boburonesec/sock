@@ -40,7 +40,7 @@ export function ReportsOverviewModule() {
     return (
       <ErrorState
         title="Hisobotlar overview mavjud emas"
-        description="Backend kutilgan reports overview response qaytarmadi."
+        description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
             Qayta urinish
@@ -54,7 +54,7 @@ export function ReportsOverviewModule() {
     <div className="space-y-8">
       <PageSection
         title="Hisobot kategoriyalari"
-        description="Backend qaytargan hisobot metadata katalogi."
+        description="Tizim qaytargan hisobot metadata katalogi."
       >
         <ReportCategoryCards categories={overview.categoryCards} />
       </PageSection>
@@ -72,12 +72,12 @@ export function ReportsOverviewModule() {
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
           <Button disabled variant="outline">
-            Excel export · Keyingi bosqich
+            Excel export · Tez orada
           </Button>
           <Button disabled variant="outline">
-            PDF export · Keyingi bosqich
+            PDF export · Tez orada
           </Button>
-          <Button disabled>Hisobot yaratish · Keyingi bosqich</Button>
+          <Button disabled>Hisobot yaratish · Tez orada</Button>
         </div>
         <RecentReportsTable reports={overview.recentReports} />
       </PageSection>

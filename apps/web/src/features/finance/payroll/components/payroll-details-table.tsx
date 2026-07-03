@@ -18,7 +18,7 @@ const statusTone: Record<string, StatusTone> = {
 
 export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
   return (
-    <DataTable label="Payroll xodim tafsilotlari">
+    <DataTable label="Xodimlar ish haqi tafsilotlari">
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Xodim</DataTableHeader>
@@ -58,8 +58,8 @@ export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
         ) : (
           <EmptyTableState
             colSpan={9}
-            title="Payroll tafsilotlari mavjud emas"
-            description="Tanlangan davr uchun payroll item snapshotlari topilmadi."
+            title="Ish haqi tafsilotlari mavjud emas"
+            description="Tanlangan davr uchun xodimlar bo‘yicha ma’lumot topilmadi."
           />
         )}
       </tbody>

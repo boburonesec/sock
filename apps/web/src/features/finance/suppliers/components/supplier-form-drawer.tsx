@@ -66,8 +66,8 @@ export function SupplierFormDrawer({
       title={mode === "create" ? "Supplier qo‘shish" : "Supplierni tahrirlash"}
       description={
         mode === "create"
-          ? "Yangi supplier ACTIVE status bilan yaratiladi."
-          : "Supplier master-data ma’lumotlari yangilanadi."
+          ? "Yangi supplier Faol status bilan yaratiladi."
+          : "Supplier sozlama ma’lumotlari yangilanadi."
       }
     >
       <form

@@ -21,7 +21,7 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
           return <Link key={href} href={href} onClick={onClose} className={cn("flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground", active && "bg-primary/15 text-primary")}><Icon size={19} />{title}</Link>;
         })}
       </nav>
-      <div className="mt-auto rounded-xl bg-muted p-3 text-xs text-muted-foreground"><div className="mb-1 font-semibold text-foreground">Paypoq OS</div><div>Application foundation</div></div>
+      <div className="mt-auto rounded-xl bg-muted p-3 text-xs text-muted-foreground"><div className="mb-1 font-semibold text-foreground">Paypoq OS</div><div>Fabrika boshqaruvi</div></div>
     </aside>
   </>;
 }

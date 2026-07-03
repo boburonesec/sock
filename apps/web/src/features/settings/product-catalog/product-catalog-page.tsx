@@ -325,20 +325,20 @@ export function ProductCatalogPage() {
         onOpenChange={(open) => {
           if (!open) setArchiveProduct(null);
         }}
-        title="Mahsulotni archive qilish"
+        title="Mahsulotni arxivlash"
         description={
           archiveProduct
-            ? `${archiveProduct.name} archive qilinadi. Stock yoki sotuv yozuvlari o‘zgarmaydi.`
-            : "Mahsulot archive qilinadi."
+            ? `${archiveProduct.name} arxivlanadi. Ombor qoldig‘i yoki sotuv yozuvlari o‘zgarmaydi.`
+            : "Mahsulot arxivlanadi."
         }
-        confirmLabel={archiveProductMutation.isPending ? "Bajarilmoqda..." : "Archive qilish"}
+        confirmLabel={archiveProductMutation.isPending ? "Bajarilmoqda..." : "Arxivlash"}
         destructive
         onConfirm={() => {
           if (!archiveProduct) return;
           const productName = archiveProduct.name;
           archiveProductMutation.mutate(archiveProduct.id, {
             onSuccess: () => {
-              setFeedback({ tone: "success", message: `${productName} archive qilindi.` });
+              setFeedback({ tone: "success", message: `${productName} arxivlandi.` });
               setArchiveProduct(null);
               setSelectedProduct(null);
             },
@@ -354,15 +354,15 @@ export function ProductCatalogPage() {
         onOpenChange={(open) => {
           if (!open) setArchiveVariant(null);
         }}
-        title="Variantni archive qilish"
-        description="Variant archive qilinadi. Stock yoki sotuv yozuvlari o‘zgarmaydi."
-        confirmLabel={archiveVariantMutation.isPending ? "Bajarilmoqda..." : "Archive qilish"}
+        title="Variantni arxivlash"
+        description="Variant arxivlanadi. Ombor qoldig‘i yoki sotuv yozuvlari o‘zgarmaydi."
+        confirmLabel={archiveVariantMutation.isPending ? "Bajarilmoqda..." : "Arxivlash"}
         destructive
         onConfirm={() => {
           if (!archiveVariant) return;
           archiveVariantMutation.mutate(archiveVariant.id, {
             onSuccess: () => {
-              setFeedback({ tone: "success", message: "Variant archive qilindi." });
+              setFeedback({ tone: "success", message: "Variant arxivlandi." });
               setArchiveVariant(null);
               setSelectedVariant(null);
             },
@@ -468,7 +468,7 @@ function ProductFormDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title={formState?.mode === "edit" ? "Mahsulotni tahrirlash" : "Mahsulot qo‘shish"}
-      description="Mahsulot master-data yozuvi"
+      description="Mahsulot sozlama yozuvi"
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <FormField htmlFor="productName" label="Nomi" error={errors.name?.message} required>

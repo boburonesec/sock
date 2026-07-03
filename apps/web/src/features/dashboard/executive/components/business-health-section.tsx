@@ -11,10 +11,10 @@ const labels: Record<keyof ExecutiveSummary["businessHealth"], string> = {
 };
 
 const descriptions: Record<keyof ExecutiveSummary["businessHealth"], string> = {
-  production: "Bosqichlar qoldig‘i bo‘yicha backend health holati.",
-  warehouse: "Low stock materiallar bo‘yicha backend health holati.",
-  sales: "Client debt projection bo‘yicha backend health holati.",
-  finance: "Supplier debt, avans, xarajat va payroll holati.",
+  production: "Bosqichlar qoldig‘i bo‘yicha umumiy holat.",
+  warehouse: "Past qoldiq materiallar bo‘yicha umumiy holat.",
+  sales: "Mijoz qarzdorligi bo‘yicha umumiy holat.",
+  finance: "Yetkazib beruvchi qarzi, avans va xarajatlar holati.",
 };
 
 const statusLabels: Record<ExecutiveHealthStatus, string> = {

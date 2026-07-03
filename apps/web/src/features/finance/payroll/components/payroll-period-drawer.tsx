@@ -48,8 +48,8 @@ export function PayrollPeriodDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Payroll period yaratish"
-      description="Yangi period DRAFT status bilan yaratiladi."
+      title="Ish haqi davri yaratish"
+      description="Yangi davr tayyor holatda yaratiladi."
     >
       <form
         className="space-y-4"
@@ -76,7 +76,7 @@ export function PayrollPeriodDrawer({
         ) : null}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Yaratilmoqda..." : "Period yaratish"}
+          {isSubmitting ? "Yaratilmoqda..." : "Davr yaratish"}
         </Button>
       </form>
     </Drawer>

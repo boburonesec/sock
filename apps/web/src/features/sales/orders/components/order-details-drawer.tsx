@@ -65,9 +65,9 @@ export function OrderDetailsDrawer({
           >
             {isReturning ? "Return qilinmoqda..." : "Delivery return qilish"}
           </Button>
-          <Button disabled variant="outline">Tahrirlash · Keyingi bosqich</Button>
-          <Button disabled variant="outline">Tasdiqlash · Keyingi bosqich</Button>
-          <Button disabled variant="outline">Bekor qilish · Keyingi bosqich</Button>
+          <Button disabled variant="outline">Tahrirlash · Tez orada</Button>
+          <Button disabled variant="outline">Tasdiqlash · Tez orada</Button>
+          <Button disabled variant="outline">Bekor qilish · Tez orada</Button>
         </div>
         {!isDeliverable ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
@@ -86,7 +86,7 @@ export function OrderDetailsDrawer({
           <InfoCard title="Jami summa">
             <p className="text-xl font-bold">{order.totalAmount} so‘m</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Buyurtma yaratilishidagi frozen backend qiymat.
+              Buyurtma yaratilishidagi frozen tizim qiymat.
             </p>
           </InfoCard>
           <InfoCard title="Buyurtma holati">

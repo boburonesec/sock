@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PayrollItem, PayPayrollPeriodPayload } from "@/lib/api/finance";
 
 const schema = z.object({
-  payrollItemId: z.string().min(1, "Xodim payroll item tanlanishi shart."),
+  payrollItemId: z.string().min(1, "Xodim ish haqi qatori tanlanishi shart."),
   amount: z
     .string()
     .trim()
@@ -87,8 +87,8 @@ export function PayrollPaymentDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Payroll to‘lovi"
-      description="To‘lov backend payroll snapshotiga yoziladi. Frontend oylik hisoblamaydi."
+      title="Ish haqi to‘lovi"
+      description="To‘lov tanlangan xodimning ish haqi qoldig‘iga yoziladi."
     >
       <form
         className="space-y-4"
@@ -113,7 +113,7 @@ export function PayrollPaymentDrawer({
             disabled={isSubmitting}
             {...register("payrollItemId")}
           >
-            <option value="">Payroll item tanlang</option>
+            <option value="">Xodim tanlang</option>
             {payableItems.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.employee.name} — qoldiq {item.remainingAmount} so‘m

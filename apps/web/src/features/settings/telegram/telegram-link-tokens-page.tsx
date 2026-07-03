@@ -34,7 +34,7 @@ export function TelegramLinkTokensPage() {
   const blockMutation = useMutation({
     mutationFn: telegramApi.blockAccount,
     onSuccess: async () => {
-      setFeedback({ tone: "success", message: "Telegram account bloklandi." });
+      setFeedback({ tone: "success", message: "Telegram akkaunt bloklandi." });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.telegram.accounts() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.telegram.health() }),
@@ -46,7 +46,7 @@ export function TelegramLinkTokensPage() {
         message:
           error instanceof Error
             ? error.message
-            : "Telegram account bloklashda xatolik yuz berdi.",
+            : "Telegram akkaunt bloklashda xatolik yuz berdi.",
       });
     },
   });
@@ -65,7 +65,7 @@ export function TelegramLinkTokensPage() {
         description={
           firstError instanceof Error
             ? firstError.message
-            : "Telegram account, health yoki link-token ro‘yxatini olishda xatolik yuz berdi."
+            : "Telegram akkaunt, holat yoki link-token ro‘yxatini olishda xatolik yuz berdi."
         }
         action={
           <Button
@@ -103,51 +103,51 @@ export function TelegramLinkTokensPage() {
       ) : null}
 
       <PageSection
-        title="Telegram health"
-        description="Protected settings.view endpoint. Faqat config/database readiness va basic countlar ko‘rsatiladi."
+        title="Telegram holati"
+        description="Telegram ulanishlari va sozlamalari holati ko‘rsatiladi."
       >
         {!health ? (
-          <EmptyState title="Health ma’lumoti yo‘q" description="Telegram health endpoint ma’lumot qaytarmadi." />
+          <EmptyState title="Telegram holati yo‘q" description="Hozircha Telegram bo‘yicha ma’lumot kelmadi." />
         ) : (
           <div className="grid gap-4 md:grid-cols-3">
             <HealthCard label="Holat" value={health.status.toUpperCase()} tone="success" />
-            <HealthCard label="Aktiv accountlar" value={health.counts.activeAccounts} tone="info" />
+            <HealthCard label="Ulangan akkauntlar" value={health.counts.activeAccounts} tone="info" />
             <HealthCard label="Link tokenlar" value={health.counts.linkTokens} tone="neutral" />
             <HealthCard
-              label="Internal API key"
+              label="Ichki kalit"
               value={health.checks.botInternalApiKeyConfigured ? "Sozlangan" : "Yo‘q"}
               tone={health.checks.botInternalApiKeyConfigured ? "success" : "danger"}
             />
             <HealthCard
-              label="Link token secret"
+              label="Link kodi siri"
               value={health.checks.linkTokenSecretConfigured ? "Sozlangan" : "Yo‘q"}
               tone={health.checks.linkTokenSecretConfigured ? "success" : "danger"}
             />
-            <HealthCard label="Database" value={health.checks.database.toUpperCase()} tone="success" />
+            <HealthCard label="Ma’lumotlar bazasi" value={health.checks.database.toUpperCase()} tone="success" />
           </div>
         )}
       </PageSection>
 
       <PageSection
-        title="Telegram accountlar"
-        description="Employee/client/user bilan bog‘langan Telegram accountlar. Telegram user ID maskalangan ko‘rsatiladi."
+        title="Telegram akkauntlari"
+        description="Xodim, mijoz yoki foydalanuvchiga bog‘langan Telegram akkauntlari."
       >
         {accounts.length === 0 ? (
           <EmptyState
-            title="Telegram accountlar yo‘q"
-            description="Hali Telegram orqali ulangan employee yoki client yo‘q."
+            title="Telegram akkauntlari yo‘q"
+            description="Hali Telegram orqali ulangan xodim yoki mijoz yo‘q."
           />
         ) : (
-          <DataTable label="Telegram accountlar">
+          <DataTable label="Telegram akkauntlari">
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeader>Turi</DataTableHeader>
-                <DataTableHeader>Entity</DataTableHeader>
+                <DataTableHeader>Kimga ulangan</DataTableHeader>
                 <DataTableHeader>Telegram ID</DataTableHeader>
                 <DataTableHeader>Status</DataTableHeader>
-                <DataTableHeader>Linked</DataTableHeader>
-                <DataTableHeader>Unlinked / Blocked</DataTableHeader>
-                <DataTableHeader>Action</DataTableHeader>
+                <DataTableHeader>Ulangan vaqt</DataTableHeader>
+                <DataTableHeader>Holat o‘zgargan vaqt</DataTableHeader>
+                <DataTableHeader>Amal</DataTableHeader>
               </DataTableRow>
             </DataTableHead>
             <tbody>
@@ -156,7 +156,7 @@ export function TelegramLinkTokensPage() {
                   <DataTableCell>{formatTargetType(account.type)}</DataTableCell>
                   <DataTableCell>
                     <div className="font-medium">
-                      {account.linkedEntity?.name ?? "Entity topilmadi"}
+                      {account.linkedEntity?.name ?? "Nomi topilmadi"}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {account.linkedEntity?.id ?? "ID mavjud emas"}
@@ -171,9 +171,9 @@ export function TelegramLinkTokensPage() {
                   <DataTableCell>{formatDateTime(account.linkedAt)}</DataTableCell>
                   <DataTableCell>
                     {account.blockedAt
-                      ? `Blocked: ${formatDateTime(account.blockedAt)}`
+                      ? `Bloklangan: ${formatDateTime(account.blockedAt)}`
                       : account.unlinkedAt
-                        ? `Unlinked: ${formatDateTime(account.unlinkedAt)}`
+                        ? `Uzilgan: ${formatDateTime(account.unlinkedAt)}`
                         : "—"}
                   </DataTableCell>
                   <DataTableCell>
@@ -199,7 +199,7 @@ export function TelegramLinkTokensPage() {
 
       <PageSection
         title="Telegram link tokenlar"
-        description="Raw kod va codeHash ko‘rsatilmaydi. Kod faqat yaratilgan paytda bir marta ko‘rinadi."
+        description="Kod faqat yaratilgan paytda bir marta ko‘rinadi."
       >
         {tokens.length === 0 ? (
           <EmptyState
@@ -210,8 +210,8 @@ export function TelegramLinkTokensPage() {
           <DataTable label="Telegram link tokenlar">
             <DataTableHead>
               <DataTableRow>
-                <DataTableHeader>Target turi</DataTableHeader>
-                <DataTableHeader>Target</DataTableHeader>
+                <DataTableHeader>Ulanadigan tur</DataTableHeader>
+                <DataTableHeader>Ulanadigan odam</DataTableHeader>
                 <DataTableHeader>Muddati</DataTableHeader>
                 <DataTableHeader>Ishlatilgan</DataTableHeader>
                 <DataTableHeader>Yaratilgan</DataTableHeader>
@@ -226,7 +226,7 @@ export function TelegramLinkTokensPage() {
                       {token.targetName ?? "Nomi ko‘rsatilmagan"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {token.targetId ?? "Target ID mavjud emas"}
+                      {token.targetId ?? "ID mavjud emas"}
                     </div>
                   </DataTableCell>
                   <DataTableCell>{formatDateTime(token.expiresAt)}</DataTableCell>
@@ -267,9 +267,9 @@ function handleBlock(
   account: TelegramAccountListItem,
   blockAccount: (accountId: string) => void,
 ) {
-  const entityName = account.linkedEntity?.name ?? "Telegram account";
+  const entityName = account.linkedEntity?.name ?? "Telegram akkaunti";
   const confirmed = window.confirm(
-    `${entityName} uchun Telegram accountni bloklashni tasdiqlaysizmi? Unblock v1’da qo‘llanmaydi.`,
+    `${entityName} uchun Telegram akkauntini bloklashni tasdiqlaysizmi? Qayta ochish hozircha mavjud emas.`,
   );
 
   if (confirmed) {
@@ -289,7 +289,7 @@ function statusTone(status: string): StatusTone {
 
 function formatAccountStatus(value: string): string {
   const labels: Record<string, string> = {
-    ACTIVE: "Aktiv",
+    ACTIVE: "Faol",
     UNLINKED: "Uzilgan",
     BLOCKED: "Bloklangan",
   };

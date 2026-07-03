@@ -32,7 +32,7 @@ export function SettingsCategoryCards({
     return (
       <EmptyState
         title="Sozlama kategoriyalari yo‘q"
-        description="Backend categoryCards bo‘sh ro‘yxat qaytardi."
+        description="Tizim categoryCards bo‘sh ro‘yxat qaytardi."
       />
     );
   }

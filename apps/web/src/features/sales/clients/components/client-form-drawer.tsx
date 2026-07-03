@@ -69,8 +69,8 @@ export function ClientFormDrawer({
   const title = mode === "create" ? "Client qo‘shish" : "Clientni tahrirlash";
   const description =
     mode === "create"
-      ? "Yangi client ACTIVE status bilan yaratiladi."
-      : "Client master-data ma’lumotlari yangilanadi.";
+      ? "Yangi client Faol status bilan yaratiladi."
+      : "Client sozlama ma’lumotlari yangilanadi.";
 
   return (
     <Drawer

@@ -141,8 +141,8 @@ export function StockCorrectionDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Qoldiq correction qilish"
-      description="Joriy stock snapshotini backend orqali tuzatadi va StockMovement tarixiga yozadi."
+      title="Qoldiqni tuzatish"
+      description="Joriy qoldiqni tuzatadi va ombor harakatlari tarixiga yozadi."
     >
       <form
         className="space-y-4"
@@ -150,7 +150,7 @@ export function StockCorrectionDrawer({
       >
         <FormField
           htmlFor="stockCorrectionItemType"
-          label="Item turi"
+          label="Nima tuzatiladi"
           error={errors.itemType?.message}
           required
         >
@@ -268,8 +268,8 @@ export function StockCorrectionDrawer({
 
         {itemType === "MATERIAL" && materialOptions.length === 0 ? (
           <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-            Material correction qilish uchun avval material stock snapshoti
-            mavjud bo‘lishi kerak. Material qabul qilish orqali snapshot yarating.
+            Material qoldig‘ini tuzatish uchun avval shu material bo‘yicha qoldiq
+            mavjud bo‘lishi kerak. Material qabul qilish orqali qoldiq yarating.
           </p>
         ) : null}
 
@@ -292,7 +292,7 @@ export function StockCorrectionDrawer({
             (itemType === "MATERIAL" && materialOptions.length === 0)
           }
         >
-          {isSubmitting ? "Tuzatilmoqda..." : "Correction qilish"}
+          {isSubmitting ? "Tuzatilmoqda..." : "Qoldiqni tuzatish"}
         </Button>
       </form>
     </Drawer>

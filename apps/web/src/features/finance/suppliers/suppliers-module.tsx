@@ -169,25 +169,25 @@ export function SuppliersModule() {
           <KpiCard
             label="Supplierlar"
             value={`${suppliers.length} ta`}
-            description="API qaytargan supplier yozuvlari"
+            description="ma’lumot qaytargan supplier yozuvlari"
             accent="primary"
           />
           <KpiCard
-            label="Supplier debt projection"
+            label="Supplier qarz hisob-kitobi"
             value={`${debts.length} ta`}
-            description="Backend hisoblagan debt yozuvlari"
+            description="Tizim hisoblagan debt yozuvlari"
             accent="warning"
           />
           <KpiCard
             label="Xarid yozuvlari"
             value={`${purchases.length} ta`}
-            description="API qaytargan purchase yozuvlari"
+            description="ma’lumot qaytargan purchase yozuvlari"
             accent="neutral"
           />
           <KpiCard
             label="To‘lov yozuvlari"
             value={`${payments.length} ta`}
-            description="API qaytargan payment yozuvlari"
+            description="ma’lumot qaytargan payment yozuvlari"
             accent="success"
           />
         </div>
@@ -195,7 +195,7 @@ export function SuppliersModule() {
 
       <PageSection
         title="Supplier qarzdorligi"
-        description="Qarz qiymatlari backend projection orqali qaytariladi."
+        description="Qarz qiymatlari tizim hisob-kitob orqali qaytariladi."
       >
         <div className="mb-4 flex justify-end">
           <div className="flex flex-wrap justify-end gap-2">
@@ -349,14 +349,14 @@ export function SuppliersModule() {
         onOpenChange={(open) => {
           if (!open) setSupplierToArchive(null);
         }}
-        title="Supplierni archive qilish"
+        title="Supplierni arxivlash"
         description={
           supplierToArchive
-            ? `${supplierToArchive.name} active ro‘yxatdan chiqariladi. Xaridlar va to‘lovlar o‘chirilmaydi.`
-            : "Supplier archive qilinadi."
+            ? `${supplierToArchive.name} faol ro‘yxatdan chiqariladi. Xaridlar va to‘lovlar o‘chirilmaydi.`
+            : "Supplier arxivlanadi."
         }
         confirmLabel={
-          archiveSupplier.isPending ? "Archive qilinmoqda..." : "Archive qilish"
+          archiveSupplier.isPending ? "Arxivlanmoqda..." : "Arxivlash"
         }
         destructive
         onConfirm={() => {
@@ -366,7 +366,7 @@ export function SuppliersModule() {
             onSuccess: () => {
               setFeedback({
                 tone: "success",
-                message: `${supplierName} archive qilindi.`,
+                message: `${supplierName} arxivlandi.`,
               });
               setSelectedDebt(null);
               setSupplierToArchive(null);
@@ -377,7 +377,7 @@ export function SuppliersModule() {
                 message:
                   mutationError instanceof Error
                     ? mutationError.message
-                    : "Supplierni archive qilishda xatolik yuz berdi.",
+                    : "Supplierni arxivlashda xatolik yuz berdi.",
               });
             },
           });

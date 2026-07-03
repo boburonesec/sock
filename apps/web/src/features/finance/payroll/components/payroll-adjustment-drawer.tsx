@@ -77,7 +77,7 @@ export function PayrollAdjustmentDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title={`${labels[kind]} qo‘shish`}
-      description="Bu adjustment payroll hisoblashda backend tomonidan inobatga olinadi."
+      description="Bu tuzatish ish haqi hisoblashda inobatga olinadi."
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <FormField

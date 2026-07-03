@@ -50,9 +50,9 @@ export function PaymentDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled>Clientga o‘tish · Keyingi bosqich</Button>
+          <Button disabled>Clientga o‘tish · Tez orada</Button>
           <Button disabled variant="outline">
-            Orderga o‘tish · Keyingi bosqich
+            Orderga o‘tish · Tez orada
           </Button>
           <Button
             type="button"
@@ -98,8 +98,8 @@ export function PaymentDetailsDrawer({
 
         <InfoCard title="Qarz xulosasi">
           <p className="text-sm text-muted-foreground">
-            Bu endpoint faqat to‘lov yozuvlarini qaytaradi. Client qarzi
-            alohida backend projection orqali olinadi; frontend bu yerda qarz
+            Bu bo‘lim faqat to‘lov yozuvlarini qaytaradi. Client qarzi
+            alohida tizim hisob-kitob orqali olinadi; ekran bu yerda qarz
             yoki qoldiqni hisoblamaydi.
           </p>
         </InfoCard>

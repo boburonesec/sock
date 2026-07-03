@@ -112,7 +112,7 @@ export function SupplierPurchaseDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Xarid qayd qilish"
-      description="Xarid summasi backend tomonidan hisoblanadi. Material ombor qoldig‘i bu flow’da oshirilmaydi."
+      description="Xarid summasi tizim tomonidan hisoblanadi. Material ombor qoldig‘i bu flow’da oshirilmaydi."
       className="max-w-4xl"
     >
       <form
@@ -274,7 +274,7 @@ export function SupplierPurchaseDrawer({
         </FormField>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
-          Taxminiy summa: {estimatedTotal.toLocaleString("uz-UZ")} so‘m. Yakuniy summa backend tomonidan qaytariladi.
+          Taxminiy summa: {estimatedTotal.toLocaleString("uz-UZ")} so‘m. Yakuniy summa tizim tomonidan qaytariladi.
         </div>
 
         {errorMessage ? (

@@ -83,7 +83,7 @@ export function ZonesModule() {
           <KpiCard
             label="Jami zonalar"
             value={`${summary?.kpis.warehouseZoneCount ?? "0"} ta`}
-            description="Backend stock-summary qiymati"
+            description="Tizim stock-summary qiymati"
             accent="primary"
           />
           <KpiCard
@@ -95,13 +95,13 @@ export function ZonesModule() {
           <KpiCard
             label="Material yozuvlari"
             value={`${summary?.kpis.materialRecordCount ?? "0"} ta`}
-            description="Backend hisoblagan material record count"
+            description="Tizim hisoblagan material record count"
             accent="neutral"
           />
           <KpiCard
-            label="Low stock"
+            label="Past qoldiq"
             value={`${summary?.kpis.lowStockMaterialCount ?? "0"} ta`}
-            description="Backend threshold comparison"
+            description="Belgilangan limit bo‘yicha"
             accent="warning"
           />
         </div>
@@ -112,7 +112,7 @@ export function ZonesModule() {
         description="MVP bitta ombor bilan ishlaydi, data model kelajakda ko‘p omborni qo‘llab-quvvatlaydi."
       >
         <div className="mb-4 flex justify-end">
-          <Button disabled>Zona qo‘shish · Keyingi bosqich</Button>
+          <Button disabled>Zona qo‘shish · Tez orada</Button>
         </div>
         <ZonesOverview zones={zoneSummaries} onSelect={setSelectedZone} />
       </PageSection>

@@ -59,8 +59,8 @@ export function EmployeeFormDrawer({
   const title = mode === "create" ? "Xodim qo‘shish" : "Xodimni tahrirlash";
   const description =
     mode === "create"
-      ? "Yangi xodim ACTIVE status bilan yaratiladi."
-      : "Faqat xodim master-data maydonlari tahrirlanadi.";
+      ? "Yangi xodim faol holatda ro‘yxatga qo‘shiladi."
+      : "Xodim ma’lumotlarini yangilang.";
 
   return (
     <Drawer

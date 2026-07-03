@@ -39,7 +39,7 @@ export function TopClientsTable({ clients }: { clients: TopClient[] }) {
           <EmptyTableState
             colSpan={4}
             title="Top clientlar mavjud emas"
-            description="Buyurtmalar paydo bo‘lgach, backend top clientlarni qaytaradi."
+            description="Buyurtmalar paydo bo‘lgach, tizim top clientlarni qaytaradi."
           />
         )}
       </tbody>

@@ -62,9 +62,9 @@ export function ZoneDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled>Transfer qilish · Keyingi bosqich</Button>
+          <Button disabled>Transfer qilish · Tez orada</Button>
           <Button disabled variant="outline">
-            Qoldiq ko‘rish · Keyingi bosqich
+            Qoldiq ko‘rish · Tez orada
           </Button>
         </div>
 
@@ -80,7 +80,7 @@ export function ZoneDetailsDrawer({
           <InfoCard title="Mahsulot miqdori">
             <p className="text-xl font-bold">{zone.productQuantity}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Backend zone summary qiymati.
+              Tizim zone summary qiymati.
             </p>
           </InfoCard>
         </div>

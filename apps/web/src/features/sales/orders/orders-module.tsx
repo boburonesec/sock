@@ -52,7 +52,7 @@ export function OrdersModule() {
       setDeliveryTarget(null);
       setFeedback({
         tone: "success",
-        message: "Buyurtma yetkazildi. Ombor stock backend tomonidan kamaytirildi.",
+        message: "Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.",
       });
       await invalidateOrderQueries(queryClient);
     },
@@ -138,7 +138,7 @@ export function OrdersModule() {
           <KpiCard
             label="Jami buyurtma yozuvlari"
             value={`${orders.length} ta`}
-            description="API qaytargan buyurtma yozuvlari"
+            description="ma’lumot qaytargan buyurtma yozuvlari"
             accent="primary"
           />
         </div>
@@ -196,7 +196,7 @@ export function OrdersModule() {
           await createOrder.mutateAsync(payload);
           setFeedback({
             tone: "success",
-            message: "Buyurtma yaratildi. Yakuniy summa backend tomonidan saqlandi.",
+            message: "Buyurtma yaratildi. Yakuniy summa tizim tomonidan saqlandi.",
           });
           setIsCreateDrawerOpen(false);
         }}
@@ -208,7 +208,7 @@ export function OrdersModule() {
           if (!open) setDeliveryTarget(null);
         }}
         title="Buyurtmani yetkazildi qilish"
-        description="Bu amal buyurtma mahsulotlarini Finished Products zonasidan kamaytiradi va StockMovement yaratadi."
+        description="Bu amal buyurtma mahsulotlarini Finished Products zonasidan kamaytiradi va harakatlar tarixiga yozadi."
         confirmLabel="Yetkazildi qilish"
         onConfirm={() => {
           if (deliveryTarget) deliverOrder.mutate(deliveryTarget.id);
@@ -221,7 +221,7 @@ export function OrdersModule() {
           if (!open) setReturnTarget(null);
         }}
         title="Delivery return qilish"
-        description="Bu amal buyurtma mahsulotlarini Finished Products zonasiga qaytaradi va RETURN StockMovement yaratadi. To‘lov avtomatik bekor qilinmaydi."
+        description="Bu amal buyurtma mahsulotlarini Finished Products zonasiga qaytaradi va RETURN harakatlar tarixiga yozadi. To‘lov avtomatik bekor qilinmaydi."
         confirmLabel="Return qilish"
         onConfirm={() => {
           if (returnTarget) returnDelivery.mutate(returnTarget.id);

@@ -284,7 +284,7 @@ export function ProductionBoard() {
 
       <PageSection
         title="Bosqichlar oqimi"
-        description="Bosqichni tanlab, undagi API mahsulot tarkibini ko‘ring"
+        description="Bosqichni tanlab, undagi ma’lumot mahsulot tarkibini ko‘ring"
       >
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div>
@@ -320,7 +320,7 @@ export function ProductionBoard() {
 
       <PageSection
         title="So‘nggi harakatlar"
-        description="Bosqichlar orasidagi oxirgi API mahsulot o‘tishlari"
+        description="Bosqichlar orasidagi oxirgi ma’lumot mahsulot o‘tishlari"
       >
         <DataTable label="So‘nggi ishlab chiqarish harakatlari">
           <DataTableHead>
@@ -365,7 +365,7 @@ export function ProductionBoard() {
 
       <InfoCard
         title="Production write holati"
-        description="Production asosiy write flowlari backend APIga ulangan"
+        description="Production asosiy write flowlari tizim ma’lumotga ulangan"
       >
         <p className="text-sm text-muted-foreground">
           Omborga qabul qilish production Ombor bosqichidan Warehouse Stock’ga

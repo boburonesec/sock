@@ -200,11 +200,11 @@ export default function PlatformTenantDetailPage() {
 
             <section className="panel p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="font-semibold">Tenant health</h2>
+                <h2 className="font-semibold">Korxona holati</h2>
                 {healthQuery.isFetching && <span className="text-xs text-muted-foreground">Yangilanmoqda...</span>}
               </div>
               {healthQuery.isLoading && <LoadingState className="min-h-24" />}
-              {healthQuery.isError && <ErrorState description="Health yuklanmadi." />}
+              {healthQuery.isError && <ErrorState description="Holat yuklanmadi." />}
               {health && (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {Object.entries(health.metrics).map(([key, value]) => (
@@ -278,7 +278,7 @@ export default function PlatformTenantDetailPage() {
           title={confirmAction === "activate" ? "Tenantni activate qilish" : "Tenantni suspend qilish"}
           description={
             confirmAction === "activate"
-              ? "Tenant ACTIVE holatga o‘tkaziladi."
+              ? "Tenant Faol holatga o‘tkaziladi."
               : "Tenant SUSPENDED holatga o‘tkaziladi. Login enforcement keyingi milestone’da."
           }
           confirmLabel="Tasdiqlash"

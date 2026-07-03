@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -92,6 +93,12 @@ export default function PlatformAdminLoginPage() {
             {isLoadingSession ? "Tekshirilmoqda..." : "Platform admin kirish"}
           </Button>
         </form>
+
+        <div className="mt-4 text-center text-sm">
+          <Link className="text-muted-foreground hover:text-foreground" href="/login">
+            Fabrika login
+          </Link>
+        </div>
 
         <div className="mt-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
           <p className="font-semibold">LOCAL DEV ONLY</p>

@@ -42,7 +42,7 @@ export function AdvancesModule() {
           <KpiCard
             label="Avans yozuvlari"
             value={`${advances.length} ta`}
-            description="API qaytargan avans yozuvlari"
+            description="ma’lumot qaytargan avans yozuvlari"
             accent="primary"
           />
         </div>

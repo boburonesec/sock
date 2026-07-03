@@ -6,7 +6,7 @@ export default function SettingsTelegramPage() {
     <>
       <PageHeader
         title="Telegram boshqaruvi"
-        description="Telegram accountlar, link tokenlar va bot readiness holati"
+        description="Telegram akkauntlar, link tokenlar va bot tayyorligi holati"
       />
       <TelegramLinkTokensPage />
     </>

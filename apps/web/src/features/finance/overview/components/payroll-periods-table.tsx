@@ -30,7 +30,7 @@ export function PayrollPeriodsTable({
   periods: PayrollPeriod[];
 }) {
   return (
-    <DataTable label="Payroll davrlari">
+    <DataTable label="Ish haqi davrlari">
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Oy</DataTableHeader>
@@ -62,8 +62,8 @@ export function PayrollPeriodsTable({
         ) : (
           <EmptyTableState
             colSpan={5}
-            title="Payroll davrlari mavjud emas"
-            description="Payroll hisoblanganidan keyin davrlar shu yerda ko‘rinadi."
+            title="Ish haqi davrlari mavjud emas"
+            description="Ish haqi hisoblanganidan keyin davrlar shu yerda ko‘rinadi."
           />
         )}
       </tbody>

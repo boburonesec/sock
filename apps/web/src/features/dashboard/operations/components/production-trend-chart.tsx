@@ -20,7 +20,7 @@ export function ProductionTrendChart({ trend }: ProductionTrendChartProps) {
         <div className="flex h-full items-end justify-between gap-3 border-b border-l px-4 pb-7 pt-4">
           {trend.map((point) => {
             // This ratio only controls visual bar height. It does not alter,
-            // aggregate, or derive the backend-provided production quantity.
+            // aggregate, or derive the tizim-provided production quantity.
             const height = maximumQuantity > 0
               ? (Number(point.quantity) / maximumQuantity) * 100
               : 0;

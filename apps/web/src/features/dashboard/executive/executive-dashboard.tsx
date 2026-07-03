@@ -55,7 +55,7 @@ export function ExecutiveDashboard() {
     return (
       <ErrorState
         title="Boshqaruv paneli mavjud emas"
-        description="Backend kutilgan executive summary response qaytarmadi."
+        description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
             Qayta urinish
@@ -81,19 +81,19 @@ export function ExecutiveDashboard() {
     {
       label: "Jami client qarzi",
       value: `${summary.kpis.totalClientDebt} so‘m`,
-      description: "Backend debt projection",
+      description: "Tizim qarz hisob-kitobi",
       accent: "warning" as const,
     },
     {
       label: "Jami supplier qarzi",
       value: `${summary.kpis.totalSupplierDebt} so‘m`,
-      description: "Backend debt projection",
+      description: "Tizim qarz hisob-kitobi",
       accent: "warning" as const,
     },
     {
       label: "Aktiv xodimlar",
       value: `${summary.kpis.activeEmployees} ta`,
-      description: "ACTIVE xodimlar",
+      description: "Faol xodimlar",
       accent: "success" as const,
     },
     {
@@ -109,7 +109,7 @@ export function ExecutiveDashboard() {
       accent: "success" as const,
     },
     {
-      label: "Low stock materiallar",
+      label: "Past qoldiq materiallar",
       value: `${summary.kpis.lowStockMaterials} ta`,
       description: "Warehouse summary qiymati",
       accent: "danger" as const,
@@ -140,7 +140,7 @@ export function ExecutiveDashboard() {
 
       <PageSection
         title="Biznes holati"
-        description="Backend hisoblagan cross-domain health ko‘rinishi"
+        description="Umumiy biznes holati"
       >
         <BusinessHealthSection health={summary.businessHealth} />
       </PageSection>
@@ -152,7 +152,7 @@ export function ExecutiveDashboard() {
 
       <PageSection
         title="Qarzdorlik ko‘rinishi"
-        description="Client va supplier debt backend-calculated projection"
+        description="Client va supplier debt tizim hisoblagan hisob-kitob"
       >
         <DebtOverview kpis={summary.kpis} />
       </PageSection>

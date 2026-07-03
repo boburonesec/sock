@@ -546,7 +546,7 @@ function WorkerActivityForm({
       {!hasRequiredOptions ? (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
           Ishchi faolligini kiritish uchun active ishchi, bosqich va product
-          variant kerak. Backend’da tegishli ishbay stavka ham sozlangan bo‘lishi
+          variant kerak. Tizim’da tegishli ishbay stavka ham sozlangan bo‘lishi
           shart.
         </p>
       ) : null}

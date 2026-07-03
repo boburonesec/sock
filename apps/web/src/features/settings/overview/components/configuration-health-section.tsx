@@ -23,8 +23,8 @@ export function ConfigurationHealthSection({
   if (items.length === 0) {
     return (
       <EmptyState
-        title="Configuration health mavjud emas"
-        description="Backend configurationHealth bo‘sh ro‘yxat qaytardi."
+        title="Sozlamalar holati mavjud emas"
+        description="Hozircha sozlamalar holati bo‘yicha ma’lumot yo‘q."
       />
     );
   }

@@ -48,7 +48,7 @@ export function MovementsModule() {
           <KpiCard
             label="Ombor harakatlari"
             value={`${movements.length} ta`}
-            description="API qaytargan movement yozuvlari"
+            description="ma’lumot qaytargan movement yozuvlari"
             accent="primary"
           />
         </div>
@@ -60,13 +60,13 @@ export function MovementsModule() {
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
           <Button disabled variant="outline">
-            Correction qilish · Keyingi bosqich
+            Qoldiqni tuzatish · Tez orada
           </Button>
           <Button disabled variant="outline">
-            Material qabul qilish · Keyingi bosqich
+            Material qabul qilish · Tez orada
           </Button>
           <Button disabled variant="outline">
-            Transfer qilish · Keyingi bosqich
+            Transfer qilish · Tez orada
           </Button>
         </div>
         <MovementsTable movements={movements} onSelect={setSelectedMovement} />

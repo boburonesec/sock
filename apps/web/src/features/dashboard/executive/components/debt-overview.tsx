@@ -8,13 +8,13 @@ export function DebtOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
     {
       label: "Client qarzi",
       value: `${kpis.totalClientDebt} so‘m`,
-      description: "Orders minus payments projection",
+      description: "Orders minus payments hisob-kitob",
       href: "/sales/debts",
     },
     {
       label: "Supplier qarzi",
       value: `${kpis.totalSupplierDebt} so‘m`,
-      description: "Purchases minus payments projection",
+      description: "Purchases minus payments hisob-kitob",
       href: "/finance/suppliers",
     },
   ];
@@ -25,7 +25,7 @@ export function DebtOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
         <InfoCard
           key={card.label}
           title={card.label}
-          action={<StatusBadge tone="warning">Backend projection</StatusBadge>}
+          action={<StatusBadge tone="warning">Tizim hisob-kitob</StatusBadge>}
         >
           <p className="text-2xl font-bold text-amber-500">{card.value}</p>
           <p className="mt-3 text-sm text-muted-foreground">{card.description}</p>

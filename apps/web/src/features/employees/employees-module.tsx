@@ -130,20 +130,20 @@ export function EmployeesModule() {
         onOpenChange={(open) => {
           if (!open) setEmployeeToInactivate(null);
         }}
-        title="Xodimni inactive qilish"
+        title="Xodimni nofaol qilish"
         description={
           employeeToInactivate
-            ? `${employeeToInactivate.name} inactive qilinadi. Xodim o‘chirilmaydi va tarixiy yozuvlar saqlanadi.`
-            : "Xodim inactive qilinadi."
+            ? `${employeeToInactivate.name} nofaol qilinadi. Xodim o‘chirilmaydi va tarixiy yozuvlar saqlanadi.`
+            : "Xodim nofaol qilinadi."
         }
-        confirmLabel={inactivateEmployee.isPending ? "Bajarilmoqda..." : "Inactive qilish"}
+        confirmLabel={inactivateEmployee.isPending ? "Bajarilmoqda..." : "Nofaol qilish"}
         destructive
         onConfirm={() => {
           if (!employeeToInactivate) return;
           const employeeName = employeeToInactivate.name;
           inactivateEmployee.mutate(employeeToInactivate.id, {
             onSuccess: () => {
-              setFeedback({ tone: "success", message: `${employeeName} inactive qilindi.` });
+              setFeedback({ tone: "success", message: `${employeeName} nofaol qilindi.` });
               setSelectedEmployee(null);
               setEmployeeToInactivate(null);
             },
@@ -153,7 +153,7 @@ export function EmployeesModule() {
                 message:
                   mutationError instanceof Error
                     ? mutationError.message
-                    : "Xodimni inactive qilishda xatolik yuz berdi.",
+                    : "Xodimni nofaol qilishda xatolik yuz berdi.",
               });
             },
           });

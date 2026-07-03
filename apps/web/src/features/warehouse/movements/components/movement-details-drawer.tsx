@@ -40,10 +40,10 @@ export function MovementDetailsDrawer({
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
           <Button disabled variant="outline">
-            Correction qilish · Keyingi bosqich
+            Qoldiqni tuzatish · Tez orada
           </Button>
           <Button disabled variant="outline">
-            Transfer qilish · Keyingi bosqich
+            Transfer qilish · Tez orada
           </Button>
         </div>
 
@@ -65,7 +65,7 @@ export function MovementDetailsDrawer({
               {movement.beforeQuantity ?? "Mavjud emas"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              API qaytargan audit qiymati.
+              ma’lumot qaytargan audit qiymati.
             </p>
           </InfoCard>
           <InfoCard title="Keyingi qoldiq">
@@ -73,7 +73,7 @@ export function MovementDetailsDrawer({
               {movement.afterQuantity ?? "Mavjud emas"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              API qaytargan audit qiymati.
+              ma’lumot qaytargan audit qiymati.
             </p>
           </InfoCard>
         </div>

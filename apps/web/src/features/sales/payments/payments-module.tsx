@@ -120,7 +120,7 @@ export function PaymentsModule() {
           <KpiCard
             label="Jami to‘lov yozuvlari"
             value={`${payments.length} ta`}
-            description="API qaytargan to‘lov yozuvlari"
+            description="ma’lumot qaytargan to‘lov yozuvlari"
             accent="primary"
           />
         </div>

@@ -14,7 +14,7 @@ export function SalesOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
   return (
     <InfoCard
       title="Sotuv va moliya ko‘rinishi"
-      description="Backend hisoblagan oylik va qarzdorlik qiymatlari"
+      description="Tizim hisoblagan oylik va qarzdorlik qiymatlari"
       action={
         <Link
           href="/sales"

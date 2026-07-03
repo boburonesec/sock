@@ -309,7 +309,7 @@ export function SupplierPaymentDrawer({
         </FormField>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
-          To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m · Allocation: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Backend yakuniy tekshiruvni qayta bajaradi.
+          To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m · Allocation: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
         </div>
 
         {selectedSupplierId && supplierPurchases.length === 0 ? (

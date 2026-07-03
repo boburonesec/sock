@@ -44,9 +44,9 @@ export function DebtsModule() {
       <PageSection>
         <div className="grid gap-4 sm:max-w-sm">
           <KpiCard
-            label="Client debt projection yozuvlari"
+            label="Client qarz hisob-kitobi yozuvlari"
             value={`${debts.length} ta`}
-            description="API qaytargan client qarzi projection yozuvlari"
+            description="ma’lumot qaytargan client qarzi hisob-kitob yozuvlari"
             accent="warning"
           />
         </div>
@@ -54,7 +54,7 @@ export function DebtsModule() {
 
       <PageSection
         title="Client qarzdorligi"
-        description="Qarz qiymatlari backend projection orqali qaytariladi."
+        description="Qarz qiymatlari tizim hisob-kitob orqali qaytariladi."
       >
         <ClientDebtsTable debts={debts} onSelect={setSelectedDebt} />
       </PageSection>

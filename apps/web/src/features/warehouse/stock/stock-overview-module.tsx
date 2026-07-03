@@ -56,7 +56,7 @@ export function StockOverviewModule() {
       ]);
       setFeedback({
         tone: "success",
-        message: "Qoldiq correction qilindi va StockMovement yozildi.",
+        message: "Qoldiq tuzatildi va harakatlar tarixiga yozildi.",
       });
       setIsCorrectionOpen(false);
     },
@@ -66,7 +66,7 @@ export function StockOverviewModule() {
         message:
           mutationError instanceof Error
             ? mutationError.message
-            : "Correction qilishda xatolik yuz berdi.",
+            : "Qoldiqni tuzatishda xatolik yuz berdi.",
       });
     },
   });
@@ -97,25 +97,25 @@ export function StockOverviewModule() {
     {
       label: "Tayyor mahsulotlar soni",
       value: `${formatNumber(Number(summary.kpis.finishedProductQuantity))} dona`,
-      description: "Finished Products zonasidagi qoldiq",
+      description: "Tayyor mahsulotlar zonasidagi qoldiq",
       accent: "success" as const,
     },
     {
       label: "Xomashyo yozuvlari",
       value: `${formatNumber(Number(summary.kpis.materialRecordCount))} ta`,
-      description: "Material stock snapshot yozuvlari",
+      description: "Xomashyo qoldig‘i yozuvlari",
       accent: "primary" as const,
     },
     {
-      label: "Low stock materiallar",
+      label: "Past qoldiq materiallar",
       value: `${formatNumber(Number(summary.kpis.lowStockMaterialCount))} ta`,
-      description: "Backend threshold baholashi",
+      description: "Belgilangan limit bo‘yicha",
       accent: "warning" as const,
     },
     {
       label: "Ombor zonalari",
       value: `${formatNumber(Number(summary.kpis.warehouseZoneCount))} ta`,
-      description: "Main Warehouse ichida",
+      description: "Asosiy ombor ichida",
       accent: "neutral" as const,
     },
   ];
@@ -143,8 +143,8 @@ export function StockOverviewModule() {
       </PageSection>
 
       <PageSection
-        title="Main Warehouse zonalari"
-        description="Backend hisoblagan zona qoldiqlari va holati."
+        title="Asosiy ombor zonalari"
+        description="Tizim hisoblagan zona qoldiqlari va holati."
       >
         {summary.zoneSummaries.length > 0 ? (
           <ZoneOverview zones={summary.zoneSummaries} />
@@ -157,19 +157,19 @@ export function StockOverviewModule() {
       </PageSection>
 
       <PageSection
-        title="Low stock materiallar"
-        description="Backend threshold baholashi asosida aniqlangan materiallar."
+        title="Past qoldiq materiallar"
+        description="Belgilangan limit bo‘yicha aniqlangan materiallar."
       >
         <LowStockMaterials materials={summary.lowStockMaterials} />
       </PageSection>
 
       <PageSection
         title="Tayyor mahsulotlar qoldig‘i"
-        description="Mahsulot variantlari va zonalar bo‘yicha joriy snapshot."
+        description="Mahsulot variantlari va zonalar bo‘yicha joriy qoldiq."
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
-          <Button disabled variant="outline">Qoldiq ko‘rish · Keyingi bosqich</Button>
-          <Button disabled variant="outline">Harakatlar tarixi · Keyingi bosqich</Button>
+          <Button disabled variant="outline">Qoldiq ko‘rish · Tez orada</Button>
+          <Button disabled variant="outline">Harakatlar tarixi · Tez orada</Button>
           <Button
             type="button"
             variant="outline"
@@ -178,7 +178,7 @@ export function StockOverviewModule() {
               setIsCorrectionOpen(true);
             }}
           >
-            Correction qilish
+            Qoldiqni tuzatish
           </Button>
         </div>
         <ProductStockTable stock={stock} />
@@ -186,10 +186,10 @@ export function StockOverviewModule() {
 
       <PageSection
         title="Xomashyo qoldig‘i"
-        description="Material va zona bo‘yicha joriy snapshot."
+        description="Material va zona bo‘yicha joriy qoldiq."
       >
         <div className="mb-4 flex justify-end">
-          <Button disabled>Material qabul qilish · Keyingi bosqich</Button>
+          <Button disabled>Material qabul qilish · Tez orada</Button>
         </div>
         <MaterialStockTable stock={materialStock} />
       </PageSection>

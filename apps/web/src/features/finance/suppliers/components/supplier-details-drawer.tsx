@@ -80,7 +80,7 @@ export function SupplierDetailsDrawer({
             disabled={isArchiving}
             onClick={() => onArchive(debt.supplier)}
           >
-            {isArchiving ? "Archive qilinmoqda..." : "Archive qilish"}
+            {isArchiving ? "Arxivlanmoqda..." : "Arxivlash"}
           </Button>
         </div>
 
@@ -96,7 +96,7 @@ export function SupplierDetailsDrawer({
               {debt.debt} so‘m
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Backend supplier debt projection qiymati.
+              Tizim supplier qarz hisob-kitobi qiymati.
             </p>
           </InfoCard>
         </div>

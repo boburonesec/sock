@@ -61,10 +61,10 @@ export function ClientDetailsDrawer({
             disabled={isArchiving}
             onClick={() => onArchive(client)}
           >
-            {isArchiving ? "Archive qilinmoqda..." : "Archive qilish"}
+            {isArchiving ? "Arxivlanmoqda..." : "Arxivlash"}
           </Button>
-          <Button disabled>Buyurtma yaratish · Keyingi bosqich</Button>
-          <Button disabled variant="outline">To‘lov qayd qilish · Keyingi bosqich</Button>
+          <Button disabled>Buyurtma yaratish · Tez orada</Button>
+          <Button disabled variant="outline">To‘lov qayd qilish · Tez orada</Button>
         </div>
 
         <TelegramLinkCodeCard
@@ -95,7 +95,7 @@ export function ClientDetailsDrawer({
 
         <InfoCard title="Sotuv va qarzdorlik ma’lumoti">
           <p className="text-sm text-muted-foreground">
-            Buyurtmalar, to‘lovlar va qarzdorlik alohida read API integratsiyasi
+            Buyurtmalar, to‘lovlar va qarzdorlik alohida read ma’lumot integratsiyasi
             bilan keyingi bosqichda ko‘rsatiladi.
           </p>
         </InfoCard>

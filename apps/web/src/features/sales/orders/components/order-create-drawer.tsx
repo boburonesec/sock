@@ -131,7 +131,7 @@ export function OrderCreateDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Buyurtma yaratish"
-      description="Buyurtma CONFIRMED status bilan yaratiladi. Jami summa backend tomonidan saqlanadi."
+      description="Buyurtma CONFIRMED status bilan yaratiladi. Jami summa tizim tomonidan saqlanadi."
       className="max-w-4xl"
     >
       <form
@@ -175,7 +175,7 @@ export function OrderCreateDrawer({
             <div>
               <p className="font-semibold">Mahsulotlar</p>
               <p className="text-xs text-muted-foreground">
-                Narx kiritilmasa, backend aktiv ProductPrice’dan oladi.
+                Narx kiritilmasa, tizim aktiv ProductPrice’dan oladi.
               </p>
             </div>
             <Button
@@ -245,7 +245,7 @@ export function OrderCreateDrawer({
                     type="number"
                     min={0}
                     step="0.01"
-                    placeholder="Backend narxi"
+                    placeholder="Tizim narxi"
                     disabled={formDisabled}
                     aria-invalid={Boolean(errors.items?.[index]?.unitPrice)}
                     {...register(`items.${index}.unitPrice`)}
@@ -287,8 +287,8 @@ export function OrderCreateDrawer({
           <p className="font-medium">Taxminiy summa</p>
           <p className="text-muted-foreground">
             {hasProvidedPrices
-              ? `${estimatedTotal.toLocaleString("uz-UZ")} so‘m · faqat kiritilgan narxlar bo‘yicha. Yakuniy summa backend tomonidan qaytariladi.`
-              : "Narx kiritilmagan qatorlar backenddagi aktiv narx bilan hisoblanadi."}
+              ? `${estimatedTotal.toLocaleString("uz-UZ")} so‘m · faqat kiritilgan narxlar bo‘yicha. Yakuniy summa tizim tomonidan qaytariladi.`
+              : "Narx kiritilmagan qatorlar tizimdagi aktiv narx bilan hisoblanadi."}
           </p>
         </div>
 

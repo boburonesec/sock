@@ -94,7 +94,7 @@ export function ClientsModule() {
           <KpiCard
             label="Jami faol clientlar"
             value={`${clients.length} ta`}
-            description="API qaytargan faol client yozuvlari"
+            description="ma’lumot qaytargan faol client yozuvlari"
             accent="primary"
           />
         </div>
@@ -173,14 +173,14 @@ export function ClientsModule() {
         onOpenChange={(open) => {
           if (!open) setClientToArchive(null);
         }}
-        title="Clientni archive qilish"
+        title="Clientni arxivlash"
         description={
           clientToArchive
-            ? `${clientToArchive.name} active ro‘yxatdan chiqariladi. Buyurtmalar va to‘lovlar o‘chirilmaydi.`
-            : "Client archive qilinadi."
+            ? `${clientToArchive.name} faol ro‘yxatdan chiqariladi. Buyurtmalar va to‘lovlar o‘chirilmaydi.`
+            : "Client arxivlanadi."
         }
         confirmLabel={
-          archiveClient.isPending ? "Archive qilinmoqda..." : "Archive qilish"
+          archiveClient.isPending ? "Arxivlanmoqda..." : "Arxivlash"
         }
         destructive
         onConfirm={() => {
@@ -190,7 +190,7 @@ export function ClientsModule() {
             onSuccess: () => {
               setFeedback({
                 tone: "success",
-                message: `${clientName} archive qilindi.`,
+                message: `${clientName} arxivlandi.`,
               });
               setSelectedClient(null);
               setClientToArchive(null);
@@ -201,7 +201,7 @@ export function ClientsModule() {
                 message:
                   mutationError instanceof Error
                     ? mutationError.message
-                    : "Clientni archive qilishda xatolik yuz berdi.",
+                    : "Clientni arxivlashda xatolik yuz berdi.",
               });
             },
           });

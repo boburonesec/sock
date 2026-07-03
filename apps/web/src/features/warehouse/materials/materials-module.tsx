@@ -102,7 +102,7 @@ export function MaterialsModule() {
           <KpiCard
             label="Material qoldiq yozuvlari"
             value={`${materials.length} ta`}
-            description="API qaytargan material stock yozuvlari"
+            description="ma’lumot qaytargan material stock yozuvlari"
             accent="primary"
           />
         </div>

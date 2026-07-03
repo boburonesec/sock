@@ -18,6 +18,6 @@ export function StageInventoryCard({ stage }: { stage: StageTotal }) {
     <p className="pr-8 text-sm font-semibold">{stage.stageName}</p>
     <p className="mt-4 text-3xl font-bold tracking-tight">{formatNumber(Number(stage.quantity))}</p>
     <p className="mt-1 text-xs text-muted-foreground">dona mavjud</p>
-    <div className="mt-4 flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Hozirgi snapshot</span><StatusBadge tone={status.tone}>{status.label}</StatusBadge></div>
+    <div className="mt-4 flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Hozirgi qoldiq</span><StatusBadge tone={status.tone}>{status.label}</StatusBadge></div>
   </article>;
 }

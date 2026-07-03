@@ -13,7 +13,7 @@ export interface NavigationItem extends PageDefinition {
 
 export const navigationItems: NavigationItem[] = [
   { href: "/dashboard/executive", title: "Boshqaruv paneli", description: "Umumiy biznes ko‘rinishi", icon: LayoutDashboard },
-  { href: "/dashboard/operations", title: "Operatsiyalar", description: "Factory operatsiyalari", icon: Factory },
+  { href: "/dashboard/operations", title: "Operatsiyalar", description: "Korxona operatsiyalari", icon: Factory },
   { href: "/production", title: "Ishlab chiqarish", description: "Ishlab chiqarish moduli", icon: Boxes },
   { href: "/warehouse", title: "Ombor", description: "Ombor moduli", icon: Package },
   { href: "/sales", title: "Sotuvlar", description: "Sotuvlar moduli", icon: ClipboardList },
@@ -24,11 +24,11 @@ export const navigationItems: NavigationItem[] = [
 ];
 
 export const pageDefinitions: Record<string, PageDefinition> = {
-  "/": { title: "Paypoq OS", description: "Manufacturing Operations Platform" },
-  "/dashboard/executive": { title: "Executive Dashboard", description: "Owner va Manager uchun umumiy biznes ko‘rinishi" },
-  "/dashboard/operations": { title: "Operations Dashboard", description: "Factory operatsion ko‘rinishi" },
-  "/dashboard/finance": { title: "Finance Dashboard", description: "Moliya bo‘yicha umumiy ko‘rinish" },
-  "/dashboard/sales": { title: "Sales Dashboard", description: "Sotuvlar bo‘yicha umumiy ko‘rinish" },
+  "/": { title: "Paypoq OS", description: "Ishlab chiqarish boshqaruvi" },
+  "/dashboard/executive": { title: "Boshqaruv paneli", description: "Owner va manager uchun umumiy biznes ko‘rinishi" },
+  "/dashboard/operations": { title: "Operatsiyalar paneli", description: "Korxona operatsion ko‘rinishi" },
+  "/dashboard/finance": { title: "Moliya paneli", description: "Moliya bo‘yicha umumiy ko‘rinish" },
+  "/dashboard/sales": { title: "Sotuvlar paneli", description: "Sotuvlar bo‘yicha umumiy ko‘rinish" },
   "/production": { title: "Ishlab chiqarish", description: "Ishlab chiqarish moduli" },
   "/production/stages": { title: "Bosqichlar", description: "Ishlab chiqarish bosqichlari" },
   "/production/activities": { title: "Faoliyatlar", description: "Xodim faoliyatlari" },
@@ -45,18 +45,19 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/finance": { title: "Moliya", description: "Moliya moduli" },
   "/finance/expenses": { title: "Xarajatlar", description: "Xarajatlar moduli" },
   "/finance/advances": { title: "Avanslar", description: "Avanslar moduli" },
-  "/finance/payroll": { title: "Ish haqi", description: "Payroll moduli" },
+  "/finance/payroll": { title: "Ish haqi", description: "Xodimlar ish haqi" },
   "/finance/suppliers": { title: "Yetkazib beruvchilar", description: "Yetkazib beruvchilar moduli" },
   "/employees": { title: "Xodimlar", description: "Xodimlar moduli" },
   "/employees/bonuses": { title: "Bonuslar", description: "Bonuslar moduli" },
   "/employees/penalties": { title: "Jarimalar", description: "Jarimalar moduli" },
+  "/profile": { title: "Profil", description: "Akkaunt va ruxsat ma’lumotlari" },
   "/reports": { title: "Hisobotlar", description: "Hisobotlar moduli" },
   "/reports/production": { title: "Ishlab chiqarish hisoboti", description: "Hisobotlar moduli" },
   "/reports/employees": { title: "Xodimlar hisoboti", description: "Hisobotlar moduli" },
   "/reports/sales": { title: "Sotuvlar hisoboti", description: "Hisobotlar moduli" },
   "/reports/finance": { title: "Moliya hisoboti", description: "Hisobotlar moduli" },
   "/reports/warehouse": { title: "Ombor hisoboti", description: "Hisobotlar moduli" },
-  "/settings": { title: "Sozlamalar", description: "Master data va tizim sozlamalari" },
+  "/settings": { title: "Sozlamalar", description: "Asosiy ma’lumotlar va tizim sozlamalari" },
   "/settings/products": { title: "Mahsulotlar", description: "Sozlamalar" },
   "/settings/product-models": { title: "Mahsulot modellari", description: "Sozlamalar" },
   "/settings/colors": { title: "Ranglar", description: "Sozlamalar" },
@@ -76,7 +77,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
 export function getPageDefinition(pathname: string): PageDefinition {
   if (/^\/sales\/clients\/[^/]+$/.test(pathname)) return { title: "Client tafsilotlari", description: "Client ma’lumotlari, buyurtmalar va to‘lovlar" };
   if (/^\/sales\/orders\/[^/]+$/.test(pathname)) return { title: "Buyurtma tafsilotlari", description: "Buyurtma mahsulotlari va to‘lovlari" };
-  if (/^\/finance\/payroll\/[^/]+$/.test(pathname)) return { title: "Payroll tafsilotlari", description: "Xodimlar bo‘yicha payroll davri" };
+  if (/^\/finance\/payroll\/[^/]+$/.test(pathname)) return { title: "Ish haqi tafsilotlari", description: "Xodimlar bo‘yicha ish haqi davri" };
   if (/^\/employees\/[^/]+$/.test(pathname)) return { title: "Xodim tafsilotlari", description: "Xodim faoliyati va hisob-kitoblari" };
   return pageDefinitions[pathname] ?? { title: "Sahifa", description: "Paypoq OS moduli" };
 }

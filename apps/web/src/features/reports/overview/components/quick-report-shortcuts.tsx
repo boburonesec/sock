@@ -10,7 +10,7 @@ export function QuickReportShortcuts({ reports }: { reports: QuickReport[] }) {
     return (
       <EmptyState
         title="Tezkor hisobotlar yo‘q"
-        description="Backend quickReports bo‘sh ro‘yxat qaytardi."
+        description="Tizim quickReports bo‘sh ro‘yxat qaytardi."
       />
     );
   }

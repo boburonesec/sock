@@ -31,6 +31,7 @@
     "restore:db": "bash scripts/restore-db.sh",
     "deploy:smoke": "bash scripts/deploy-smoke.sh",
     "smoke:mvp": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/mvp-smoke-test.mjs",
+    "smoke:platform-auth": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && pnpm --filter @paypoq/api smoke:platform-auth",
     "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/telegram-smoke-test.mjs",
     "smoke:employee-self-service": "pnpm --filter @paypoq/api build && node apps/api/scripts/employee-self-service-smoke-test.mjs"
   }

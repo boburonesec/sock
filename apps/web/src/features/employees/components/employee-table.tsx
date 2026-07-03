@@ -9,6 +9,7 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import type { Employee } from "@/lib/api/employees";
+import { formatDateTimeForUser } from "@/lib/format";
 
 interface EmployeeTableProps { employees: Employee[]; onSelect: (employee: Employee) => void; }
 export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
@@ -20,56 +21,55 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
           <DataTableHeader>Status</DataTableHeader>
           <DataTableHeader>Yaratilgan</DataTableHeader>
           <DataTableHeader>Yangilangan</DataTableHeader>
-          <DataTableHeader>Faollik / Payroll</DataTableHeader>
+          <DataTableHeader>Faollik / ish haqi</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
         {employees.length > 0 ? (
           employees.map((employee) => (
-            <DataTableRow key={employee.id} className="cursor-pointer hover:bg-muted/40">
+            <DataTableRow
+              key={employee.id}
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary"
+              onClick={() => onSelect(employee)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(employee);
+                }
+              }}
+            >
               <DataTableCell>
-                <button
-                  onClick={() => onSelect(employee)}
-                  className="flex items-center gap-3 text-left"
-                >
+                <div className="flex items-center gap-3 text-left">
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-muted">
                     <UserRound size={17} />
                   </span>
                   <span>
                     <span className="block font-semibold">{employee.name}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {employee.id}
-                    </span>
                   </span>
-                </button>
+                </div>
               </DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={employee.status === "ACTIVE" ? "success" : "neutral"}>
-                  {employee.status}
+                  {employee.status === "ACTIVE" ? "Faol" : "Nofaol"}
                 </StatusBadge>
               </DataTableCell>
-              <DataTableCell>{formatDate(employee.createdAt)}</DataTableCell>
-              <DataTableCell>{formatDate(employee.updatedAt)}</DataTableCell>
+              <DataTableCell>{formatDateTimeForUser(employee.createdAt)}</DataTableCell>
+              <DataTableCell>{formatDateTimeForUser(employee.updatedAt)}</DataTableCell>
               <DataTableCell className="text-muted-foreground">
-                API data not available yet
+                Hozircha ma’lumot yo‘q
               </DataTableCell>
             </DataTableRow>
           ))
         ) : (
           <EmptyTableState
             colSpan={5}
-            title="Xodimlar mavjud emas"
-            description="Active xodimlar yaratilgach, ular shu yerda ko‘rinadi."
+            title="Xodimlar yo‘q"
+            description="Xodim qo‘shilgach, shu ro‘yxatda ko‘rinadi."
           />
         )}
       </tbody>
     </DataTable>
   );
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }

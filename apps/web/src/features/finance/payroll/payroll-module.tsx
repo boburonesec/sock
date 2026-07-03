@@ -61,7 +61,7 @@ export function PayrollModule() {
     onSuccess: async (response) => {
       setSelectedPeriodId(response.data.id);
       setIsCreatePeriodOpen(false);
-      setFeedback("Payroll period yaratildi.");
+      setFeedback("Ish haqi davri yaratildi.");
       setActionError(null);
       await invalidatePayroll();
     },
@@ -72,7 +72,7 @@ export function PayrollModule() {
     mutationFn: financeApi.calculatePayrollPeriod,
     onSuccess: async (response) => {
       setSelectedPeriodId(response.data.id);
-      setFeedback("Payroll backend tomonidan hisoblandi.");
+      setFeedback("Ish haqi tizim tomonidan hisoblandi.");
       setActionError(null);
       await invalidatePayroll();
     },
@@ -83,7 +83,7 @@ export function PayrollModule() {
     mutationFn: financeApi.closePayrollPeriod,
     onSuccess: async (response) => {
       setSelectedPeriodId(response.data.id);
-      setFeedback("Payroll period yopildi.");
+      setFeedback("Ish haqi davri yopildi.");
       setActionError(null);
       await invalidatePayroll();
     },
@@ -93,14 +93,14 @@ export function PayrollModule() {
   const payMutation = useMutation({
     mutationFn: (payload: PayPayrollPeriodPayload) => {
       if (!selectedPeriod?.id) {
-        throw new Error("Payroll period tanlanmagan.");
+        throw new Error("Ish haqi davri tanlanmagan.");
       }
 
       return financeApi.payPayrollPeriod(selectedPeriod.id, payload);
     },
     onSuccess: async () => {
       setIsPaymentOpen(false);
-      setFeedback("Payroll to‘lovi yozildi.");
+      setFeedback("Ish haqi to‘lovi yozildi.");
       setActionError(null);
       await invalidatePayroll();
     },
@@ -116,11 +116,11 @@ export function PayrollModule() {
       if (adjustmentKind === "advance") return financeApi.createAdvance(payload);
       if (adjustmentKind === "bonus") return financeApi.createBonus(payload);
       if (adjustmentKind === "penalty") return financeApi.createPenalty(payload);
-      throw new Error("Adjustment turi tanlanmagan.");
+      throw new Error("Tuzatish turi tanlanmagan.");
     },
     onSuccess: async () => {
       setAdjustmentKind(null);
-      setFeedback("Payroll adjustment qo‘shildi.");
+      setFeedback("Tuzatish qo‘shildi.");
       setActionError(null);
       await invalidatePayroll();
     },
@@ -128,13 +128,13 @@ export function PayrollModule() {
   });
 
   if (periodsQuery.isPending) {
-    return <LoadingState label="Payroll davrlari yuklanmoqda..." />;
+    return <LoadingState label="Ish haqi davrlari yuklanmoqda..." />;
   }
 
   if (periodsQuery.isError) {
     return (
       <ErrorState
-        title="Payroll davrlari yuklanmadi"
+        title="Ish haqi davrlari yuklanmadi"
         description={
           periodsQuery.error instanceof Error
             ? periodsQuery.error.message
@@ -158,7 +158,7 @@ export function PayrollModule() {
       <PageSection>
         <div className="mb-4 flex flex-wrap gap-2">
           <Button type="button" onClick={() => setIsCreatePeriodOpen(true)}>
-            Period yaratish
+            Davr yaratish
           </Button>
           <Button
             type="button"
@@ -196,34 +196,34 @@ export function PayrollModule() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            label="Payroll davrlari"
+            label="Ish haqi davrlari"
             value={`${periods.length} ta`}
-            description="API qaytargan payroll period yozuvlari"
+            description="Saqlangan ish haqi davrlari"
             accent="primary"
           />
           <KpiCard
             label="Tanlangan status"
             value={selectedPeriod?.status ?? "—"}
-            description="Backend payroll period holati"
+            description="Tanlangan davr holati"
             accent="neutral"
           />
           <KpiCard
             label="Yakuniy oylik"
             value={`${selectedPeriod?.totalFinalAmount ?? "0"} so‘m`}
-            description="Backend hisoblangan snapshot"
+            description="Tizim hisoblagan jami summa"
             accent="success"
           />
           <KpiCard
             label="Qoldiq"
             value={`${selectedPeriod?.totalRemainingAmount ?? "0"} so‘m`}
-            description="Backend payment snapshot"
+            description="To‘lanmagan summa"
             accent="warning"
           />
         </div>
       </PageSection>
 
       <PageSection
-        title="Payroll davrlari"
+        title="Ish haqi davrlari"
         description="Davrni tanlab, xodimlar kesimidagi tafsilotlarni ko‘ring"
       >
         <PayrollPeriodsTable
@@ -236,10 +236,10 @@ export function PayrollModule() {
       <PageSection
         title={
           selectedPeriod
-            ? `${formatMonth(selectedPeriod.month)} — payroll tafsilotlari`
-            : "Payroll tafsilotlari"
+            ? `${formatMonth(selectedPeriod.month)} — ish haqi tafsilotlari`
+            : "Ish haqi tafsilotlari"
         }
-        description="Barcha qiymatlar backend payroll snapshotlaridan olinadi; frontend hisob-kitob qilmaydi."
+        description="Barcha qiymatlar tizimdan olinadi; ekran hisob-kitob qilmaydi."
       >
         <div className="mb-4 flex flex-wrap gap-2">
           <Button
@@ -253,7 +253,7 @@ export function PayrollModule() {
               selectedPeriod && calculateMutation.mutate(selectedPeriod.id)
             }
           >
-            {calculateMutation.isPending ? "Hisoblanmoqda..." : "Payroll hisoblash"}
+            {calculateMutation.isPending ? "Hisoblanmoqda..." : "Ish haqini hisoblash"}
           </Button>
           <Button
             type="button"
@@ -277,15 +277,15 @@ export function PayrollModule() {
             }
             onClick={() => setIsCloseConfirmOpen(true)}
           >
-            Periodni yopish
+            Davrni yopish
           </Button>
         </div>
 
         {itemsQuery.isPending && selectedPeriod ? (
-          <LoadingState label="Payroll tafsilotlari yuklanmoqda..." />
+          <LoadingState label="Ish haqi tafsilotlari yuklanmoqda..." />
         ) : itemsQuery.isError ? (
           <ErrorState
-            title="Payroll tafsilotlari yuklanmadi"
+            title="Ish haqi tafsilotlari yuklanmadi"
             description={
               itemsQuery.error instanceof Error
                 ? itemsQuery.error.message
@@ -344,8 +344,8 @@ export function PayrollModule() {
       <ConfirmDialog
         open={isCloseConfirmOpen}
         onOpenChange={setIsCloseConfirmOpen}
-        title="Payroll periodni yopish"
-        description="Yopilgandan keyin bu period immutable bo‘ladi: qayta hisoblash va to‘lov kiritish bloklanadi."
+        title="Ish haqi davrini yopish"
+        description="Yopilgandan keyin bu davr o‘zgarmas bo‘ladi: qayta hisoblash va to‘lov kiritish bloklanadi."
         confirmLabel="Yopish"
         onConfirm={() => {
           if (selectedPeriod) closeMutation.mutate(selectedPeriod.id);

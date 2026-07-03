@@ -14,6 +14,11 @@ const statusTone: Record<string, StatusTone> = {
   INACTIVE: "neutral",
 };
 
+const statusLabel: Record<string, string> = {
+  ACTIVE: "Faol",
+  INACTIVE: "Nofaol",
+};
+
 export function SuppliersTable({
   debts,
   onSelect,
@@ -53,7 +58,7 @@ export function SuppliersTable({
               </DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTone[debt.supplier.status] ?? "neutral"}>
-                  {debt.supplier.status}
+                  {statusLabel[debt.supplier.status] ?? debt.supplier.status}
                 </StatusBadge>
               </DataTableCell>
             </DataTableRow>
@@ -62,7 +67,7 @@ export function SuppliersTable({
           <EmptyTableState
             colSpan={6}
             title="Supplier qarzlari mavjud emas"
-            description="Supplier xaridlari va to‘lovlari paydo bo‘lgach, backend projection shu yerda ko‘rinadi."
+            description="Supplier xaridlari va to‘lovlari paydo bo‘lgach, tizim hisob-kitob shu yerda ko‘rinadi."
           />
         )}
       </tbody>

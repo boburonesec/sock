@@ -87,7 +87,6 @@ export class AuthService {
 
     const user = users[0];
     const credential = user?.credential;
-
     if (users.length !== 1 || !user || !credential) {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }

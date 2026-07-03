@@ -41,7 +41,7 @@ export function FinanceOverviewModule() {
     return (
       <ErrorState
         title="Moliya xulosasi mavjud emas"
-        description="Backend kutilgan summary response qaytarmadi."
+        description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
             Qayta urinish
@@ -58,25 +58,25 @@ export function FinanceOverviewModule() {
           <KpiCard
             label="Oylik xarajatlar"
             value={`${summary.kpis.monthlyExpenses} so‘m`}
-            description="Backend hisoblagan joriy oy xarajatlari"
+            description="Tizim hisoblagan joriy oy xarajatlari"
             accent="danger"
           />
           <KpiCard
             label="Kutilayotgan xarajatlar"
             value={`${summary.kpis.pendingExpenses} so‘m`}
-            description="REQUESTED xarajatlar summasi"
+            description="Tasdiqlanishi kutilayotgan xarajatlar summasi"
             accent="warning"
           />
           <KpiCard
             label="Kutilayotgan avanslar"
             value={`${summary.kpis.pendingAdvances} so‘m`}
-            description="REQUESTED yoki APPROVED avanslar"
+            description="Kutilayotgan yoki tasdiqlangan avanslar"
             accent="warning"
           />
           <KpiCard
-            label="Payroll qoldiq"
+            label="Ish haqi qoldig‘i"
             value={`${summary.kpis.payrollRemaining} so‘m`}
-            description="Backend payroll snapshot qiymati"
+            description="Tizim hisoblagan ish haqi qoldig‘i"
             accent="primary"
           />
         </div>
@@ -85,22 +85,22 @@ export function FinanceOverviewModule() {
       <div className="grid gap-6 xl:grid-cols-2">
         <PageSection
           title="So‘nggi xarajatlar"
-          description="Backend qaytargan xarajat yozuvlari"
+          description="Tizim qaytargan xarajat yozuvlari"
         >
           <RecentExpensesTable expenses={summary.recentExpenses} />
         </PageSection>
 
         <PageSection
           title="So‘nggi avanslar"
-          description="EmployeeAdjustment ADVANCE yozuvlari"
+          description="Xodimlarga berilgan so‘nggi avanslar"
         >
           <RecentAdvancesTable advances={summary.recentAdvances} />
         </PageSection>
       </div>
 
       <PageSection
-        title="Payroll davrlari"
-        description="Backend saqlagan payroll period snapshotlari"
+        title="Ish haqi davrlari"
+        description="Tizim saqlagan ish haqi davrlari"
       >
         <PayrollPeriodsTable periods={summary.payrollPeriods} />
       </PageSection>

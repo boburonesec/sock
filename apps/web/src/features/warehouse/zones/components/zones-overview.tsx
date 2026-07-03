@@ -22,7 +22,7 @@ export function ZonesOverview({
     return (
       <EmptyState
         title="Ombor zonalari mavjud emas"
-        description="Backend zone summary qaytargach, zonalar shu yerda ko‘rinadi."
+        description="Tizim zone summary qaytargach, zonalar shu yerda ko‘rinadi."
       />
     );
   }

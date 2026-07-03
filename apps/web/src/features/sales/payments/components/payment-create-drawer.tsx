@@ -311,7 +311,7 @@ export function PaymentCreateDrawer({
           <p className="font-medium">Allocation tekshiruvi</p>
           <p className="text-muted-foreground">
             To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m ·
-            Allocation: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Backend yakuniy tekshiruvni qayta bajaradi.
+            Allocation: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
           </p>
         </div>
 

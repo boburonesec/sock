@@ -50,7 +50,7 @@ export function ClientDebtsTable({
           <EmptyTableState
             colSpan={5}
             title="Client qarzlari mavjud emas"
-            description="Buyurtma va to‘lovlar paydo bo‘lgach, backend projection shu yerda ko‘rinadi."
+            description="Buyurtma va to‘lovlar paydo bo‘lgach, tizim hisob-kitob shu yerda ko‘rinadi."
           />
         )}
       </tbody>

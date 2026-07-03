@@ -200,7 +200,7 @@ export function TvDashboard() {
                 <div className="rounded-xl border border-emerald-500/45 bg-emerald-500/10 p-5 text-emerald-400">
                   <p className="text-xl font-bold">Ogohlantirish yo‘q</p>
                   <p className="mt-2 text-base opacity-85">
-                    Backend hozircha e’tibor talab qiladigan holat qaytarmadi.
+                    Tizim hozircha e’tibor talab qiladigan holat qaytarmadi.
                   </p>
                 </div>
               ) : (

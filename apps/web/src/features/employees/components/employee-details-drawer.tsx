@@ -12,7 +12,7 @@ import { EmployeePayrollTab } from "./employee-payroll-tab";
 
 type EmployeeTab = "activities" | "payroll" | "bonuses" | "penalties" | "advances";
 const tabs: { id: EmployeeTab; label: string }[] = [
-  { id: "activities", label: "Faollik" }, { id: "payroll", label: "Payroll" }, { id: "bonuses", label: "Bonuslar" }, { id: "penalties", label: "Jarimalar" }, { id: "advances", label: "Avanslar" },
+  { id: "activities", label: "Faollik" }, { id: "payroll", label: "Ish haqi" }, { id: "bonuses", label: "Bonuslar" }, { id: "penalties", label: "Jarimalar" }, { id: "advances", label: "Avanslar" },
 ];
 
 interface EmployeeDetailsDrawerProps {
@@ -50,9 +50,9 @@ export function EmployeeDetailsDrawer({
 
   if (!employee) return null;
 
-  return <Drawer open={Boolean(employee)} onOpenChange={onOpenChange} title={employee.name} description={`Status: ${employee.status}`} className="max-w-5xl">
+  return <Drawer open={Boolean(employee)} onOpenChange={onOpenChange} title={employee.name} description={`Holati: ${employee.status === "ACTIVE" ? "Faol" : "Nofaol"}`} className="max-w-5xl">
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2"><Button variant="outline" className="h-9" onClick={() => onEdit(employee)}>Tahrirlash</Button><Button variant="outline" className="h-9 border-rose-500/40 text-rose-300 hover:bg-rose-500/10" disabled={isInactivating} onClick={() => onInactivate(employee)}>{isInactivating ? "Inactive qilinmoqda..." : "Inactive qilish"}</Button><Button disabled variant="outline" className="h-9">Bonus qo‘shish · Keyingi bosqich</Button><Button disabled variant="outline" className="h-9">Jarima qo‘shish · Keyingi bosqich</Button></div>
+      <div className="flex flex-wrap gap-2"><Button variant="outline" className="h-9" onClick={() => onEdit(employee)}>Tahrirlash</Button><Button variant="outline" className="h-9 border-rose-500/40 text-rose-300 hover:bg-rose-500/10" disabled={isInactivating} onClick={() => onInactivate(employee)}>{isInactivating ? "Nofaol qilinmoqda..." : "Nofaol qilish"}</Button><Button disabled variant="outline" className="h-9">Bonus qo‘shish</Button><Button disabled variant="outline" className="h-9">Jarima qo‘shish</Button></div>
       <TelegramLinkCodeCard
         targetName={employee.name}
         linkToken={linkToken}
@@ -66,7 +66,7 @@ export function EmployeeDetailsDrawer({
       <div className="flex gap-1 overflow-x-auto border-b">{tabs.map((tab) => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 border-b-2 px-3 py-2 text-sm font-medium ${activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{tab.label}</button>)}</div>
       {activeTab === "activities" && <UnavailableState title="Faollik ma’lumotlari" />}
       {activeTab === "payroll" && <EmployeePayrollTab employee={employee} />}
-      {["bonuses", "penalties", "advances"].includes(activeTab) && <UnavailableState title="Adjustment ma’lumotlari" />}
+      {["bonuses", "penalties", "advances"].includes(activeTab) && <UnavailableState title="Qo‘shimcha ma’lumotlar" />}
     </div>
   </Drawer>;
 }
@@ -75,8 +75,7 @@ function UnavailableState({ title }: { title: string }) {
   return (
     <InfoCard title={title}>
       <p className="text-sm text-muted-foreground">
-        API data not available yet. Bu endpoint hozircha faqat xodim master-data
-        maydonlarini qaytaradi.
+        Bu bo‘lim uchun ma’lumotlar keyingi yangilanishlarda to‘ldiriladi.
       </p>
     </InfoCard>
   );

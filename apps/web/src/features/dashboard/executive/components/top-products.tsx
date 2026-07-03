@@ -19,7 +19,7 @@ export function TopProducts({ products }: { products: TopProduct[] }) {
       </DataTableHead>
       <tbody>
         {products.length === 0 ? (
-          <EmptyTableState colSpan={6} title="Top mahsulotlar yo‘q" description="Backend bo‘sh ro‘yxat qaytardi." />
+          <EmptyTableState colSpan={6} title="Top mahsulotlar yo‘q" description="Tizim bo‘sh ro‘yxat qaytardi." />
         ) : (
           products.map((product) => (
             <DataTableRow key={product.productVariantId}>

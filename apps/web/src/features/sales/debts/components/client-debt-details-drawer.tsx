@@ -26,12 +26,12 @@ export function ClientDebtDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled>To‘lov qayd qilish · Keyingi bosqich</Button>
+          <Button disabled>To‘lov qayd qilish · Tez orada</Button>
           <Button disabled variant="outline">
-            Clientga o‘tish · Keyingi bosqich
+            Clientga o‘tish · Tez orada
           </Button>
           <Button disabled variant="outline">
-            Buyurtmalarni ko‘rish · Keyingi bosqich
+            Buyurtmalarni ko‘rish · Tez orada
           </Button>
         </div>
 
@@ -47,7 +47,7 @@ export function ClientDebtDetailsDrawer({
               {debt.debt} so‘m
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Backend projection qiymati.
+              Tizim hisob-kitob qiymati.
             </p>
           </InfoCard>
         </div>
@@ -63,10 +63,10 @@ export function ClientDebtDetailsDrawer({
 
         <InfoCard title="Buyurtma va to‘lov tafsilotlari">
           <p className="text-sm text-muted-foreground">
-            Bu ekran hozircha debt projection endpointidan kelgan umumiy
-            backend hisoblangan qiymatlarni ko‘rsatadi. Buyurtmalar breakdowni,
-            oxirgi to‘lov va status alohida backend response berilganda
-            ulanadi; frontend qarzni hisoblamaydi.
+            Bu ekran hozircha qarz hisob-kitobi bo‘limidan kelgan umumiy
+            tizim hisoblagan qiymatlarni ko‘rsatadi. Buyurtmalar breakdowni,
+            oxirgi to‘lov va status alohida tizim response berilganda
+            ulanadi; ekran qarzni hisoblamaydi.
           </p>
         </InfoCard>
       </div>

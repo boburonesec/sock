@@ -14,7 +14,7 @@ const statusTone: Record<ReportOverviewStatus, StatusTone> = {
 
 const statusLabel: Record<ReportOverviewStatus, string> = {
   AVAILABLE: "Tayyor",
-  COMING_SOON: "Keyingi bosqich",
+  COMING_SOON: "Tez orada",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
@@ -32,7 +32,7 @@ export function ReportCategoryCards({
     return (
       <EmptyState
         title="Hisobot kategoriyalari yo‘q"
-        description="Backend categoryCards bo‘sh ro‘yxat qaytardi."
+        description="Tizim categoryCards bo‘sh ro‘yxat qaytardi."
       />
     );
   }

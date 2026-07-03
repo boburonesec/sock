@@ -18,7 +18,7 @@ export function TelegramLinkCodeCard({
   onGenerate,
 }: TelegramLinkCodeCardProps) {
   return (
-    <section className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4">
+    <section className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-sm font-semibold">Telegram ulanish kodi</h3>
@@ -43,20 +43,20 @@ export function TelegramLinkCodeCard({
       ) : null}
 
       {linkToken ? (
-        <div className="mt-4 space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+        <div className="mt-4 space-y-3 rounded-xl border border-emerald-500/45 bg-emerald-950/70 p-4 text-emerald-50 shadow-inner shadow-black/20">
           <div>
-            <p className="text-xs uppercase tracking-wide text-emerald-200/80">
+            <p className="text-xs uppercase text-emerald-200">
               Kod faqat bir marta ko‘rsatiladi
             </p>
-            <p className="mt-2 select-all font-mono text-3xl font-bold tracking-[0.35em] text-emerald-100">
+            <p className="mt-2 select-all break-all font-mono text-3xl font-bold text-emerald-50">
               {linkToken.code}
             </p>
           </div>
           <p className="text-sm text-emerald-100">
             Amal qilish muddati: {formatDateTime(linkToken.expiresAt)}
           </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-emerald-100/90">
-            <li>Kod frontendda saqlanmaydi va drawer yopilganda yo‘qoladi.</li>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-emerald-100">
+            <li>Oyna yopilganda kod qayta ko‘rinmaydi.</li>
             <li>Kodni faqat to‘g‘ri odamga yuboring.</li>
             <li>Kod 10 daqiqadan keyin yoki ishlatilgandan so‘ng yaroqsiz bo‘ladi.</li>
           </ul>

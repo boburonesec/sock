@@ -12,12 +12,12 @@ type LowStockMaterial = WarehouseStockSummary["lowStockMaterials"][number];
 
 export function LowStockMaterials({ materials }: { materials: LowStockMaterial[] }) {
   return (
-    <DataTable label="Low stock materiallar">
+    <DataTable label="Past qoldiq materiallar">
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Material</DataTableHeader>
           <DataTableHeader>Joriy miqdor</DataTableHeader>
-          <DataTableHeader>Minimal threshold</DataTableHeader>
+          <DataTableHeader>Minimal limit</DataTableHeader>
           <DataTableHeader>Ombor</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
@@ -34,8 +34,8 @@ export function LowStockMaterials({ materials }: { materials: LowStockMaterial[]
         ) : (
           <EmptyTableState
             colSpan={4}
-            title="Low stock material yo‘q"
-            description="Threshold o‘rnatilgan materiallar orasida past qoldiq aniqlanmadi."
+            title="Past qoldiq material yo‘q"
+            description="Limit o‘rnatilgan materiallar orasida past qoldiq aniqlanmadi."
           />
         )}
       </tbody>

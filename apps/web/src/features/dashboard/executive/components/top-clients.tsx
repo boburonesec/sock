@@ -31,7 +31,7 @@ export function TopClients({ clients }: { clients: TopClient[] }) {
       </DataTableHead>
       <tbody>
         {clients.length === 0 ? (
-          <EmptyTableState colSpan={5} title="Top clientlar yo‘q" description="Backend bo‘sh ro‘yxat qaytardi." />
+          <EmptyTableState colSpan={5} title="Top clientlar yo‘q" description="Tizim bo‘sh ro‘yxat qaytardi." />
         ) : (
           clients.map((client) => (
             <DataTableRow key={client.clientId}>

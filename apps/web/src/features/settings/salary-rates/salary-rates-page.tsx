@@ -164,7 +164,7 @@ export function SalaryRatesPage() {
       {!isLoading && !firstError && salaryRates.length === 0 ? (
         <EmptyState
           title="Ishbay stavkalar mavjud emas"
-          description="Stavka yaratilgach, ishchi faolligi shu stavkani tarixiy snapshot sifatida saqlaydi."
+          description="Stavka yaratilgach, xodim ishiga shu stavka qo‘llanadi."
         />
       ) : null}
 
@@ -173,8 +173,8 @@ export function SalaryRatesPage() {
           <DataTableHead>
             <DataTableRow>
               <DataTableHeader>Bosqich</DataTableHeader>
-              <DataTableHeader>Scope</DataTableHeader>
-              <DataTableHeader>Product variant</DataTableHeader>
+              <DataTableHeader>Qo‘llanish turi</DataTableHeader>
+              <DataTableHeader>Mahsulot varianti</DataTableHeader>
               <DataTableHeader>Stavka</DataTableHeader>
               <DataTableHeader>Amal qilish davri</DataTableHeader>
               <DataTableHeader>Amallar</DataTableHeader>
@@ -188,12 +188,12 @@ export function SalaryRatesPage() {
                     {rate.stage.name}
                   </DataTableCell>
                   <DataTableCell>
-                    {rate.productVariant ? "Product-specific" : "Stage-level"}
+                    {rate.productVariant ? "Alohida mahsulot" : "Butun bosqich"}
                   </DataTableCell>
                   <DataTableCell>
                     {rate.productVariant
                       ? `${rate.productVariant.product.name} · ${rate.productVariant.color.name} · ${rate.productVariant.material.name} · ${rate.productVariant.season.name}`
-                      : "Barcha product variantlar"}
+                      : "Barcha mahsulot variantlari"}
                   </DataTableCell>
                   <DataTableCell>{formatAmount(rate.amount)} so‘m / dona</DataTableCell>
                   <DataTableCell>
@@ -211,7 +211,7 @@ export function SalaryRatesPage() {
                         setRateToArchive(rate);
                       }}
                     >
-                      Archive qilish
+                      Arxivlash
                     </Button>
                   </DataTableCell>
                 </DataTableRow>
@@ -252,9 +252,9 @@ export function SalaryRatesPage() {
         onOpenChange={(open) => {
           if (!open) setRateToArchive(null);
         }}
-        title="Stavkani archive qilish"
-        description="Stavka o‘chirilmaydi, faqat active ro‘yxatdan chiqadi. Oldingi WorkerActivity snapshotlari o‘zgarmaydi."
-        confirmLabel={archiveMutation.isPending ? "Bajarilmoqda..." : "Archive qilish"}
+        title="Stavkani arxivlash"
+        description="Stavka o‘chirilmaydi, faqat faol ro‘yxatdan chiqadi. Oldingi ishlar o‘zgarmaydi."
+        confirmLabel={archiveMutation.isPending ? "Bajarilmoqda..." : "Arxivlash"}
         destructive
         onConfirm={() => {
           if (!rateToArchive) return;
@@ -262,7 +262,7 @@ export function SalaryRatesPage() {
             onSuccess: () => {
               setFeedback({
                 tone: "success",
-                message: "Ishbay stavka archive qilindi.",
+                message: "Ishbay stavka arxivlandi.",
               });
               setRateToArchive(null);
             },
@@ -272,7 +272,7 @@ export function SalaryRatesPage() {
                 message:
                   error instanceof Error
                     ? error.message
-                    : "Archive qilishda xatolik yuz berdi.",
+                    : "Arxivlashda xatolik yuz berdi.",
               });
             },
           });
@@ -359,7 +359,7 @@ function SalaryRateFormDrawer({
           </Select>
         </FormField>
 
-        <FormField htmlFor="salaryRateProductVariantId" label="Product variant">
+        <FormField htmlFor="salaryRateProductVariantId" label="Mahsulot varianti">
           <Select
             id="salaryRateProductVariantId"
             defaultValue=""

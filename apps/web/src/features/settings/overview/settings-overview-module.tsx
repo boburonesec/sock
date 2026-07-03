@@ -42,7 +42,7 @@ export function SettingsOverviewModule() {
     return (
       <ErrorState
         title="Sozlamalar overview mavjud emas"
-        description="Backend kutilgan settings overview response qaytarmadi."
+        description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
             Qayta urinish
@@ -56,7 +56,7 @@ export function SettingsOverviewModule() {
     <div className="space-y-8">
       <PageSection
         title="Sozlamalar kategoriyalari"
-        description="Master data asosan Manager va Owner tomonidan boshqariladi."
+        description="Sozlamalar asosan Manager va Owner tomonidan boshqariladi."
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
           <Button
@@ -67,19 +67,19 @@ export function SettingsOverviewModule() {
             Telegram tokenlar
           </Button>
           <Button disabled variant="outline">
-            Import qilish · Keyingi bosqich
+            Import qilish · Tez orada
           </Button>
           <Button disabled variant="outline">
-            Export qilish · Keyingi bosqich
+            Export qilish · Tez orada
           </Button>
-          <Button disabled>Yangi sozlama qo‘shish · Keyingi bosqich</Button>
+          <Button disabled>Yangi sozlama qo‘shish · Tez orada</Button>
         </div>
         <SettingsCategoryCards categories={overview.categoryCards} />
       </PageSection>
 
       <PageSection
-        title="Configuration health"
-        description="Asosiy master data sozlamalarining backend hisoblagan qisqa holati."
+        title="Sozlamalar holati"
+        description="Asosiy master data sozlamalarining tizim hisoblagan qisqa holati."
       >
         <ConfigurationHealthSection items={overview.configurationHealth} />
       </PageSection>

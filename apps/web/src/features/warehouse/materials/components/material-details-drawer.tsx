@@ -35,7 +35,7 @@ export function MaterialDetailsDrawer({
         <div className="flex flex-wrap gap-2">
           <Button onClick={onReceive}>Material qabul qilish</Button>
           <Button disabled variant="outline">
-            Threshold sozlash · Keyingi bosqich
+            Threshold sozlash · Tez orada
           </Button>
         </div>
 
@@ -45,16 +45,16 @@ export function MaterialDetailsDrawer({
               {material.quantity} {material.unit}
             </p>
           </InfoCard>
-          <InfoCard title="Minimal threshold">
+          <InfoCard title="Minimal limit">
             <p className="text-xl font-bold">Mavjud emas</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Material stock endpoint threshold qaytarmaydi.
+              Bu bo‘lim hozircha minimal limitni ko‘rsatmaydi.
             </p>
           </InfoCard>
           <InfoCard title="Status">
             <p className="text-xl font-bold">Mavjud emas</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Low-stock status frontendda hisoblanmaydi.
+              Past qoldiq status ekranda hisoblanmaydi.
             </p>
           </InfoCard>
         </div>
