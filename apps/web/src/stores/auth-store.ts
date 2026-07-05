@@ -12,6 +12,7 @@ interface AuthState {
   accessToken: string | null;
   currentUser: AuthUser | null;
   tenantId: string | null;
+  branchMode: "SINGLE" | "MULTI" | null;
   activeFactoryId: string | null;
   accessibleFactories: AuthFactory[];
   roles: string[];
@@ -42,6 +43,7 @@ function applySession(
     ...(accessToken ? { accessToken } : {}),
     currentUser: context.user,
     tenantId: context.tenantId,
+    branchMode: context.branchMode,
     activeFactoryId: context.activeFactoryId,
     accessibleFactories: context.accessibleFactories,
     roles: context.roles,
@@ -61,6 +63,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   currentUser: null,
   tenantId: null,
+  branchMode: null,
   activeFactoryId: null,
   accessibleFactories: [],
   roles: [],
@@ -128,6 +131,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessToken: null,
       currentUser: null,
       tenantId: null,
+      branchMode: null,
       activeFactoryId: null,
       accessibleFactories: [],
       roles: [],
@@ -140,4 +144,3 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 }));
 
 setApiAuthRefreshHandler(() => useAuthStore.getState().refreshSession());
-

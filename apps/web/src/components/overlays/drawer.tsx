@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface DrawerProps {
@@ -26,11 +27,11 @@ export function Drawer({
 
   const isSidePanel = Boolean(side);
 
-  return (
+  return createPortal(
     <div
       className={cn(
-        "fixed inset-0 z-50 bg-black/70 p-4 backdrop-blur-sm",
-        isSidePanel ? "p-0" : "grid place-items-center",
+        "fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm",
+        isSidePanel ? "p-0" : "flex items-center justify-center overflow-y-auto p-4 py-6",
       )}
     >
       <button
@@ -49,7 +50,7 @@ export function Drawer({
                 "absolute inset-y-0 max-w-md rounded-none",
                 side === "right" ? "right-0 border-l" : "left-0 border-r",
               )
-            : "max-h-[calc(100vh-2rem)] max-w-lg rounded-xl",
+            : "my-auto max-h-[calc(100dvh-3rem)] max-w-lg rounded-xl",
           className,
         )}
       >
@@ -72,6 +73,7 @@ export function Drawer({
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

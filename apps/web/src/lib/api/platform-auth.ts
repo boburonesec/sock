@@ -39,4 +39,12 @@ export const platformAuthApi = {
     platformApiClient<{ data: { platformAdmin: PlatformAdminUser } }>(
       "/platform-auth/me",
     ),
+  changePassword: (payload: { currentPassword: string; password: string }) =>
+    platformApiClient<{ data: { status: "ok" } }>("/platform-auth/me/password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }),
 };

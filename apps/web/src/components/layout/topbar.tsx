@@ -1,17 +1,45 @@
 "use client";
 
-import { Bell, ChevronDown, LogOut, Menu, Moon, Sun, UserRound } from "lucide-react";
+import { Bell, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
+import { Drawer } from "@/components/overlays/drawer";
+import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/stores/auth-store";
+
+function formatStatus(status?: string): string {
+  if (status === "ACTIVE") return "Faol";
+  if (status === "SUSPENDED") return "To‘xtatilgan";
+  return status ?? "Noma’lum";
+}
+
+function formatRole(role: string): string {
+  const labels: Record<string, string> = {
+    Owner: "Asosiy account",
+    Manager: "Menejer",
+    Accountant: "Buxgalter",
+    Seller: "Sotuvchi",
+    "Warehouse Operator": "Omborchi",
+    "Shift Receiver": "Smena qabul qiluvchi",
+  };
+
+  return labels[role] ?? role;
+}
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", password: "" });
+  const [passwordStatus, setPasswordStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const currentUser = useAuthStore((state) => state.currentUser);
+  const roles = useAuthStore((state) => state.roles);
+  const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
+  const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
   const logout = useAuthStore((state) => state.logout);
   const initials = currentUser?.name
     .split(" ")
@@ -23,6 +51,26 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   async function handleLogout() {
     await logout();
     router.replace("/login");
+  }
+
+  async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!currentUser || passwordForm.currentPassword.trim().length === 0 || passwordForm.password.trim().length < 8) {
+      return;
+    }
+
+    setPasswordStatus("saving");
+    try {
+      await authApi.changeUserPassword(currentUser.id, {
+        currentPassword: passwordForm.currentPassword,
+        password: passwordForm.password,
+      });
+      setPasswordForm({ currentPassword: "", password: "" });
+      setPasswordStatus("success");
+    } catch {
+      setPasswordStatus("error");
+    }
   }
 
   return (
@@ -48,54 +96,130 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         >
           <Bell size={18} />
         </button>
-        <div className="relative ml-1">
-          {userMenuOpen && (
-            <button
-              aria-label="User menyuni yopish"
-              className="fixed inset-0 z-20 cursor-default"
-              onClick={() => setUserMenuOpen(false)}
-            />
-          )}
+        <div className="ml-1">
           <button
             type="button"
-            className="relative z-30 flex h-11 items-center gap-3 rounded-full border bg-card px-2 pl-3 text-left shadow-sm hover:bg-muted"
-            aria-expanded={userMenuOpen}
-            onClick={() => setUserMenuOpen((open) => !open)}
+            className="grid h-10 w-10 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
+            aria-label="Akkaunt oynasini ochish"
+            onClick={() => {
+              setAccountOpen(true);
+              setPasswordStatus("idle");
+            }}
           >
-            <span className="hidden sm:block">
-              <span className="block text-xs font-medium">{currentUser?.name ?? "Paypoq OS"}</span>
-              <span className="block text-xs text-muted-foreground">Profil</span>
-            </span>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-              {initials}
-            </span>
-            <ChevronDown className="hidden text-muted-foreground sm:block" size={16} />
+            {initials}
           </button>
-          {userMenuOpen && (
-            <div className="absolute right-0 top-12 z-30 w-64 rounded-xl border bg-card p-2 text-card-foreground shadow-2xl">
-              <div className="border-b px-3 py-2">
-                <p className="font-medium">{currentUser?.name ?? "Paypoq OS"}</p>
-                <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
-              </div>
-              <Link
-                href="/profile"
-                className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                onClick={() => setUserMenuOpen(false)}
-              >
-                <UserRound size={16} />
-                Profil
-              </Link>
-              <button
+          <Drawer
+            open={accountOpen}
+            onOpenChange={(open) => {
+              setAccountOpen(open);
+              if (!open) {
+                setPasswordForm({ currentPassword: "", password: "" });
+                setPasswordStatus("idle");
+              }
+            }}
+            title="Akkaunt"
+            description="Foydalanuvchi ma’lumotlari va parol sozlamalari"
+          >
+            <div className="space-y-5">
+              <section className="rounded-xl border p-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                    {initials}
+                  </span>
+                  <div>
+                    <p className="font-semibold">{currentUser?.name ?? "Paypoq OS"}</p>
+                    <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Holat</p>
+                    <p className="font-medium">{formatStatus(currentUser?.status)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Rol</p>
+                    <p className="font-medium">{roles.length ? roles.map(formatRole).join(", ") : "Belgilanmagan"}</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <p className="text-xs text-muted-foreground">Filiallar</p>
+                  <div className="mt-2 space-y-2">
+                    {accessibleFactories.map((factory) => (
+                      <div key={factory.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                        <span>{factory.name}</span>
+                        {factory.id === activeFactoryId ? (
+                          <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">Tanlangan</span>
+                        ) : null}
+                      </div>
+                    ))}
+                    {accessibleFactories.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Filial biriktirilmagan.</p>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+
+              <form className="space-y-4" onSubmit={handlePasswordSubmit}>
+                <FormField htmlFor="current-password" label="Hozirgi parol" required>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={passwordForm.currentPassword}
+                    onChange={(event) => {
+                      setPasswordForm({ ...passwordForm, currentPassword: event.target.value });
+                      setPasswordStatus("idle");
+                    }}
+                  />
+                </FormField>
+                <FormField htmlFor="new-password" label="Yangi parol" required>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    value={passwordForm.password}
+                    onChange={(event) => {
+                      setPasswordForm({ ...passwordForm, password: event.target.value });
+                      setPasswordStatus("idle");
+                    }}
+                  />
+                </FormField>
+                {passwordStatus === "success" ? (
+                  <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+                    Parol yangilandi.
+                  </p>
+                ) : null}
+                {passwordStatus === "error" ? (
+                  <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+                    Parol yangilanmadi. Hozirgi parolni tekshiring.
+                  </p>
+                ) : null}
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={
+                    passwordForm.currentPassword.trim().length === 0 ||
+                    passwordForm.password.trim().length < 8 ||
+                    passwordStatus === "saving"
+                  }
+                >
+                  {passwordStatus === "saving" ? "Yangilanmoqda..." : "Parolni yangilash"}
+                </Button>
+              </form>
+
+              <Button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-300 hover:bg-rose-500/10"
+                variant="outline"
+                className="w-full border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
                 onClick={handleLogout}
               >
                 <LogOut size={16} />
                 Chiqish
-              </button>
+              </Button>
             </div>
-          )}
-        </div>
+          </Drawer>
+              </div>
       </div>
     </header>
   );

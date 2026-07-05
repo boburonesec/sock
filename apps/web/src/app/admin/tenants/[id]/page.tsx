@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlatformAdminGate } from "@/components/platform-admin/platform-admin-gate";
@@ -36,6 +36,10 @@ function formatSubscriptionStatus(status: string): string {
   };
 
   return labels[status] ?? status;
+}
+
+function formatBranchMode(mode: string): string {
+  return mode === "MULTI" ? "Filialli korxona" : "Oddiy korxona";
 }
 
 function formatHealthMetricLabel(key: string): string {
@@ -85,6 +89,7 @@ export default function PlatformTenantDetailPage() {
   });
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [passwordForm, setPasswordForm] = useState({ password: "" });
+  const [branchModeForm, setBranchModeForm] = useState<"SINGLE" | "MULTI">("SINGLE");
 
   const tenantQuery = useQuery({
     queryKey: tenantKey,
@@ -145,6 +150,20 @@ export default function PlatformTenantDetailPage() {
     onSuccess: invalidateTenant,
   });
 
+  const updateBranchMode = useMutation({
+    mutationFn: () =>
+      platformAdminApi.updateTenantBranchMode(tenantId, {
+        branchMode: branchModeForm,
+      }),
+    onSuccess: invalidateTenant,
+  });
+
+  useEffect(() => {
+    if (tenantQuery.data?.data.branchMode) {
+      setBranchModeForm(tenantQuery.data.data.branchMode);
+    }
+  }, [tenantQuery.data?.data.branchMode]);
+
   function submitOwner(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     createOwner.mutate();
@@ -190,6 +209,9 @@ export default function PlatformTenantDetailPage() {
                     <span className="rounded-full border px-3 py-1">
                       Obuna: {formatSubscriptionStatus(tenant.subscriptionStatus)}
                     </span>
+                    <span className="rounded-full border px-3 py-1">
+                      Ishlash modeli: {formatBranchMode(tenant.branchMode)}
+                    </span>
                     {tenant.planCode && (
                       <span className="rounded-full border px-3 py-1">Tarif: {tenant.planCode}</span>
                     )}
@@ -217,6 +239,47 @@ export default function PlatformTenantDetailPage() {
                 <p className="mt-1 font-mono">{generatedPassword}</p>
               </section>
             )}
+
+            <section className="panel p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="font-semibold">Ishlash modeli</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Oddiy korxonada filial sozlamalari ownerga ko‘rinmaydi. Filialli modelda filiallar va ularga ruxsatlar ochiladi.
+                  </p>
+                </div>
+                <form
+                  className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-80 sm:flex-row sm:items-end"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    updateBranchMode.mutate();
+                  }}
+                >
+                  <FormField htmlFor="tenant-branch-mode" label="Model">
+                    <select
+                      id="tenant-branch-mode"
+                      className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
+                      value={branchModeForm}
+                      onChange={(event) => setBranchModeForm(event.target.value as "SINGLE" | "MULTI")}
+                    >
+                      <option value="SINGLE">Oddiy korxona</option>
+                      <option value="MULTI">Filialli korxona</option>
+                    </select>
+                  </FormField>
+                  <Button
+                    type="submit"
+                    disabled={branchModeForm === tenant.branchMode || updateBranchMode.isPending}
+                  >
+                    {updateBranchMode.isPending ? "Saqlanmoqda..." : "Saqlash"}
+                  </Button>
+                </form>
+              </div>
+              {updateBranchMode.isError ? (
+                <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+                  Model o‘zgarmadi. Filialli korxonani oddiy korxonaga qaytarish uchun bitta faol filial qolishi kerak.
+                </p>
+              ) : null}
+            </section>
 
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="panel p-5">

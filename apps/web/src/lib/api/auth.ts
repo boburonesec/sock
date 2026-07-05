@@ -15,6 +15,7 @@ export interface AuthFactory {
 export interface AuthContext {
   user: AuthUser;
   tenantId: string;
+  branchMode: "SINGLE" | "MULTI";
   activeFactoryId: string | null;
   accessibleFactories: AuthFactory[];
   roles: string[];
@@ -49,5 +50,15 @@ export const authApi = {
       skipAuthRefresh: true,
     }),
   me: () => apiClient<{ data: AuthContext }>("/auth/me"),
+  changeUserPassword: (
+    userId: string,
+    payload: { currentPassword?: string; password: string },
+  ) =>
+    apiClient<{ data: { status: "ok" } }>(`/auth/users/${userId}/password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }),
 };
-

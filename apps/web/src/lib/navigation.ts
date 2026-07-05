@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Boxes, ClipboardList, Factory, LayoutDashboard, Package, Settings, Users, WalletCards } from "lucide-react";
+import { BarChart3, Boxes, Building2, ClipboardList, Factory, LayoutDashboard, Package, Settings, Users, WalletCards } from "lucide-react";
 
 export interface PageDefinition {
   title: string;
@@ -9,6 +9,7 @@ export interface PageDefinition {
 export interface NavigationItem extends PageDefinition {
   href: string;
   icon: LucideIcon;
+  ownerOnly?: boolean;
 }
 
 export const navigationItems: NavigationItem[] = [
@@ -20,6 +21,7 @@ export const navigationItems: NavigationItem[] = [
   { href: "/finance", title: "Moliya", description: "Moliya moduli", icon: WalletCards },
   { href: "/employees", title: "Xodimlar", description: "Xodimlar moduli", icon: Users },
   { href: "/reports", title: "Hisobotlar", description: "Hisobotlar moduli", icon: BarChart3 },
+  { href: "/settings/company", title: "Korxona sozlamalari", description: "Filiallar va menejerlar", icon: Building2, ownerOnly: true },
   { href: "/settings", title: "Sozlamalar", description: "Tizim sozlamalari", icon: Settings },
 ];
 
@@ -58,6 +60,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/reports/finance": { title: "Moliya hisoboti", description: "Hisobotlar moduli" },
   "/reports/warehouse": { title: "Ombor hisoboti", description: "Hisobotlar moduli" },
   "/settings": { title: "Sozlamalar", description: "Asosiy ma’lumotlar va tizim sozlamalari" },
+  "/settings/company": { title: "Korxona sozlamalari", description: "Filiallar va menejer accountlari" },
   "/settings/products": { title: "Mahsulotlar", description: "Sozlamalar" },
   "/settings/product-models": { title: "Mahsulot modellari", description: "Sozlamalar" },
   "/settings/colors": { title: "Ranglar", description: "Sozlamalar" },

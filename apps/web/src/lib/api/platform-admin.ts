@@ -4,6 +4,7 @@ export interface PlatformTenant {
   id: string;
   name: string;
   status: "PILOT" | "ACTIVE" | "SUSPENDED" | "CANCELLED";
+  branchMode: "SINGLE" | "MULTI";
   subscriptionStatus: string;
   planCode: string | null;
   contactName: string | null;
@@ -68,6 +69,7 @@ export const platformAdminApi = {
     contactPhone?: string;
     contactEmail?: string;
     planCode?: string;
+    branchMode?: "SINGLE" | "MULTI";
     notes?: string;
   }) =>
     platformApiClient<{ data: PlatformTenant }>("/platform-admin/tenants", {
@@ -77,6 +79,18 @@ export const platformAdminApi = {
     }),
   getTenant: (id: string) =>
     platformApiClient<{ data: PlatformTenantDetails }>(`/platform-admin/tenants/${id}`),
+  updateTenantBranchMode: (
+    tenantId: string,
+    payload: { branchMode: "SINGLE" | "MULTI" },
+  ) =>
+    platformApiClient<{ data: PlatformTenant }>(
+      `/platform-admin/tenants/${tenantId}/branch-mode`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
   createFactory: (
     tenantId: string,
     payload: { name: string; location?: string },

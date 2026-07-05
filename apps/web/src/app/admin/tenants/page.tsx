@@ -30,6 +30,10 @@ function formatTenantStatus(status: string): string {
   return labels[status] ?? status;
 }
 
+function formatBranchMode(mode: string): string {
+  return mode === "MULTI" ? "Filialli korxona" : "Oddiy korxona";
+}
+
 export default function PlatformTenantsPage() {
   const queryClient = useQueryClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -43,6 +47,7 @@ export default function PlatformTenantsPage() {
     contactPhone: "",
     contactEmail: "",
     planCode: "",
+    branchMode: "SINGLE" as "SINGLE" | "MULTI",
     notes: "",
   });
 
@@ -59,6 +64,7 @@ export default function PlatformTenantsPage() {
         contactPhone: form.contactPhone || undefined,
         contactEmail: form.contactEmail || undefined,
         planCode: form.planCode || undefined,
+        branchMode: form.branchMode,
         notes: form.notes || undefined,
       }),
     onSuccess: async () => {
@@ -70,6 +76,7 @@ export default function PlatformTenantsPage() {
         contactPhone: "",
         contactEmail: "",
         planCode: "",
+        branchMode: "SINGLE",
         notes: "",
       });
     },
@@ -139,6 +146,9 @@ export default function PlatformTenantsPage() {
                   <div className="flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full border px-3 py-1">{formatTenantStatus(tenant.status)}</span>
                     <span className="rounded-full border px-3 py-1">
+                      {formatBranchMode(tenant.branchMode)}
+                    </span>
+                    <span className="rounded-full border px-3 py-1">
                       Filiallar: {tenant.factoryCount ?? "0"}
                     </span>
                     <span className="rounded-full border px-3 py-1">
@@ -190,6 +200,19 @@ export default function PlatformTenantsPage() {
             </FormField>
             <FormField htmlFor="plan-code" label="Tarif kodi">
               <Input id="plan-code" value={form.planCode} onChange={(event) => setForm({ ...form, planCode: event.target.value })} />
+            </FormField>
+            <FormField htmlFor="branch-mode" label="Ishlash modeli" required>
+              <select
+                id="branch-mode"
+                className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
+                value={form.branchMode}
+                onChange={(event) =>
+                  setForm({ ...form, branchMode: event.target.value as "SINGLE" | "MULTI" })
+                }
+              >
+                <option value="SINGLE">Oddiy korxona</option>
+                <option value="MULTI">Filialli korxona</option>
+              </select>
             </FormField>
             <FormField htmlFor="notes" label="Izoh">
               <Textarea id="notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
