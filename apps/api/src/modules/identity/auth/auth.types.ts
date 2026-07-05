@@ -16,6 +16,7 @@ export interface AuthMeResponse {
   data: {
     user: AuthenticatedUserResponse;
     tenantId: string;
+    branchMode: 'SINGLE' | 'MULTI';
     activeFactoryId: string | null;
     accessibleFactories: AccessibleFactoryResponse[];
     roles: string[];
@@ -41,4 +42,3 @@ export interface AuthSessionResult {
   context: RequestContext;
   me: AuthMeResponse['data'];
 }
-

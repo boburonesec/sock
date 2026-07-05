@@ -284,6 +284,7 @@ export class DashboardService {
     return {
       userId: 'public-factory-tv',
       tenantId,
+      branchMode: 'SINGLE',
       activeFactoryId: factoryId,
       accessibleFactoryIds: [factoryId],
       roles: [],

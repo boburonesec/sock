@@ -32,6 +32,11 @@ enum TenantSubscriptionStatus {
   CANCELLED
 }
 
+enum TenantBranchMode {
+  SINGLE
+  MULTI
+}
+
 enum PlatformAdminStatus {
   ACTIVE
   INACTIVE
@@ -133,6 +138,7 @@ model Tenant {
   name               String
   status             TenantStatus             @default(ACTIVE)
   subscriptionStatus TenantSubscriptionStatus @default(NONE)
+  branchMode         TenantBranchMode         @default(SINGLE)
   planCode           String?
   pilotStartedAt     DateTime?
   pilotEndsAt        DateTime?
@@ -200,6 +206,7 @@ model Tenant {
 
   @@index([status])
   @@index([subscriptionStatus])
+  @@index([branchMode])
   @@index([planCode])
   @@index([deletedAt])
 }

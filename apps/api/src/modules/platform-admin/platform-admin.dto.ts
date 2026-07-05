@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsEmail,
   IsOptional,
   IsString,
@@ -29,6 +30,10 @@ export class CreatePlatformTenantDto {
   @IsOptional()
   @IsString()
   planCode?: string;
+
+  @IsOptional()
+  @IsIn(['SINGLE', 'MULTI'])
+  branchMode?: 'SINGLE' | 'MULTI';
 
   @IsOptional()
   @IsString()
@@ -68,4 +73,9 @@ export class UpdatePlatformTenantUserPasswordDto {
   @IsString()
   @MinLength(8)
   password!: string;
+}
+
+export class UpdatePlatformTenantBranchModeDto {
+  @IsIn(['SINGLE', 'MULTI'])
+  branchMode!: 'SINGLE' | 'MULTI';
 }

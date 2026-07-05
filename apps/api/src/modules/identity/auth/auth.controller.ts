@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
@@ -12,7 +13,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto } from './login.dto';
+import { ChangePasswordDto, LoginDto } from './login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentContext } from '../request-context/current-context.decorator';
 import { RequestContext } from '../request-context/request-context.types';
@@ -92,6 +93,19 @@ export class AuthController {
     };
   }
 
+  @Post('users/:userId/password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async changeUserPassword(
+    @CurrentContext() context: RequestContext,
+    @Param('userId') userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return {
+      data: await this.authService.changeUserPassword(context, userId, dto),
+    };
+  }
+
   private setRefreshCookie(response: Response, refreshToken: string): void {
     response.cookie(this.authService.getCookieName(), refreshToken, {
       httpOnly: true,
@@ -139,4 +153,3 @@ export class AuthController {
     return this.configService.get<string>('app.nodeEnv', 'development') === 'production';
   }
 }
-

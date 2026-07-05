@@ -11,6 +11,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { MobileModule } from './modules/mobile/mobile.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { OrganizationModule } from './modules/organization/organization.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { ProductModule } from './modules/product/product.module';
 import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module';
@@ -50,6 +51,7 @@ import { PrismaModule } from './prisma/prisma.module';
     FinanceModule,
     PayrollModule,
     NotificationModule,
+    OrganizationModule,
     TelegramModule,
     AuditModule,
   ],

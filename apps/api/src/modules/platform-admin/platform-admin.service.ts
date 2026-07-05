@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, TenantStatus } from '@prisma/client';
+import { Prisma, TenantBranchMode, TenantStatus } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -13,6 +13,7 @@ import {
   CreatePlatformFactoryDto,
   CreatePlatformOwnerUserDto,
   CreatePlatformTenantDto,
+  UpdatePlatformTenantBranchModeDto,
   UpdatePlatformTenantUserPasswordDto,
 } from './platform-admin.dto';
 
@@ -97,6 +98,7 @@ export class PlatformAdminService {
         id: true,
         name: true,
         status: true,
+        branchMode: true,
         subscriptionStatus: true,
         planCode: true,
         contactName: true,
@@ -141,6 +143,7 @@ export class PlatformAdminService {
         data: {
           name,
           status: 'PILOT',
+          branchMode: dto.branchMode ?? 'SINGLE',
           subscriptionStatus: 'NONE',
           contactName: this.optionalTrim(dto.contactName),
           contactPhone: this.optionalTrim(dto.contactPhone),
@@ -241,6 +244,68 @@ export class PlatformAdminService {
         },
         createdAt: result.factory.createdAt,
       },
+    };
+  }
+
+  async updateTenantBranchMode(
+    id: string,
+    dto: UpdatePlatformTenantBranchModeDto,
+    platformAdmin: PlatformAdminContext,
+  ) {
+    const targetMode = dto.branchMode as TenantBranchMode;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id },
+      });
+
+      if (!tenant || tenant.deletedAt) {
+        throw new NotFoundException('Tenant not found.');
+      }
+
+      if (tenant.branchMode === targetMode) {
+        return tenant;
+      }
+
+      if (targetMode === 'SINGLE') {
+        const activeFactoryCount = await tx.factory.count({
+          where: {
+            tenantId: id,
+            deletedAt: null,
+          },
+        });
+
+        if (activeFactoryCount > 1) {
+          throw new BadRequestException(
+            'Korxonada bir nechta faol filial bor. Avval bitta filial qoldiring.',
+          );
+        }
+      }
+
+      const updated = await tx.tenant.update({
+        where: { id },
+        data: {
+          branchMode: targetMode,
+        },
+      });
+
+      await tx.platformAuditLog.create({
+        data: {
+          platformAdminId: platformAdmin.platformAdminId,
+          tenantId: id,
+          action: 'TENANT_BRANCH_MODE_UPDATED',
+          entityType: 'Tenant',
+          entityId: id,
+          before: this.toJson({ branchMode: tenant.branchMode }),
+          after: this.toJson({ branchMode: updated.branchMode }),
+        },
+      });
+
+      return updated;
+    });
+
+    return {
+      data: this.mapTenant(result),
     };
   }
 
@@ -804,6 +869,7 @@ export class PlatformAdminService {
     id: string;
     name: string;
     status: TenantStatus;
+    branchMode: TenantBranchMode;
     subscriptionStatus: string;
     planCode: string | null;
     contactName: string | null;
@@ -817,6 +883,7 @@ export class PlatformAdminService {
       id: tenant.id,
       name: tenant.name,
       status: tenant.status,
+      branchMode: tenant.branchMode,
       subscriptionStatus: tenant.subscriptionStatus,
       planCode: tenant.planCode,
       contactName: tenant.contactName,

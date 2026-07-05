@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +19,7 @@ import {
   JwtAccessPayload,
 } from './auth.types';
 import { AuthRateLimiterService } from './auth-rate-limiter.service';
+import { ChangePasswordDto } from './login.dto';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
 const BLOCKED_TENANT_MESSAGE = 'Tenant is not active.';
@@ -78,6 +81,7 @@ export class AuthService {
         tenant: {
           select: {
             status: true,
+            branchMode: true,
             deletedAt: true,
           },
         },
@@ -141,6 +145,7 @@ export class AuthService {
             tenant: {
               select: {
                 status: true,
+                branchMode: true,
                 deletedAt: true,
               },
             },
@@ -262,6 +267,7 @@ export class AuthService {
         status: user.status,
       },
       tenantId: user.tenantId,
+      branchMode: context.branchMode,
       activeFactoryId: context.activeFactoryId,
       accessibleFactories: user.factoryAccesses.map((access) => access.factory),
       roles: context.roles,
@@ -269,8 +275,132 @@ export class AuthService {
     };
   }
 
+  async changeUserPassword(
+    context: RequestContext,
+    targetUserId: string,
+    dto: ChangePasswordDto,
+  ) {
+    const password = dto.password.trim();
+    const isSelfChange = targetUserId === context.userId;
+
+    if (!password) {
+      throw new BadRequestException('Password is required.');
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id_tenantId: {
+          id: targetUserId,
+          tenantId: context.tenantId,
+        },
+      },
+      include: {
+        credential: true,
+        factoryAccesses: {
+          where: {
+            tenantId: context.tenantId,
+            factory: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            factoryId: true,
+          },
+        },
+      },
+    });
+
+    if (!targetUser || targetUser.deletedAt) {
+      throw new NotFoundException('User not found.');
+    }
+
+    await this.assertCanChangeUserPassword(context, targetUser.id, targetUser.factoryAccesses);
+
+    if (isSelfChange) {
+      if (!dto.currentPassword?.trim() || !targetUser.credential) {
+        throw new UnauthorizedException('Current password is required.');
+      }
+
+      const isCurrentPasswordValid = await argon2.verify(
+        targetUser.credential.passwordHash,
+        dto.currentPassword,
+      );
+
+      if (!isCurrentPasswordValid) {
+        throw new UnauthorizedException('Current password is invalid.');
+      }
+    }
+
+    const passwordHash = await argon2.hash(password);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.userCredential.upsert({
+        where: {
+          userId_tenantId: {
+            userId: targetUser.id,
+            tenantId: context.tenantId,
+          },
+        },
+        create: {
+          tenantId: context.tenantId,
+          userId: targetUser.id,
+          passwordHash,
+        },
+        update: {
+          passwordHash,
+          passwordUpdatedAt: new Date(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: context.tenantId,
+          factoryId: context.activeFactoryId,
+          userId: context.userId,
+          action: isSelfChange ? 'USER_PASSWORD_CHANGED' : 'USER_PASSWORD_RESET',
+          entityType: 'User',
+          entityId: targetUser.id,
+          metadata: {
+            targetUserId: targetUser.id,
+          },
+        },
+      });
+    });
+
+    return {
+      status: 'ok',
+    };
+  }
+
   getAccessTokenTtlSeconds(): number {
     return this.configService.get<number>('auth.jwtAccessTtlSeconds', 900);
+  }
+
+  private async assertCanChangeUserPassword(
+    context: RequestContext,
+    targetUserId: string,
+    targetFactoryAccesses: Array<{ factoryId: string }>,
+  ): Promise<void> {
+    if (targetUserId === context.userId) {
+      return;
+    }
+
+    if (context.roles.includes('Owner')) {
+      return;
+    }
+
+    if (context.roles.includes('Manager')) {
+      const managerFactoryIds = new Set(context.accessibleFactoryIds);
+      const hasSharedFactory = targetFactoryAccesses.some((access) =>
+        managerFactoryIds.has(access.factoryId),
+      );
+
+      if (hasSharedFactory) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException('Password change is not allowed for this user.');
   }
 
   getCookieName(): string {
@@ -316,6 +446,7 @@ export class AuthService {
         tenant: {
           select: {
             status: true,
+            branchMode: true,
             deletedAt: true,
           },
         },
@@ -384,6 +515,7 @@ export class AuthService {
       userId: user.id,
       tenantId: user.tenantId,
       activeFactoryId,
+      branchMode: user.tenant.branchMode,
       accessibleFactoryIds,
       roles,
       permissions,

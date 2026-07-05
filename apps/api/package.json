@@ -16,7 +16,8 @@
     "demo:reset": "node scripts/demo-reset.mjs",
     "demo:seed": "node -r ts-node/register prisma/demo-seed.ts",
     "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm demo:seed",
-    "smoke:platform-auth": "node scripts/platform-auth-smoke-test.mjs"
+    "smoke:platform-auth": "node scripts/platform-auth-smoke-test.mjs",
+    "smoke:organization": "node scripts/organization-smoke-test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

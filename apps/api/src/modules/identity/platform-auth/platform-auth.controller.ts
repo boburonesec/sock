@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { LoginDto } from '../auth/login.dto';
+import { ChangePasswordDto, LoginDto } from '../auth/login.dto';
 import { CurrentPlatformAdmin } from './current-platform-admin.decorator';
 import { PlatformAuthService } from './platform-auth.service';
 import { PlatformAdminContext } from './platform-auth.types';
@@ -97,6 +97,18 @@ export class PlatformAuthController {
       data: {
         platformAdmin,
       },
+    };
+  }
+
+  @Post('me/password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PlatformJwtAuthGuard)
+  async changePassword(
+    @CurrentPlatformAdmin() platformAdmin: PlatformAdminContext,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return {
+      data: await this.platformAuthService.changePassword(platformAdmin, dto),
     };
   }
 

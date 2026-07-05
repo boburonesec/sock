@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -16,6 +17,7 @@ import {
   PlatformJwtAccessPayload,
 } from './platform-auth.types';
 import { AuthRateLimiterService } from '../auth/auth-rate-limiter.service';
+import { ChangePasswordDto } from '../auth/login.dto';
 
 const INVALID_PLATFORM_CREDENTIALS_MESSAGE = 'Invalid platform admin credentials.';
 const PLATFORM_LOGIN_RATE_LIMIT = {
@@ -230,6 +232,66 @@ export class PlatformAuthService {
         },
       }),
     ]);
+  }
+
+  async changePassword(platformAdmin: PlatformAdminContext, dto: ChangePasswordDto) {
+    const password = dto.password.trim();
+
+    if (!password) {
+      throw new BadRequestException('Password is required.');
+    }
+
+    if (!dto.currentPassword?.trim()) {
+      throw new UnauthorizedException('Current password is required.');
+    }
+
+    const admin = await this.prisma.platformAdmin.findUnique({
+      where: {
+        id: platformAdmin.platformAdminId,
+      },
+      include: {
+        credential: true,
+      },
+    });
+
+    if (!admin || admin.deletedAt || admin.status !== 'ACTIVE' || !admin.credential) {
+      throw new UnauthorizedException('Platform admin is not active.');
+    }
+
+    const isCurrentPasswordValid = await argon2.verify(
+      admin.credential.passwordHash,
+      dto.currentPassword,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is invalid.');
+    }
+
+    const passwordHash = await argon2.hash(password);
+
+    await this.prisma.$transaction([
+      this.prisma.platformAdminCredential.update({
+        where: {
+          platformAdminId: platformAdmin.platformAdminId,
+        },
+        data: {
+          passwordHash,
+          passwordUpdatedAt: new Date(),
+        },
+      }),
+      this.prisma.platformAuditLog.create({
+        data: {
+          platformAdminId: platformAdmin.platformAdminId,
+          action: 'PLATFORM_ADMIN_PASSWORD_CHANGED',
+          entityType: 'PlatformAdmin',
+          entityId: platformAdmin.platformAdminId,
+        },
+      }),
+    ]);
+
+    return {
+      status: 'ok',
+    };
   }
 
   async getContextFromAccessToken(accessToken: string): Promise<PlatformAdminContext> {

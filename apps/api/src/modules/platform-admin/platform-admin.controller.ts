@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import {
   CreatePlatformFactoryDto,
   CreatePlatformOwnerUserDto,
   CreatePlatformTenantDto,
+  UpdatePlatformTenantBranchModeDto,
   UpdatePlatformTenantUserPasswordDto,
 } from './platform-admin.dto';
 import { PlatformAdminService } from './platform-admin.service';
@@ -38,6 +40,15 @@ export class PlatformAdminController {
   @Get('tenants/:id')
   getTenant(@Param('id') id: string) {
     return this.platformAdminService.getTenant(id);
+  }
+
+  @Patch('tenants/:id/branch-mode')
+  updateTenantBranchMode(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlatformTenantBranchModeDto,
+    @CurrentPlatformAdmin() platformAdmin: PlatformAdminContext,
+  ) {
+    return this.platformAdminService.updateTenantBranchMode(id, dto, platformAdmin);
   }
 
   @Post('tenants/:id/factories')
