@@ -13,6 +13,7 @@ import {
   CreatePlatformFactoryDto,
   CreatePlatformOwnerUserDto,
   CreatePlatformTenantDto,
+  UpdatePlatformTenantUserPasswordDto,
 } from './platform-admin.dto';
 import { PlatformAdminService } from './platform-admin.service';
 
@@ -55,6 +56,16 @@ export class PlatformAdminController {
     @CurrentPlatformAdmin() platformAdmin: PlatformAdminContext,
   ) {
     return this.platformAdminService.createOwnerUser(id, dto, platformAdmin);
+  }
+
+  @Post('tenants/:id/users/:userId/password')
+  updateTenantUserPassword(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() dto: UpdatePlatformTenantUserPasswordDto,
+    @CurrentPlatformAdmin() platformAdmin: PlatformAdminContext,
+  ) {
+    return this.platformAdminService.updateTenantUserPassword(id, userId, dto, platformAdmin);
   }
 
   @Post('tenants/:id/activate')

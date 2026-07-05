@@ -16,10 +16,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { platformAdminApi } from "@/lib/api/platform-admin";
 
 const tenantsKey = ["platform-admin", "tenants"] as const;
+const phonePattern = /^\+?[0-9\s()-]{7,24}$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function formatTenantStatus(status: string): string {
+  const labels: Record<string, string> = {
+    ACTIVE: "Faol",
+    SUSPENDED: "To‘xtatilgan",
+    CANCELLED: "Bekor qilingan",
+    PENDING: "Tayyorlanmoqda",
+  };
+
+  return labels[status] ?? status;
+}
 
 export default function PlatformTenantsPage() {
   const queryClient = useQueryClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formErrors, setFormErrors] = useState<{
+    contactPhone?: string;
+    contactEmail?: string;
+  }>({});
   const [form, setForm] = useState({
     name: "",
     contactName: "",
@@ -60,6 +77,24 @@ export default function PlatformTenantsPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextErrors: typeof formErrors = {};
+    const phone = form.contactPhone.trim();
+    const email = form.contactEmail.trim();
+
+    if (phone && !phonePattern.test(phone)) {
+      nextErrors.contactPhone = "Telefon raqam formati noto‘g‘ri.";
+    }
+
+    if (email && !emailPattern.test(email)) {
+      nextErrors.contactEmail = "Email formati noto‘g‘ri.";
+    }
+
+    setFormErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
     createTenant.mutate();
   }
 
@@ -68,23 +103,23 @@ export default function PlatformTenantsPage() {
       <PlatformAdminShell>
         <div className="mb-7 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Tenantlar</h1>
+            <h1 className="text-3xl font-bold">Korxonalar</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pilot va mijoz fabrikalarini manual provisioning qilish
+              Mijoz korxonalarini ochish va kuzatib borish
             </p>
           </div>
-          <Button onClick={() => setDrawerOpen(true)}>Tenant yaratish</Button>
+          <Button onClick={() => setDrawerOpen(true)}>Korxona yaratish</Button>
         </div>
 
         {tenantsQuery.isLoading && <LoadingState />}
         {tenantsQuery.isError && (
           <ErrorState
-            description="Tenantlar yuklanmadi."
+            description="Korxonalar yuklanmadi."
             action={<Button onClick={() => tenantsQuery.refetch()}>Qayta urinish</Button>}
           />
         )}
         {tenantsQuery.data && tenantsQuery.data.data.length === 0 && (
-          <EmptyState title="Tenantlar yo‘q" description="Birinchi pilot tenantni yarating." />
+          <EmptyState title="Korxonalar yo‘q" description="Birinchi korxonani yarating." />
         )}
         {tenantsQuery.data && tenantsQuery.data.data.length > 0 && (
           <div className="grid gap-4">
@@ -102,12 +137,12 @@ export default function PlatformTenantsPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border px-3 py-1">{tenant.status}</span>
+                    <span className="rounded-full border px-3 py-1">{formatTenantStatus(tenant.status)}</span>
                     <span className="rounded-full border px-3 py-1">
-                      Factory: {tenant.factoryCount ?? "0"}
+                      Filiallar: {tenant.factoryCount ?? "0"}
                     </span>
                     <span className="rounded-full border px-3 py-1">
-                      User: {tenant.userCount ?? "0"}
+                      Foydalanuvchilar: {tenant.userCount ?? "0"}
                     </span>
                   </div>
                 </div>
@@ -119,8 +154,8 @@ export default function PlatformTenantsPage() {
         <Drawer
           open={drawerOpen}
           onOpenChange={setDrawerOpen}
-          title="Tenant yaratish"
-          description="Yangi organization/pilot tenant ochish"
+          title="Korxona yaratish"
+          description="Yangi mijoz korxonasini ro‘yxatga olish"
         >
           <form className="space-y-4" onSubmit={handleSubmit}>
             <FormField htmlFor="tenant-name" label="Nomi" required>
@@ -129,13 +164,31 @@ export default function PlatformTenantsPage() {
             <FormField htmlFor="contact-name" label="Kontakt shaxs">
               <Input id="contact-name" value={form.contactName} onChange={(event) => setForm({ ...form, contactName: event.target.value })} />
             </FormField>
-            <FormField htmlFor="contact-phone" label="Telefon">
-              <Input id="contact-phone" value={form.contactPhone} onChange={(event) => setForm({ ...form, contactPhone: event.target.value })} />
+            <FormField htmlFor="contact-phone" label="Telefon" error={formErrors.contactPhone}>
+              <Input
+                id="contact-phone"
+                inputMode="tel"
+                placeholder="+998 90 123 45 67"
+                value={form.contactPhone}
+                onChange={(event) => {
+                  setForm({ ...form, contactPhone: event.target.value });
+                  setFormErrors((current) => ({ ...current, contactPhone: undefined }));
+                }}
+              />
             </FormField>
-            <FormField htmlFor="contact-email" label="Email">
-              <Input id="contact-email" type="email" value={form.contactEmail} onChange={(event) => setForm({ ...form, contactEmail: event.target.value })} />
+            <FormField htmlFor="contact-email" label="Email" error={formErrors.contactEmail}>
+              <Input
+                id="contact-email"
+                type="email"
+                placeholder="example@company.uz"
+                value={form.contactEmail}
+                onChange={(event) => {
+                  setForm({ ...form, contactEmail: event.target.value });
+                  setFormErrors((current) => ({ ...current, contactEmail: undefined }));
+                }}
+              />
             </FormField>
-            <FormField htmlFor="plan-code" label="Plan kodi">
+            <FormField htmlFor="plan-code" label="Tarif kodi">
               <Input id="plan-code" value={form.planCode} onChange={(event) => setForm({ ...form, planCode: event.target.value })} />
             </FormField>
             <FormField htmlFor="notes" label="Izoh">
@@ -143,11 +196,11 @@ export default function PlatformTenantsPage() {
             </FormField>
             {createTenant.isError && (
               <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                Tenant yaratilmadi. Ma’lumotlarni tekshiring.
+                Korxona yaratilmadi. Ma’lumotlarni tekshiring.
               </p>
             )}
             <Button className="w-full" type="submit" disabled={!form.name.trim() || createTenant.isPending}>
-              {createTenant.isPending ? "Yaratilmoqda..." : "Tenant yaratish"}
+              {createTenant.isPending ? "Yaratilmoqda..." : "Korxona yaratish"}
             </Button>
           </form>
         </Drawer>

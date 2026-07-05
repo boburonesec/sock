@@ -1,20 +1,16 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { usePlatformAuthStore } from "@/stores/platform-auth-store";
 
-const demoEmail = "platform@paypoq.local";
-const demoPassword = "ChangeMe123!";
-
 export default function PlatformAdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState(demoEmail);
-  const [password, setPassword] = useState(demoPassword);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const login = usePlatformAuthStore((state) => state.login);
   const refreshSession = usePlatformAuthStore((state) => state.refreshSession);
@@ -42,7 +38,7 @@ export default function PlatformAdminLoginPage() {
       await login(email, password);
       router.replace("/admin/tenants");
     } catch {
-      setError("Platform admin email yoki parol noto‘g‘ri.");
+      setError("Email yoki parol noto‘g‘ri.");
     }
   }
 
@@ -53,9 +49,9 @@ export default function PlatformAdminLoginPage() {
           <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
             PA
           </div>
-          <h1 className="text-2xl font-bold">Paypoq OS Admin</h1>
+          <h1 className="text-2xl font-bold">Paypoq OS</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Platform owner paneliga kirish
+            Admin panel
           </p>
         </div>
 
@@ -90,22 +86,9 @@ export default function PlatformAdminLoginPage() {
           )}
 
           <Button className="w-full" type="submit" disabled={isLoadingSession}>
-            {isLoadingSession ? "Tekshirilmoqda..." : "Platform admin kirish"}
+            {isLoadingSession ? "Tekshirilmoqda..." : "Kirish"}
           </Button>
         </form>
-
-        <div className="mt-4 text-center text-sm">
-          <Link className="text-muted-foreground hover:text-foreground" href="/login">
-            Fabrika login
-          </Link>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-          <p className="font-semibold">LOCAL DEV ONLY</p>
-          <p className="mt-1">
-            {demoEmail} / {demoPassword}
-          </p>
-        </div>
       </section>
     </main>
   );

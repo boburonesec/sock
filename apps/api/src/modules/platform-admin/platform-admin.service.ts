@@ -13,9 +13,11 @@ import {
   CreatePlatformFactoryDto,
   CreatePlatformOwnerUserDto,
   CreatePlatformTenantDto,
+  UpdatePlatformTenantUserPasswordDto,
 } from './platform-admin.dto';
 
 const DEFAULT_WAREHOUSE_NAME = 'Main Warehouse';
+const DEFAULT_FACTORY_NAME = 'Asosiy filial';
 const DEFAULT_WAREHOUSE_ZONES = [
   'Finished Products',
   'Raw Materials',
@@ -160,6 +162,13 @@ export class PlatformAdminService {
         },
       });
 
+      await this.ensureDefaultRolesAndPermissions(tx, created.id);
+      await this.createFactoryWithDefaults(tx, {
+        tenantId: created.id,
+        name: DEFAULT_FACTORY_NAME,
+        platformAdmin,
+      });
+
       return created;
     });
 
@@ -185,6 +194,8 @@ export class PlatformAdminService {
           email: user.email,
           status: user.status,
           createdAt: user.createdAt,
+          roles: user.roles.map((userRole) => userRole.role.name),
+          factories: user.factoryAccesses.map((access) => access.factory.name),
         })),
       },
     };
@@ -211,61 +222,12 @@ export class PlatformAdminService {
 
       await this.ensureDefaultRolesAndPermissions(tx, tenantId);
 
-      const factory = await tx.factory.create({
-        data: {
-          tenantId,
-          name,
-        },
+      return this.createFactoryWithDefaults(tx, {
+        tenantId,
+        name,
+        location,
+        platformAdmin,
       });
-
-      const warehouse = await tx.warehouse.create({
-        data: {
-          tenantId,
-          factoryId: factory.id,
-          name: DEFAULT_WAREHOUSE_NAME,
-        },
-      });
-
-      for (const zoneName of DEFAULT_WAREHOUSE_ZONES) {
-        await tx.warehouseZone.create({
-          data: {
-            tenantId,
-            warehouseId: warehouse.id,
-            name: zoneName,
-          },
-        });
-      }
-
-      for (const [index, stageName] of DEFAULT_PRODUCTION_STAGES.entries()) {
-        await tx.productionStage.create({
-          data: {
-            tenantId,
-            factoryId: factory.id,
-            name: stageName,
-            sortOrder: index + 1,
-          },
-        });
-      }
-
-      await tx.platformAuditLog.create({
-        data: {
-          platformAdminId: platformAdmin.platformAdminId,
-          tenantId,
-          factoryId: factory.id,
-          action: 'FACTORY_CREATED',
-          entityType: 'Factory',
-          entityId: factory.id,
-          after: this.toJson(factory),
-          metadata: {
-            defaultWarehouseName: DEFAULT_WAREHOUSE_NAME,
-            defaultZones: [...DEFAULT_WAREHOUSE_ZONES],
-            defaultProductionStages: [...DEFAULT_PRODUCTION_STAGES],
-            location,
-          },
-        },
-      });
-
-      return { factory, warehouse };
     });
 
     return {
@@ -302,17 +264,36 @@ export class PlatformAdminService {
         throw new NotFoundException('Tenant not found.');
       }
 
-      const factory = await tx.factory.findUnique({
-        where: {
-          id_tenantId: {
-            id: dto.factoryId,
-            tenantId,
-          },
-        },
-      });
+      let factory = dto.factoryId
+        ? await tx.factory.findUnique({
+            where: {
+              id_tenantId: {
+                id: dto.factoryId,
+                tenantId,
+              },
+            },
+          })
+        : await tx.factory.findFirst({
+            where: {
+              tenantId,
+              deletedAt: null,
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          });
 
       if (!factory || factory.deletedAt) {
-        throw new BadRequestException('Factory does not belong to tenant.');
+        if (dto.factoryId) {
+          throw new BadRequestException('Factory does not belong to tenant.');
+        }
+
+        const createdDefault = await this.createFactoryWithDefaults(tx, {
+          tenantId,
+          name: DEFAULT_FACTORY_NAME,
+          platformAdmin,
+        });
+        factory = createdDefault.factory;
       }
 
       await this.ensureDefaultRolesAndPermissions(tx, tenantId);
@@ -480,6 +461,77 @@ export class PlatformAdminService {
     return this.updateTenantStatus(id, 'SUSPENDED', platformAdmin, 'TENANT_SUSPENDED');
   }
 
+  async updateTenantUserPassword(
+    tenantId: string,
+    userId: string,
+    dto: UpdatePlatformTenantUserPasswordDto,
+    platformAdmin: PlatformAdminContext,
+  ) {
+    const password = this.requiredTrim(dto.password, 'Password is required.');
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: {
+          id_tenantId: {
+            id: userId,
+            tenantId,
+          },
+        },
+      });
+
+      if (!user || user.deletedAt) {
+        throw new NotFoundException('User not found.');
+      }
+
+      const passwordHash = await argon2.hash(password);
+
+      await tx.userCredential.upsert({
+        where: {
+          userId_tenantId: {
+            userId,
+            tenantId,
+          },
+        },
+        create: {
+          tenantId,
+          userId,
+          passwordHash,
+        },
+        update: {
+          passwordHash,
+          passwordUpdatedAt: new Date(),
+        },
+      });
+
+      await tx.platformAuditLog.create({
+        data: {
+          platformAdminId: platformAdmin.platformAdminId,
+          tenantId,
+          action: 'TENANT_USER_PASSWORD_UPDATED',
+          entityType: 'User',
+          entityId: user.id,
+          after: this.toJson({
+            id: user.id,
+            email: user.email,
+          }),
+        },
+      });
+
+      return user;
+    });
+
+    return {
+      data: {
+        id: result.id,
+        tenantId: result.tenantId,
+        name: result.name,
+        email: result.email,
+        status: result.status,
+        createdAt: result.createdAt,
+      },
+    };
+  }
+
   async getTenantHealth(id: string) {
     const tenant = await this.findTenantOrThrow(id);
     const [
@@ -600,6 +652,18 @@ export class PlatformAdminService {
           orderBy: {
             createdAt: 'asc',
           },
+          include: {
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+            factoryAccesses: {
+              include: {
+                factory: true,
+              },
+            },
+          },
         },
       },
     });
@@ -668,6 +732,72 @@ export class PlatformAdminService {
         });
       }
     }
+  }
+
+  private async createFactoryWithDefaults(
+    tx: Prisma.TransactionClient,
+    input: {
+      tenantId: string;
+      name: string;
+      location?: string;
+      platformAdmin: PlatformAdminContext;
+    },
+  ) {
+    const factory = await tx.factory.create({
+      data: {
+        tenantId: input.tenantId,
+        name: input.name,
+      },
+    });
+
+    const warehouse = await tx.warehouse.create({
+      data: {
+        tenantId: input.tenantId,
+        factoryId: factory.id,
+        name: DEFAULT_WAREHOUSE_NAME,
+      },
+    });
+
+    for (const zoneName of DEFAULT_WAREHOUSE_ZONES) {
+      await tx.warehouseZone.create({
+        data: {
+          tenantId: input.tenantId,
+          warehouseId: warehouse.id,
+          name: zoneName,
+        },
+      });
+    }
+
+    for (const [index, stageName] of DEFAULT_PRODUCTION_STAGES.entries()) {
+      await tx.productionStage.create({
+        data: {
+          tenantId: input.tenantId,
+          factoryId: factory.id,
+          name: stageName,
+          sortOrder: index + 1,
+        },
+      });
+    }
+
+    await tx.platformAuditLog.create({
+      data: {
+        platformAdminId: input.platformAdmin.platformAdminId,
+        tenantId: input.tenantId,
+        factoryId: factory.id,
+        action: 'FACTORY_CREATED',
+        entityType: 'Factory',
+        entityId: factory.id,
+        after: this.toJson(factory),
+        metadata: {
+          defaultWarehouseName: DEFAULT_WAREHOUSE_NAME,
+          defaultZones: [...DEFAULT_WAREHOUSE_ZONES],
+          defaultProductionStages: [...DEFAULT_PRODUCTION_STAGES],
+          location: input.location,
+        },
+      },
+    });
+
+    return { factory, warehouse };
   }
 
   private mapTenant(tenant: {

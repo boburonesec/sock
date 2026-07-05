@@ -27,12 +27,12 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
               Paypoq OS Admin
             </Link>
             <p className="text-xs text-muted-foreground">
-              SaaS owner panel · {platformAdmin?.email}
+              Korxonalarni boshqarish paneli · {platformAdmin?.email}
             </p>
           </div>
           <nav className="flex items-center gap-3">
             <Link className="text-sm text-muted-foreground hover:text-foreground" href="/admin/tenants">
-              Tenantlar
+              Korxonalar
             </Link>
             <div className="relative">
               {userMenuOpen && (
@@ -48,7 +48,7 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
                 aria-expanded={userMenuOpen}
                 onClick={() => setUserMenuOpen((open) => !open)}
               >
-                <span className="hidden sm:inline">{platformAdmin?.name ?? "Platform admin"}</span>
+                <span className="hidden sm:inline">{platformAdmin?.name ?? "Admin"}</span>
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                   PA
                 </span>
@@ -56,7 +56,7 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
               {userMenuOpen && (
                 <div className="absolute right-0 top-12 z-30 w-64 rounded-xl border bg-card p-2 shadow-2xl">
                   <div className="border-b px-3 py-2">
-                    <p className="font-medium">{platformAdmin?.name ?? "Platform admin"}</p>
+                    <p className="font-medium">{platformAdmin?.name ?? "Admin"}</p>
                     <p className="text-xs text-muted-foreground">{platformAdmin?.email}</p>
                   </div>
                   <Link

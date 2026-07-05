@@ -49,8 +49,10 @@ export default function PlatformAdminProfilePage() {
 
           <section className="grid gap-4 sm:grid-cols-2">
             <div className="panel p-5">
-              <p className="text-xs uppercase text-muted-foreground">Status</p>
-              <p className="mt-2 font-semibold">{platformAdmin?.status ?? "Noma’lum"}</p>
+              <p className="text-xs uppercase text-muted-foreground">Holat</p>
+              <p className="mt-2 font-semibold">
+                {platformAdmin?.status === "ACTIVE" ? "Faol" : platformAdmin?.status ?? "Noma’lum"}
+              </p>
             </div>
             <div className="panel p-5">
               <p className="text-xs uppercase text-muted-foreground">Ruxsat turi</p>

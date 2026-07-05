@@ -13,7 +13,60 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { platformAdminApi } from "@/lib/api/platform-admin";
+import { platformAdminApi, type PlatformTenantUser } from "@/lib/api/platform-admin";
+
+function formatTenantStatus(status: string): string {
+  const labels: Record<string, string> = {
+    ACTIVE: "Faol",
+    SUSPENDED: "To‘xtatilgan",
+    CANCELLED: "Bekor qilingan",
+    PENDING: "Tayyorlanmoqda",
+  };
+
+  return labels[status] ?? status;
+}
+
+function formatSubscriptionStatus(status: string): string {
+  const labels: Record<string, string> = {
+    ACTIVE: "Faol",
+    TRIAL: "Sinov muddati",
+    PAST_DUE: "To‘lov kutilmoqda",
+    CANCELLED: "Bekor qilingan",
+    NONE: "Belgilanmagan",
+  };
+
+  return labels[status] ?? status;
+}
+
+function formatHealthMetricLabel(key: string): string {
+  const labels: Record<string, string> = {
+    factoryCount: "Filiallar",
+    userCount: "Foydalanuvchilar",
+    activeUserCount: "Faol foydalanuvchilar",
+    activeEmployeeCount: "Faol xodimlar",
+    employeeCount: "Xodimlar",
+    productCount: "Mahsulotlar",
+    orderCount: "Buyurtmalar",
+    warehouseCount: "Omborlar",
+    stockMovementCount: "Ombor harakatlari",
+    payrollPeriodCount: "Ish haqi davrlari",
+  };
+
+  return labels[key] ?? key;
+}
+
+function formatUserRole(role: string): string {
+  const labels: Record<string, string> = {
+    Owner: "Asosiy account",
+    Manager: "Menejer",
+    Accountant: "Buxgalter",
+    Seller: "Sotuvchi",
+    "Warehouse Operator": "Omborchi",
+    "Shift Receiver": "Smena qabul qiluvchi",
+  };
+
+  return labels[role] ?? role;
+}
 
 export default function PlatformTenantDetailPage() {
   const params = useParams<{ id: string }>();
@@ -22,17 +75,16 @@ export default function PlatformTenantDetailPage() {
   const tenantKey = ["platform-admin", "tenant", tenantId] as const;
   const healthKey = ["platform-admin", "tenant-health", tenantId] as const;
   const tenantsKey = ["platform-admin", "tenants"] as const;
-  const [factoryDrawerOpen, setFactoryDrawerOpen] = useState(false);
   const [ownerDrawerOpen, setOwnerDrawerOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<PlatformTenantUser | null>(null);
   const [confirmAction, setConfirmAction] = useState<"activate" | "suspend" | null>(null);
-  const [factoryForm, setFactoryForm] = useState({ name: "", location: "" });
   const [ownerForm, setOwnerForm] = useState({
     name: "",
     email: "",
     password: "ChangeMe123!",
-    factoryId: "",
   });
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ password: "" });
 
   const tenantQuery = useQuery({
     queryKey: tenantKey,
@@ -52,32 +104,34 @@ export default function PlatformTenantDetailPage() {
     ]);
   };
 
-  const createFactory = useMutation({
-    mutationFn: () =>
-      platformAdminApi.createFactory(tenantId, {
-        name: factoryForm.name,
-        location: factoryForm.location || undefined,
-      }),
-    onSuccess: async () => {
-      await invalidateTenant();
-      setFactoryDrawerOpen(false);
-      setFactoryForm({ name: "", location: "" });
-    },
-  });
-
   const createOwner = useMutation({
     mutationFn: () =>
       platformAdminApi.createOwnerUser(tenantId, {
         name: ownerForm.name,
         email: ownerForm.email,
         password: ownerForm.password || undefined,
-        factoryId: ownerForm.factoryId,
       }),
     onSuccess: async (response) => {
       await invalidateTenant();
       setGeneratedPassword(response.data.generatedPassword);
       setOwnerDrawerOpen(false);
-      setOwnerForm({ name: "", email: "", password: "ChangeMe123!", factoryId: "" });
+      setOwnerForm({ name: "", email: "", password: "ChangeMe123!" });
+    },
+  });
+
+  const updatePassword = useMutation({
+    mutationFn: () => {
+      if (!selectedUser) {
+        throw new Error("Foydalanuvchi tanlanmagan.");
+      }
+
+      return platformAdminApi.updateTenantUserPassword(tenantId, selectedUser.id, {
+        password: passwordForm.password,
+      });
+    },
+    onSuccess: async () => {
+      await invalidateTenant();
+      setPasswordForm({ password: "" });
     },
   });
 
@@ -91,32 +145,33 @@ export default function PlatformTenantDetailPage() {
     onSuccess: invalidateTenant,
   });
 
-  function submitFactory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    createFactory.mutate();
-  }
-
   function submitOwner(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     createOwner.mutate();
   }
 
+  function submitPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updatePassword.mutate();
+  }
+
   const tenant = tenantQuery.data?.data;
   const health = healthQuery.data?.data;
+  const hasMainAccount = tenant?.users.some((user) => user.roles?.includes("Owner")) ?? false;
 
   return (
     <PlatformAdminGate>
       <PlatformAdminShell>
         <div className="mb-6">
           <Link href="/admin/tenants" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Tenantlar
+            ← Korxonalar
           </Link>
         </div>
 
         {tenantQuery.isLoading && <LoadingState />}
         {tenantQuery.isError && (
           <ErrorState
-            description="Tenant ma’lumotlari yuklanmadi."
+            description="Korxona ma’lumotlari yuklanmadi."
             action={<Button onClick={() => tenantQuery.refetch()}>Qayta urinish</Button>}
           />
         )}
@@ -131,33 +186,26 @@ export default function PlatformTenantDetailPage() {
                     {tenant.contactName || "Kontakt yo‘q"} · {tenant.contactPhone || "Telefon yo‘q"}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border px-3 py-1">{tenant.status}</span>
+                    <span className="rounded-full border px-3 py-1">{formatTenantStatus(tenant.status)}</span>
                     <span className="rounded-full border px-3 py-1">
-                      Subscription: {tenant.subscriptionStatus}
+                      Obuna: {formatSubscriptionStatus(tenant.subscriptionStatus)}
                     </span>
                     {tenant.planCode && (
-                      <span className="rounded-full border px-3 py-1">Plan: {tenant.planCode}</span>
+                      <span className="rounded-full border px-3 py-1">Tarif: {tenant.planCode}</span>
                     )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" onClick={() => setFactoryDrawerOpen(true)}>
-                    Factory yaratish
-                  </Button>
-                  <Button variant="outline" onClick={() => {
-                    setOwnerForm((current) => ({
-                      ...current,
-                      factoryId: current.factoryId || tenant.factories[0]?.id || "",
-                    }));
-                    setOwnerDrawerOpen(true);
-                  }}>
-                    Owner user yaratish
-                  </Button>
+                  {!hasMainAccount ? (
+                    <Button variant="outline" onClick={() => setOwnerDrawerOpen(true)}>
+                      Asosiy account ochish
+                    </Button>
+                  ) : null}
                   <Button onClick={() => setConfirmAction("activate")} disabled={tenant.status === "ACTIVE"}>
-                    Activate
+                    Faollashtirish
                   </Button>
                   <Button variant="outline" onClick={() => setConfirmAction("suspend")} disabled={tenant.status === "SUSPENDED"}>
-                    Suspend
+                    To‘xtatish
                   </Button>
                 </div>
               </div>
@@ -165,34 +213,50 @@ export default function PlatformTenantDetailPage() {
 
             {generatedPassword && (
               <section className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                <p className="font-semibold">Temporary password — faqat bir marta ko‘rsatiladi</p>
+                <p className="font-semibold">Vaqtinchalik parol — faqat bir marta ko‘rsatiladi</p>
                 <p className="mt-1 font-mono">{generatedPassword}</p>
               </section>
             )}
 
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="panel p-5">
-                <h2 className="font-semibold">Factorylar</h2>
+                <h2 className="font-semibold">Filiallar</h2>
                 <div className="mt-4 space-y-3">
-                  {tenant.factories.length === 0 && <p className="text-sm text-muted-foreground">Factory yo‘q.</p>}
+                  {tenant.factories.length === 0 && <p className="text-sm text-muted-foreground">Filial yo‘q.</p>}
                   {tenant.factories.map((factory) => (
                     <div key={factory.id} className="rounded-xl border p-3">
                       <p className="font-medium">{factory.name}</p>
-                      <p className="text-xs text-muted-foreground">{factory.id}</p>
+                      {factory.location ? (
+                        <p className="text-xs text-muted-foreground">{factory.location}</p>
+                      ) : null}
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="panel p-5">
-                <h2 className="font-semibold">Tenant userlar</h2>
+                <h2 className="font-semibold">Foydalanuvchilar</h2>
                 <div className="mt-4 space-y-3">
-                  {tenant.users.length === 0 && <p className="text-sm text-muted-foreground">User yo‘q.</p>}
+                  {tenant.users.length === 0 && <p className="text-sm text-muted-foreground">Foydalanuvchi yo‘q.</p>}
                   {tenant.users.map((user) => (
-                    <div key={user.id} className="rounded-xl border p-3">
+                    <button
+                      key={user.id}
+                      type="button"
+                      className="w-full rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-muted/30"
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setPasswordForm({ password: "" });
+                        updatePassword.reset();
+                      }}
+                    >
                       <p className="font-medium">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email} · {user.status}</p>
-                    </div>
+                      <p className="text-xs text-muted-foreground">{user.email} · {formatTenantStatus(user.status)}</p>
+                      {user.roles?.length ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Rol: {user.roles.map(formatUserRole).join(", ")}
+                        </p>
+                      ) : null}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -209,7 +273,7 @@ export default function PlatformTenantDetailPage() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {Object.entries(health.metrics).map(([key, value]) => (
                     <div key={key} className="rounded-xl border p-3">
-                      <p className="text-xs text-muted-foreground">{key}</p>
+                      <p className="text-xs text-muted-foreground">{formatHealthMetricLabel(key)}</p>
                       <p className="mt-1 text-2xl font-bold">{value}</p>
                     </div>
                   ))}
@@ -223,25 +287,7 @@ export default function PlatformTenantDetailPage() {
           </div>
         )}
 
-        <Drawer open={factoryDrawerOpen} onOpenChange={setFactoryDrawerOpen} title="Factory yaratish">
-          <form className="space-y-4" onSubmit={submitFactory}>
-            <FormField htmlFor="factory-name" label="Factory nomi" required>
-              <Input id="factory-name" value={factoryForm.name} onChange={(event) => setFactoryForm({ ...factoryForm, name: event.target.value })} />
-            </FormField>
-            <FormField htmlFor="factory-location" label="Location">
-              <Input id="factory-location" value={factoryForm.location} onChange={(event) => setFactoryForm({ ...factoryForm, location: event.target.value })} />
-            </FormField>
-            <p className="text-xs text-muted-foreground">
-              Factory bilan birga Main Warehouse, zonalar va ishlab chiqarish bosqichlari yaratiladi.
-            </p>
-            {createFactory.isError && <p className="text-sm text-rose-300">Factory yaratilmadi.</p>}
-            <Button className="w-full" disabled={!factoryForm.name.trim() || createFactory.isPending}>
-              {createFactory.isPending ? "Yaratilmoqda..." : "Factory yaratish"}
-            </Button>
-          </form>
-        </Drawer>
-
-        <Drawer open={ownerDrawerOpen} onOpenChange={setOwnerDrawerOpen} title="Owner user yaratish">
+        <Drawer open={ownerDrawerOpen} onOpenChange={setOwnerDrawerOpen} title="Asosiy account ochish">
           <form className="space-y-4" onSubmit={submitOwner}>
             <FormField htmlFor="owner-name" label="Ism" required>
               <Input id="owner-name" value={ownerForm.name} onChange={(event) => setOwnerForm({ ...ownerForm, name: event.target.value })} />
@@ -252,34 +298,82 @@ export default function PlatformTenantDetailPage() {
             <FormField htmlFor="owner-password" label="Parol">
               <Input id="owner-password" type="text" value={ownerForm.password} onChange={(event) => setOwnerForm({ ...ownerForm, password: event.target.value })} />
             </FormField>
-            <FormField htmlFor="owner-factory" label="Factory" required>
-              <select
-                id="owner-factory"
-                className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
-                value={ownerForm.factoryId}
-                onChange={(event) => setOwnerForm({ ...ownerForm, factoryId: event.target.value })}
-              >
-                <option value="">Factory tanlang</option>
-                {tenant?.factories.map((factory) => (
-                  <option key={factory.id} value={factory.id}>{factory.name}</option>
-                ))}
-              </select>
-            </FormField>
-            {createOwner.isError && <p className="text-sm text-rose-300">Owner user yaratilmadi.</p>}
-            <Button className="w-full" disabled={!ownerForm.name.trim() || !ownerForm.email.trim() || !ownerForm.factoryId || createOwner.isPending}>
-              {createOwner.isPending ? "Yaratilmoqda..." : "Owner user yaratish"}
+            <p className="text-xs text-muted-foreground">
+              Asosiy account korxona ichiga kiradi. Agar korxonada hali filial bo‘lmasa, tizim avtomatik Asosiy filial yaratadi.
+            </p>
+            {createOwner.isError && <p className="text-sm text-rose-300">Asosiy account yaratilmadi.</p>}
+            <Button className="w-full" disabled={!ownerForm.name.trim() || !ownerForm.email.trim() || createOwner.isPending}>
+              {createOwner.isPending ? "Yaratilmoqda..." : "Asosiy account ochish"}
             </Button>
           </form>
+        </Drawer>
+
+        <Drawer
+          open={Boolean(selectedUser)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedUser(null);
+              setPasswordForm({ password: "" });
+              updatePassword.reset();
+            }
+          }}
+          title={selectedUser?.name ?? "Foydalanuvchi"}
+          description="Foydalanuvchi ma’lumotlari va parolini yangilash"
+        >
+          {selectedUser ? (
+            <div className="space-y-5">
+              <section className="rounded-xl border p-4 text-sm">
+                <p className="font-medium">{selectedUser.name}</p>
+                <p className="mt-1 text-muted-foreground">{selectedUser.email}</p>
+                <p className="mt-1 text-muted-foreground">Holat: {formatTenantStatus(selectedUser.status)}</p>
+                {selectedUser.roles?.length ? (
+                  <p className="mt-1 text-muted-foreground">Rol: {selectedUser.roles.map(formatUserRole).join(", ")}</p>
+                ) : null}
+                {selectedUser.factories?.length ? (
+                  <p className="mt-1 text-muted-foreground">Filial: {selectedUser.factories.join(", ")}</p>
+                ) : null}
+              </section>
+
+              <form className="space-y-4" onSubmit={submitPassword}>
+                <FormField htmlFor="tenant-user-password" label="Yangi parol" required>
+                  <Input
+                    id="tenant-user-password"
+                    type="text"
+                    minLength={8}
+                    value={passwordForm.password}
+                    onChange={(event) => setPasswordForm({ password: event.target.value })}
+                  />
+                </FormField>
+                {updatePassword.isSuccess ? (
+                  <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+                    Parol yangilandi.
+                  </p>
+                ) : null}
+                {updatePassword.isError ? (
+                  <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+                    Parol yangilanmadi. Ma’lumotlarni tekshiring.
+                  </p>
+                ) : null}
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={passwordForm.password.trim().length < 8 || updatePassword.isPending}
+                >
+                  {updatePassword.isPending ? "Yangilanmoqda..." : "Parolni yangilash"}
+                </Button>
+              </form>
+            </div>
+          ) : null}
         </Drawer>
 
         <ConfirmDialog
           open={confirmAction !== null}
           onOpenChange={(open) => !open && setConfirmAction(null)}
-          title={confirmAction === "activate" ? "Tenantni activate qilish" : "Tenantni suspend qilish"}
+          title={confirmAction === "activate" ? "Korxonani faollashtirish" : "Korxonani to‘xtatish"}
           description={
             confirmAction === "activate"
-              ? "Tenant Faol holatga o‘tkaziladi."
-              : "Tenant SUSPENDED holatga o‘tkaziladi. Login enforcement keyingi milestone’da."
+              ? "Korxona faol holatga o‘tkaziladi."
+              : "Korxona vaqtincha to‘xtatiladi. Bu holatda foydalanuvchilar kirishi cheklanishi kerak."
           }
           confirmLabel="Tasdiqlash"
           destructive={confirmAction === "suspend"}

@@ -19,6 +19,7 @@ export interface PlatformTenant {
 export interface PlatformFactory {
   id: string;
   name: string;
+  location?: string | null;
   createdAt: string;
 }
 
@@ -28,6 +29,8 @@ export interface PlatformTenantUser {
   email: string;
   status: string;
   createdAt: string;
+  roles?: string[];
+  factories?: string[];
 }
 
 export interface PlatformTenantDetails extends PlatformTenant {
@@ -88,7 +91,7 @@ export const platformAdminApi = {
     ),
   createOwnerUser: (
     tenantId: string,
-    payload: { name: string; email: string; password?: string; factoryId: string },
+    payload: { name: string; email: string; password?: string; factoryId?: string },
   ) =>
     platformApiClient<{
       data: PlatformTenantUser & { generatedPassword: string | null };
@@ -97,6 +100,19 @@ export const platformAdminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  updateTenantUserPassword: (
+    tenantId: string,
+    userId: string,
+    payload: { password: string },
+  ) =>
+    platformApiClient<{ data: PlatformTenantUser }>(
+      `/platform-admin/tenants/${tenantId}/users/${userId}/password`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
   activateTenant: (tenantId: string) =>
     platformApiClient<{ data: PlatformTenant }>(
       `/platform-admin/tenants/${tenantId}/activate`,

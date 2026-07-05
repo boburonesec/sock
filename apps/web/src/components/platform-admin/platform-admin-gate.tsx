@@ -27,7 +27,7 @@ export function PlatformAdminGate({ children }: { children: React.ReactNode }) {
   if (!hasLoadedSession || isLoadingSession) {
     return (
       <main className="grid min-h-screen place-items-center bg-background text-foreground">
-        <LoadingState label="Platform sessiyasi tekshirilmoqda..." />
+        <LoadingState label="Admin sessiyasi tekshirilmoqda..." />
       </main>
     );
   }

@@ -2,6 +2,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 
@@ -16,6 +17,9 @@ export class CreatePlatformTenantDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\+?[0-9\s()-]{7,24}$/, {
+    message: 'Phone number format is invalid.',
+  })
   contactPhone?: string;
 
   @IsOptional()
@@ -54,7 +58,14 @@ export class CreatePlatformOwnerUserDto {
   @MinLength(8)
   password?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  factoryId!: string;
+  factoryId?: string;
+}
+
+export class UpdatePlatformTenantUserPasswordDto {
+  @IsString()
+  @MinLength(8)
+  password!: string;
 }

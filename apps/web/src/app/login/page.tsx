@@ -1,20 +1,16 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
 
-const demoEmail = "owner@paypoq.local";
-const demoPassword = "ChangeMe123!";
-
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState(demoEmail);
-  const [password, setPassword] = useState(demoPassword);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const login = useAuthStore((state) => state.login);
   const refreshSession = useAuthStore((state) => state.refreshSession);
@@ -94,18 +90,6 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-4 text-center text-sm">
-          <Link className="text-muted-foreground hover:text-foreground" href="/admin/login">
-            Platform admin paneli
-          </Link>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-          <p className="font-semibold">LOCAL DEV ONLY</p>
-          <p className="mt-1">
-            {demoEmail} / {demoPassword}
-          </p>
-        </div>
       </section>
     </main>
   );
