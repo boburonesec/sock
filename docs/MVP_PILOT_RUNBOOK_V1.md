@@ -354,7 +354,7 @@ data.
 Current MVP limitations are documented in:
 
 - `docs/MVP_KNOWN_LIMITATIONS_V2.md`
-- `docs/MVP_RELEASE_CANDIDATE_QA_V2.md`
+- `docs/USER_GUIDE_V1.md`
 
 Most important pilot limitations:
 

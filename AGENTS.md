@@ -25,7 +25,9 @@ paypoq-os/
 ├── docs/
 ├── apps/
 │   ├── web/        # Next.js frontend
-│   └── api/        # NestJS backend
+│   ├── api/        # NestJS backend
+│   ├── bot/        # Telegram employee/client bot
+│   └── mobile/     # Expo React Native mobile
 ├── packages/
 │   └── shared/     # shared types, constants, schemas
 └── AGENTS.md
@@ -35,13 +37,20 @@ paypoq-os/
 
 Before making product or architecture decisions, read:
 
-docs/PRODUCT_SPECIFICATION_V1.md
+docs/product-requirements.md
 docs/DOMAIN_MODEL_V1.md
-docs/PAGE_MAP_V1.md
-docs/UI_SPECIFICATION_V1.md
-docs/CODEX_MASTER_CONTEXT_V1.md
+docs/page-map-v1.md
+docs/ui-specification-v1.md
+docs/codex-master-context-v1.md
+
+How to install and operate the product:
+
+docs/USER_GUIDE_V1.md
 
 If a required rule is missing or ambiguous, do not invent business logic. Ask for clarification.
+
+Do not recreate deleted historical QA/audit docs. Keep `docs/` lean: product
+source-of-truth, USER_GUIDE, limitations, deploy/runbook, and active policies only.
 
 ## Engineering Principles
 
@@ -76,7 +85,7 @@ TypeScript
 Tailwind CSS
 shadcn/ui
 Zustand only for UI state
-TanStack Query for API state later
+TanStack Query for API state
 
 Rules:
 

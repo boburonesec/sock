@@ -14,12 +14,16 @@ fully hardened production deployment.
 
 ## Auth and RBAC
 
-- Only the demo Owner user is seeded by default.
-- Limited-role `403` testing is not yet repeatably automated.
+- Demo seed creates Owner plus limited-role users (`manager`, `seller`,
+  `warehouse`, `shift`, `accountant`) and a platform admin
+  (`platform@paypoq.local`).
+- RBAC is exercised by `pnpm smoke:mvp` and related smoke scripts; full
+  automated integration suite beyond smoke is still limited.
 - No password reset flow.
 - No invite user flow.
 - No factory switcher UI yet.
-- Factory TV remains intentionally public at the frontend route level.
+- Factory TV requires `FACTORY_TV_ACCESS_TOKEN` on the API summary endpoint;
+  the `/tv` frontend route is still a display-only screen without tenant login.
 
 ## Settings and Master Data
 

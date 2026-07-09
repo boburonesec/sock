@@ -5,9 +5,9 @@
 Bu runbook Paypoq OS Telegram botini local yoki pilot muhitda ishga tushirish,
 tekshirish va xavfsiz boshqarish bo‘yicha amaliy qo‘llanma.
 
-Deployment hardening qarorlari uchun qarang:
+Umumiy foydalanish:
 
-- `docs/TELEGRAM_BOT_DEPLOYMENT_HARDENING_V1.md`
+- `docs/USER_GUIDE_V1.md` (Telegram bo‘limi)
 
 Bot v1:
 

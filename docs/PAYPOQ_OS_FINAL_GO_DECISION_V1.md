@@ -1,7 +1,7 @@
 # Paypoq OS Final GO Decision v1
 
 Date: 2026-07-02  
-Decision source: `docs/PAYPOQ_OS_FINAL_PRODUCTION_AUDIT_V1.md`
+Decision source: final production audit (historical audit doc removed; this verdict remains active)
 
 ## Verdict Summary
 

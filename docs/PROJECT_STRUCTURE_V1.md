@@ -15,12 +15,17 @@ Paypoq OS monorepo sifatida yuritiladi:
 paypoq-os/
 ├── docs/
 ├── apps/
-│   ├── api/
-│   └── web/
+│   ├── api/        # NestJS + Prisma backend
+│   ├── web/        # Next.js frontend
+│   ├── bot/        # Telegram bot
+│   └── mobile/     # Expo React Native
 ├── packages/
 │   └── shared/
+├── scripts/
+├── configs/
 ├── AGENTS.md
 ├── package.json
+├── docker-compose.yml
 └── pnpm-workspace.yaml
 ```
 
@@ -34,18 +39,18 @@ Har qanday katta o‘zgarishdan oldin o‘qilishi kerak.
 
 ### `package.json`
 
-Root workspace scripts:
+Root workspace scripts (asosiy):
 
 - `pnpm dev` — web dev server
 - `pnpm build` — web build
 - `pnpm api:dev` — API dev server
-- `pnpm api:build` — API build
-- `pnpm api:start` — built API start
-- `pnpm prisma:generate`
-- `pnpm prisma:migrate:dev`
-- `pnpm prisma:migrate:deploy`
-- `pnpm prisma:seed`
-- `pnpm smoke:mvp`
+- `pnpm api:build` / `pnpm api:start`
+- `pnpm bot:dev` / `pnpm bot:build` / `pnpm bot:start`
+- `pnpm mobile:dev` / `pnpm mobile:typecheck`
+- `pnpm prisma:generate` / `pnpm prisma:migrate:dev` / `pnpm prisma:migrate:deploy` / `pnpm prisma:seed`
+- `pnpm demo:prepare` / `pnpm demo:seed` / `pnpm demo:reset`
+- `pnpm smoke:mvp` / `pnpm deploy:smoke`
+- `pnpm backup:db` / `pnpm restore:db`
 
 ### `pnpm-workspace.yaml`
 
@@ -88,22 +93,26 @@ apps/api/src/modules/
 ├── dashboard/
 ├── employee/
 ├── finance/
-├── identity/
+├── identity/          # tenant auth + platform auth
+├── mobile/            # employee self-service mobile API
+├── organization/      # company/branch settings
+├── platform-admin/    # SaaS super-admin
 ├── product/
 ├── production/
 ├── reports/
 ├── sales/
 ├── settings/
 ├── supplier/
+├── telegram/          # bot internal + link tokens
 └── warehouse/
 ```
 
-Placeholder/future modules ham mavjud:
+Placeholder/thin modules:
 
 ```text
 factory/
 notification/
-payroll/
+payroll/     # payroll logic currently lives under finance
 tenant/
 ```
 
@@ -215,6 +224,18 @@ apps/web/src/components/
 
 Yangi primitive yaratishdan oldin mavjud componentlarni tekshiring.
 
+## Telegram bot: `apps/bot`
+
+Read-only Telegram bot (employee salary/activity, client orders/debt).
+
+API’ni `BOT_INTERNAL_API_KEY` orqali chaqiradi. Business hisob-kitob qilmaydi.
+
+## Mobile: `apps/mobile`
+
+Expo Router foundation: login, employee self-service, manager read dashboards.
+
+Mavjud tenant auth endpointlarini ishlatadi; offline write va push V1’da yo‘q.
+
 ## Shared package: `packages/shared`
 
 Hozircha placeholder.
@@ -234,33 +255,34 @@ Quyidagilar taqiqlanadi:
 
 ## Docs: `docs`
 
-Docs product va engineering source-of-truth sifatida ishlatiladi.
+Docs lean saqlanadi. Tarixiy QA/audit/go-no-go dublikatlar o‘chirilgan.
 
-Muhim hujjatlar:
+Mahsulot source-of-truth (AGENTS.md bilan mos):
 
+- `product-requirements.md`
 - `DOMAIN_MODEL_V1.md`
-- `DATABASE_DESIGN_REVIEW_V1.md`
-- `PRISMA_SCHEMA_REVIEW_V1.md`
-- `MVP_RELEASE_CANDIDATE_QA_V2.md`
+- `page-map-v1.md`
+- `ui-specification-v1.md`
+- `codex-master-context-v1.md`
+
+Asosiy foydalanish:
+
+- `USER_GUIDE_V1.md`
+
+Operatsion:
+
 - `MVP_KNOWN_LIMITATIONS_V2.md`
 - `MVP_SMOKE_TEST_SUITE_V1.md`
 - `MVP_PILOT_RUNBOOK_V1.md`
-- `MVP_DEPLOYMENT_CHECKLIST_V1.md`
+- `DOCKER_DEPLOYMENT_V1.md`
+- `PM2_PRODUCTION_DEPLOYMENT_V1.md`
+- `BACKUP_AND_RECOVERY_V1.md`
+- `SECRETS_MANAGEMENT_V1.md`
+- `TELEGRAM_BOT_RUNBOOK_V1.md`
 - `PRODUCT_ROADMAP_V1.md`
-- `OPERATIONS_GUIDE_V1.md`
-
-## Cleanup notes
-
-Hozir repo’da lowercase eski product docs ham bor:
-
-- `product-requirements.md`
-- `codex-master-context-v1.md`
-- `engineering-principles.md`
-- `page-map-v1.md`
-- `ui-specification-v1.md`
-
-Ular tarixiy/source material sifatida foydali bo‘lishi mumkin. Shu sababli bu
-stabilization pass’da o‘chirilmagan.
+- `PAYPOQ_OS_FINAL_GO_DECISION_V1.md`
+- `design-system.md`
+- correction/delivery/payment policy docs
 
 ## Developer workflow
 
