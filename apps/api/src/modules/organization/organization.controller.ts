@@ -5,6 +5,7 @@ import { RequestContext } from '../identity/request-context/request-context.type
 import {
   CreateOrganizationFactoryDto,
   CreateOrganizationManagerDto,
+  CreateOrganizationUserDto,
   UpdateOrganizationUserFactoryAccessDto,
   UpdateOrganizationUserPasswordDto,
 } from './organization.dto';
@@ -39,6 +40,14 @@ export class OrganizationController {
     @Body() dto: CreateOrganizationManagerDto,
   ) {
     return this.organizationService.createManager(context, dto);
+  }
+
+  @Post('users')
+  createUser(
+    @CurrentContext() context: RequestContext,
+    @Body() dto: CreateOrganizationUserDto,
+  ) {
+    return this.organizationService.createUser(context, dto);
   }
 
   @Patch('users/:id/password')

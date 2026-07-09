@@ -288,12 +288,13 @@ async function runOrganizationSmoke() {
   pass('single tenant owner cannot create extra factory through API');
 
   const singleManagerEmail = `single-manager-${suffix}@paypoq.local`;
-  const singleManagerResponse = await request('/organization/managers', {
+  const singleManagerResponse = await request('/organization/users', {
     method: 'POST',
     body: {
       name: `Single Manager ${suffix}`,
       email: singleManagerEmail,
       password: managerPassword,
+      roleName: 'Manager',
     },
   });
   assert(singleManagerResponse.data.id, 'single manager creation should return id');
@@ -337,12 +338,25 @@ async function runOrganizationSmoke() {
   pass('multi owner creates factory', { factoryId: factory.id });
 
   const managerEmail = `manager-${suffix}@paypoq.local`;
-  const managerResponse = await request('/organization/managers', {
+  await expectStatus('/organization/users', 400, {
+    method: 'POST',
+    body: {
+      name: `Blocked Owner ${suffix}`,
+      email: `blocked-owner-${suffix}@paypoq.local`,
+      password: managerPassword,
+      roleName: 'Owner',
+      factoryId: factory.id,
+    },
+  });
+  pass('owner role cannot be created from organization endpoint');
+
+  const managerResponse = await request('/organization/users', {
     method: 'POST',
     body: {
       name: `Smoke Manager ${suffix}`,
       email: managerEmail,
       password: managerPassword,
+      roleName: 'Manager',
       factoryId: factory.id,
     },
   });
@@ -350,6 +364,40 @@ async function runOrganizationSmoke() {
   assert(manager.id, 'manager creation should return id');
   assert(manager.roles.includes('Manager'), 'created user should be Manager');
   pass('owner creates manager', { managerId: manager.id });
+
+  const roleCases = [
+    ['Seller', 'seller'],
+    ['Warehouse Operator', 'warehouse'],
+    ['Shift Receiver', 'shift'],
+    ['Accountant', 'accountant'],
+  ];
+  const createdRoleUsers = [];
+
+  for (const [roleName, emailPrefix] of roleCases) {
+    const userEmail = `${emailPrefix}-${suffix}@paypoq.local`;
+    const response = await request('/organization/users', {
+      method: 'POST',
+      body: {
+        name: `Smoke ${roleName} ${suffix}`,
+        email: userEmail,
+        password: managerPassword,
+        roleName,
+        factoryId: factory.id,
+      },
+    });
+
+    assert(response.data.id, `${roleName} creation should return id`);
+    assert(response.data.roles.includes(roleName), `created user should be ${roleName}`);
+
+    const session = await login(userEmail, managerPassword);
+    assert(session.roles.includes(roleName), `${roleName} user can login with correct role`);
+    createdRoleUsers.push(response.data);
+  }
+
+  accessToken = refreshedOwnerSession.accessToken;
+  pass('owner creates all supported organization roles', {
+    roles: createdRoleUsers.map((user) => user.roles[0]),
+  });
 
   await request(`/organization/users/${manager.id}/password`, {
     method: 'PATCH',
@@ -418,25 +466,33 @@ async function runOrganizationSmoke() {
   const ordinarySession = await login(ordinaryEmail, ordinaryPassword);
   accessToken = ordinarySession.accessToken;
   await expectStatus('/organization/users', 403);
+  await expectStatus('/organization/users', 403, {
+    method: 'POST',
+    body: {
+      name: `Blocked User ${suffix}`,
+      email: `blocked-user-${suffix}@paypoq.local`,
+      password: managerPassword,
+      roleName: 'Seller',
+      factoryId: factory.id,
+    },
+  });
   pass('ordinary user gets 403');
 
+  const auditEntityIds = [factory.id, manager.id, ...createdRoleUsers.map((user) => user.id)];
   const auditCount = await prisma.auditLog.count({
     where: {
       action: {
         in: [
           'ORGANIZATION_FACTORY_CREATED',
-          'ORGANIZATION_MANAGER_CREATED',
+          'ORGANIZATION_USER_CREATED',
           'ORGANIZATION_USER_PASSWORD_RESET',
           'ORGANIZATION_USER_FACTORY_ACCESS_UPDATED',
         ],
       },
-      OR: [
-        { entityId: factory.id },
-        { entityId: manager.id },
-      ],
+      OR: auditEntityIds.map((entityId) => ({ entityId })),
     },
   });
-  assert(auditCount >= 4, 'organization writes should create audit logs');
+  assert(auditCount >= 8, 'organization writes should create audit logs');
   pass('audit logs are created', { auditCount });
 
   const platformAuditCount = await prisma.platformAuditLog.count({

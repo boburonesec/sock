@@ -13,6 +13,7 @@ import { RequestContext } from '../identity/request-context/request-context.type
 import {
   CreateOrganizationFactoryDto,
   CreateOrganizationManagerDto,
+  CreateOrganizationUserDto,
   UpdateOrganizationUserFactoryAccessDto,
   UpdateOrganizationUserPasswordDto,
 } from './organization.dto';
@@ -38,6 +39,16 @@ const DEFAULT_PRODUCTION_STAGES = [
   'Qadoqlash',
   'Ombor',
 ] as const;
+
+const ORGANIZATION_USER_ROLES = [
+  'Manager',
+  'Accountant',
+  'Seller',
+  'Warehouse Operator',
+  'Shift Receiver',
+] as const;
+
+type OrganizationUserRole = (typeof ORGANIZATION_USER_ROLES)[number];
 
 @Injectable()
 export class OrganizationService {
@@ -170,9 +181,17 @@ export class OrganizationService {
   }
 
   async createManager(context: RequestContext, dto: CreateOrganizationManagerDto) {
+    return this.createUser(context, {
+      ...dto,
+      roleName: 'Manager',
+    });
+  }
+
+  async createUser(context: RequestContext, dto: CreateOrganizationUserDto) {
     this.assertOwner(context);
-    const name = this.requiredTrim(dto.name, 'Manager name is required.');
-    const email = this.requiredTrim(dto.email, 'Manager email is required.').toLowerCase();
+    const roleName = this.requireOrganizationUserRole(dto.roleName);
+    const name = this.requiredTrim(dto.name, 'User name is required.');
+    const email = this.requiredTrim(dto.email, 'User email is required.').toLowerCase();
     const password = this.requiredTrim(dto.password, 'Password is required.');
     const factoryId =
       context.branchMode === 'MULTI'
@@ -183,17 +202,17 @@ export class OrganizationService {
       const factory = factoryId
         ? await this.findFactoryOrThrow(tx, context.tenantId, factoryId)
         : await this.findDefaultFactoryOrThrow(tx, context.tenantId);
-      const managerRole = await tx.role.findUnique({
+      const role = await tx.role.findUnique({
         where: {
           tenantId_name: {
             tenantId: context.tenantId,
-            name: 'Manager',
+            name: roleName,
           },
         },
       });
 
-      if (!managerRole || managerRole.deletedAt) {
-        throw new ConflictException('Manager role is not configured.');
+      if (!role || role.deletedAt) {
+        throw new ConflictException('Role is not configured.');
       }
 
       const existingUser = await tx.user.findUnique({
@@ -254,13 +273,13 @@ export class OrganizationService {
           tenantId_userId_roleId: {
             tenantId: context.tenantId,
             userId: user.id,
-            roleId: managerRole.id,
+            roleId: role.id,
           },
         },
         create: {
           tenantId: context.tenantId,
           userId: user.id,
-          roleId: managerRole.id,
+          roleId: role.id,
         },
         update: {},
       });
@@ -285,19 +304,19 @@ export class OrganizationService {
         tenantId: context.tenantId,
         factoryId: factory.id,
         userId: context.userId,
-        action: 'ORGANIZATION_MANAGER_CREATED',
+        action: 'ORGANIZATION_USER_CREATED',
         entityType: 'User',
         entityId: user.id,
         after: {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: 'Manager',
+          roleName,
           factoryId: factory.id,
         },
       });
 
-      return { user, factory };
+      return { user, factory, roleName };
     });
 
     return {
@@ -306,7 +325,7 @@ export class OrganizationService {
         name: result.user.name,
         email: result.user.email,
         status: result.user.status,
-        roles: ['Manager'],
+        roles: [result.roleName],
         factories: [{ id: result.factory.id, name: result.factory.name }],
         createdAt: result.user.createdAt,
       },
@@ -318,7 +337,7 @@ export class OrganizationService {
     userId: string,
     dto: UpdateOrganizationUserPasswordDto,
   ) {
-    this.assertOrganizationReader(context);
+    this.assertOwner(context);
     const password = this.requiredTrim(dto.password, 'Password is required.');
 
     const user = await this.findUserForManagement(context, userId);
@@ -709,6 +728,16 @@ export class OrganizationService {
     }
 
     return trimmed;
+  }
+
+  private requireOrganizationUserRole(roleName: string | undefined): OrganizationUserRole {
+    const trimmed = this.requiredTrim(roleName, 'Role is required.');
+
+    if (!ORGANIZATION_USER_ROLES.includes(trimmed as OrganizationUserRole)) {
+      throw new BadRequestException('Role is not allowed.');
+    }
+
+    return trimmed as OrganizationUserRole;
   }
 
   private isOwner(context: RequestContext): boolean {
