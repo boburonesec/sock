@@ -36,7 +36,7 @@ export function AdvancesTable({ advances }: { advances: Advance[] }) {
           <DataTableHeader>Xodim</DataTableHeader>
           <DataTableHeader>Summa</DataTableHeader>
           <DataTableHeader>Sabab</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>So‘rov sanasi</DataTableHeader>
           <DataTableHeader>Tasdiqlovchi</DataTableHeader>
           <DataTableHeader>To‘lov sanasi</DataTableHeader>

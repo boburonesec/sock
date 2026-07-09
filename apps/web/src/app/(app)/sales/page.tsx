@@ -6,7 +6,7 @@ export default function SalesPage() {
     <>
       <PageHeader
         title="Sotuvlar"
-        description="Clientlar, buyurtmalar, to‘lovlar va qarzdorlik bo‘yicha umumiy ko‘rinish"
+        description="Mijozlar, buyurtmalar, to‘lovlar va qarzdorlik bo‘yicha umumiy ko‘rinish"
       />
       <SalesOverviewModule />
     </>

@@ -18,16 +18,16 @@ import type {
 } from "@/lib/api/supplier";
 
 const allocationSchema = z.object({
-  purchaseId: z.string().min(1, "Purchase tanlanishi shart."),
+  purchaseId: z.string().min(1, "Xarid tanlanishi shart."),
   amount: z
     .string()
     .transform((value) => value.trim())
-    .refine((value) => Number(value) > 0, "Allocation summasi musbat bo‘lishi kerak."),
+    .refine((value) => Number(value) > 0, "Taqsimot summasi musbat bo‘lishi kerak."),
 });
 
 const paymentFormSchema = z
   .object({
-    supplierId: z.string().min(1, "Supplier tanlanishi shart."),
+    supplierId: z.string().min(1, "Yetkazib beruvchi tanlanishi shart."),
     amount: z
       .string()
       .transform((value) => value.trim())
@@ -37,7 +37,7 @@ const paymentFormSchema = z
     }),
     paymentDate: z.string().optional(),
     note: z.string().optional(),
-    allocations: z.array(allocationSchema).min(1, "Kamida bitta allocation kerak."),
+    allocations: z.array(allocationSchema).min(1, "Kamida bitta taqsimot kerak."),
   })
   .refine(
     (values) => {
@@ -50,12 +50,18 @@ const paymentFormSchema = z
       return Math.abs(paymentAmount - allocationTotal) < 0.000001;
     },
     {
-      message: "Allocationlar jami to‘lov summasiga teng bo‘lishi kerak.",
+      message: "Taqsimotlar jami to‘lov summasiga teng bo‘lishi kerak.",
       path: ["allocations"],
     },
   );
 
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
+
+const paymentStatusLabel: Record<string, string> = {
+  UNPAID: "To‘lanmagan",
+  PARTIALLY_PAID: "Qisman to‘langan",
+  PAID: "To‘langan",
+};
 
 interface SupplierPaymentDrawerProps {
   open: boolean;
@@ -138,8 +144,8 @@ export function SupplierPaymentDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Supplier to‘lovi"
-      description="V1’da to‘lov summasi to‘liq purchase yozuvlariga allocation qilinadi."
+      title="Yetkazib beruvchi to‘lovi"
+      description="To‘lov summasi to‘liq xarid yozuvlariga taqsimlanadi."
       className="max-w-4xl"
     >
       <form
@@ -149,7 +155,7 @@ export function SupplierPaymentDrawer({
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             htmlFor="supplierPaymentSupplier"
-            label="Supplier"
+            label="Yetkazib beruvchi"
             error={errors.supplierId?.message}
             required
           >
@@ -159,7 +165,7 @@ export function SupplierPaymentDrawer({
               aria-invalid={Boolean(errors.supplierId)}
               {...register("supplierId")}
             >
-              <option value="">Supplier tanlang</option>
+              <option value="">Yetkazib beruvchi tanlang</option>
               {suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>
                   {supplier.name}
@@ -216,9 +222,9 @@ export function SupplierPaymentDrawer({
         <section className="space-y-3 rounded-xl border bg-muted/10 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-semibold">Allocationlar</p>
+              <p className="font-semibold">Taqsimotlar</p>
               <p className="text-xs text-muted-foreground">
-                To‘lov summasi to‘liq purchase yozuvlariga bog‘lanishi shart.
+                To‘lov summasi to‘liq xarid yozuvlariga bog‘lanishi shart.
               </p>
             </div>
             <Button
@@ -240,7 +246,7 @@ export function SupplierPaymentDrawer({
               >
                 <FormField
                   htmlFor={`supplierPaymentPurchase-${field.id}`}
-                  label="Purchase"
+                  label="Xarid"
                   error={errors.allocations?.[index]?.purchaseId?.message}
                   required
                 >
@@ -250,11 +256,11 @@ export function SupplierPaymentDrawer({
                     aria-invalid={Boolean(errors.allocations?.[index]?.purchaseId)}
                     {...register(`allocations.${index}.purchaseId`)}
                   >
-                    <option value="">Purchase tanlang</option>
+                    <option value="">Xarid tanlang</option>
                     {supplierPurchases.map((purchase) => (
                       <option key={purchase.id} value={purchase.id}>
                         {purchase.purchaseNumber} · {purchase.totalAmount} so‘m ·{" "}
-                        {purchase.paymentStatus}
+                        {paymentStatusLabel[purchase.paymentStatus] ?? purchase.paymentStatus}
                       </option>
                     ))}
                   </Select>
@@ -262,7 +268,7 @@ export function SupplierPaymentDrawer({
 
                 <FormField
                   htmlFor={`supplierPaymentAllocation-${field.id}`}
-                  label="Allocation summa"
+                  label="Taqsimot summasi"
                   error={errors.allocations?.[index]?.amount?.message}
                   required
                 >
@@ -283,7 +289,7 @@ export function SupplierPaymentDrawer({
                     variant="outline"
                     disabled={formDisabled || fields.length === 1}
                     onClick={() => remove(index)}
-                    aria-label="Allocation qatorini o‘chirish"
+                    aria-label="Taqsimot qatorini o‘chirish"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -309,12 +315,12 @@ export function SupplierPaymentDrawer({
         </FormField>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
-          To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m · Allocation: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
+          To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m · Taqsimot: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
         </div>
 
         {selectedSupplierId && supplierPurchases.length === 0 ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Bu supplier uchun allocation qilinadigan purchase topilmadi.
+            Bu yetkazib beruvchi uchun taqsimlanadigan xarid topilmadi.
           </p>
         ) : null}
 

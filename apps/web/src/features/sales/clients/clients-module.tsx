@@ -45,13 +45,13 @@ export function ClientsModule() {
   });
 
   if (isPending) {
-    return <LoadingState label="Clientlar yuklanmoqda..." />;
+    return <LoadingState label="Mijozlar yuklanmoqda..." />;
   }
 
   if (isError) {
     return (
       <ErrorState
-        title="Clientlar yuklanmadi"
+        title="Mijozlar yuklanmadi"
         description={
           error instanceof Error
             ? error.message
@@ -92,17 +92,17 @@ export function ClientsModule() {
       <PageSection>
         <div className="grid gap-4 sm:max-w-sm">
           <KpiCard
-            label="Jami faol clientlar"
+            label="Jami faol mijozlar"
             value={`${clients.length} ta`}
-            description="ma’lumot qaytargan faol client yozuvlari"
+            description="tizim qaytargan faol mijoz yozuvlari"
             accent="primary"
           />
         </div>
       </PageSection>
 
       <PageSection
-        title="Clientlar"
-        description="Sotuvchilar MVP’da barcha clientlarni ko‘ra oladi."
+        title="Mijozlar"
+        description="Sotuvchilar hozircha barcha mijozlarni ko‘ra oladi."
       >
         <div className="mb-4 flex justify-end">
           <Button
@@ -113,7 +113,7 @@ export function ClientsModule() {
               setFormState({ mode: "create", client: null });
             }}
           >
-            Client qo‘shish
+            Mijoz qo‘shish
           </Button>
         </div>
         <ClientsTable clients={clients} onSelect={setSelectedClient} />
@@ -156,11 +156,11 @@ export function ClientsModule() {
             });
             setFeedback({
               tone: "success",
-              message: "Client ma’lumotlari yangilandi.",
+              message: "Mijoz ma’lumotlari yangilandi.",
             });
           } else {
             await createClient.mutateAsync(payload);
-            setFeedback({ tone: "success", message: "Yangi client yaratildi." });
+            setFeedback({ tone: "success", message: "Yangi mijoz yaratildi." });
           }
 
           setFormState(null);
@@ -173,11 +173,11 @@ export function ClientsModule() {
         onOpenChange={(open) => {
           if (!open) setClientToArchive(null);
         }}
-        title="Clientni arxivlash"
+        title="Mijozni arxivlash"
         description={
           clientToArchive
             ? `${clientToArchive.name} faol ro‘yxatdan chiqariladi. Buyurtmalar va to‘lovlar o‘chirilmaydi.`
-            : "Client arxivlanadi."
+            : "Mijoz arxivlanadi."
         }
         confirmLabel={
           archiveClient.isPending ? "Arxivlanmoqda..." : "Arxivlash"
@@ -201,7 +201,7 @@ export function ClientsModule() {
                 message:
                   mutationError instanceof Error
                     ? mutationError.message
-                    : "Clientni arxivlashda xatolik yuz berdi.",
+                    : "Mijozni arxivlashda xatolik yuz berdi.",
               });
             },
           });

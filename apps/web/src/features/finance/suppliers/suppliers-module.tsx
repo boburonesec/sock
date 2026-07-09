@@ -102,13 +102,13 @@ export function SuppliersModule() {
     materialsQuery.error;
 
   if (isPending) {
-    return <LoadingState label="Supplier ma’lumotlari yuklanmoqda..." />;
+    return <LoadingState label="Yetkazib beruvchi ma’lumotlari yuklanmoqda..." />;
   }
 
   if (isError) {
     return (
       <ErrorState
-        title="Supplier ma’lumotlari yuklanmadi"
+        title="Yetkazib beruvchi ma’lumotlari yuklanmadi"
         description={
           error instanceof Error
             ? error.message
@@ -167,34 +167,34 @@ export function SuppliersModule() {
       <PageSection>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
-            label="Supplierlar"
+            label="Yetkazib beruvchilar"
             value={`${suppliers.length} ta`}
-            description="ma’lumot qaytargan supplier yozuvlari"
+            description="tizim qaytargan yetkazib beruvchi yozuvlari"
             accent="primary"
           />
           <KpiCard
-            label="Supplier qarz hisob-kitobi"
+            label="Yetkazib beruvchi qarzi"
             value={`${debts.length} ta`}
-            description="Tizim hisoblagan debt yozuvlari"
+            description="Tizim hisoblagan qarz yozuvlari"
             accent="warning"
           />
           <KpiCard
             label="Xarid yozuvlari"
             value={`${purchases.length} ta`}
-            description="ma’lumot qaytargan purchase yozuvlari"
+            description="tizim qaytargan xarid yozuvlari"
             accent="neutral"
           />
           <KpiCard
             label="To‘lov yozuvlari"
             value={`${payments.length} ta`}
-            description="ma’lumot qaytargan payment yozuvlari"
+            description="tizim qaytargan to‘lov yozuvlari"
             accent="success"
           />
         </div>
       </PageSection>
 
       <PageSection
-        title="Supplier qarzdorligi"
+        title="Yetkazib beruvchi qarzdorligi"
         description="Qarz qiymatlari tizim hisob-kitob orqali qaytariladi."
       >
         <div className="mb-4 flex justify-end">
@@ -207,7 +207,7 @@ export function SuppliersModule() {
                 setFormState({ mode: "create", supplier: null });
               }}
             >
-              Supplier qo‘shish
+              Yetkazib beruvchi qo‘shish
             </Button>
             <Button
               variant="outline"
@@ -287,13 +287,13 @@ export function SuppliersModule() {
             });
             setFeedback({
               tone: "success",
-              message: "Supplier ma’lumotlari yangilandi.",
+              message: "Yetkazib beruvchi ma’lumotlari yangilandi.",
             });
           } else {
             await createSupplier.mutateAsync(payload);
             setFeedback({
               tone: "success",
-              message: "Yangi supplier yaratildi.",
+              message: "Yangi yetkazib beruvchi yaratildi.",
             });
           }
 
@@ -316,7 +316,7 @@ export function SuppliersModule() {
           await createPurchase.mutateAsync(payload);
           setFeedback({
             tone: "success",
-            message: "Supplier xaridi qayd qilindi.",
+            message: "Yetkazib beruvchi xaridi qayd qilindi.",
           });
           setIsPurchaseDrawerOpen(false);
           setSelectedDebt(null);
@@ -337,7 +337,7 @@ export function SuppliersModule() {
           await createPayment.mutateAsync(payload);
           setFeedback({
             tone: "success",
-            message: "Supplier to‘lovi qayd qilindi va allocation qilindi.",
+            message: "Yetkazib beruvchi to‘lovi qayd qilindi va xaridlarga taqsimlandi.",
           });
           setIsPaymentDrawerOpen(false);
           setSelectedDebt(null);
@@ -349,11 +349,11 @@ export function SuppliersModule() {
         onOpenChange={(open) => {
           if (!open) setSupplierToArchive(null);
         }}
-        title="Supplierni arxivlash"
+        title="Yetkazib beruvchini arxivlash"
         description={
           supplierToArchive
             ? `${supplierToArchive.name} faol ro‘yxatdan chiqariladi. Xaridlar va to‘lovlar o‘chirilmaydi.`
-            : "Supplier arxivlanadi."
+            : "Yetkazib beruvchi arxivlanadi."
         }
         confirmLabel={
           archiveSupplier.isPending ? "Arxivlanmoqda..." : "Arxivlash"
@@ -377,7 +377,7 @@ export function SuppliersModule() {
                 message:
                   mutationError instanceof Error
                     ? mutationError.message
-                    : "Supplierni arxivlashda xatolik yuz berdi.",
+                    : "Yetkazib beruvchini arxivlashda xatolik yuz berdi.",
               });
             },
           });

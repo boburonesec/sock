@@ -27,14 +27,14 @@ export function ClientsTable({
   onSelect: (client: Client) => void;
 }) {
   return (
-    <DataTable label="Clientlar ro‘yxati">
+    <DataTable label="Mijozlar ro‘yxati">
       <DataTableHead>
         <DataTableRow>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Telefon</DataTableHeader>
           <DataTableHeader>Manzil</DataTableHeader>
           <DataTableHeader>Izoh</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
@@ -64,8 +64,8 @@ export function ClientsTable({
         ) : (
           <EmptyTableState
             colSpan={5}
-            title="Clientlar mavjud emas"
-            description="Client qo‘shilgach, ular shu yerda ko‘rinadi."
+            title="Mijozlar mavjud emas"
+            description="Mijoz qo‘shilgach, ular shu yerda ko‘rinadi."
           />
         )}
       </tbody>

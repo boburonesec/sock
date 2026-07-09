@@ -35,7 +35,7 @@ export function MaterialDetailsDrawer({
         <div className="flex flex-wrap gap-2">
           <Button onClick={onReceive}>Material qabul qilish</Button>
           <Button disabled variant="outline">
-            Threshold sozlash · Tez orada
+            Minimal limit sozlash · Tez orada
           </Button>
         </div>
 
@@ -51,15 +51,15 @@ export function MaterialDetailsDrawer({
               Bu bo‘lim hozircha minimal limitni ko‘rsatmaydi.
             </p>
           </InfoCard>
-          <InfoCard title="Status">
+          <InfoCard title="Holat">
             <p className="text-xl font-bold">Mavjud emas</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Past qoldiq status ekranda hisoblanmaydi.
+              Past qoldiq holati ekranda hisoblanmaydi.
             </p>
           </InfoCard>
         </div>
 
-        <InfoCard title="Stock ma’lumoti">
+        <InfoCard title="Qoldiq ma’lumoti">
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>Ombor: {material.warehouse.name}</p>
             <p>Zona: {material.zone.name}</p>

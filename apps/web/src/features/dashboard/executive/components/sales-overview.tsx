@@ -7,8 +7,8 @@ export function SalesOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
   const items = [
     { label: "Oylik sotuv", value: `${kpis.monthlySales} so‘m` },
     { label: "Oylik xarajat", value: `${kpis.monthlyExpenses} so‘m` },
-    { label: "Client qarzi", value: `${kpis.totalClientDebt} so‘m` },
-    { label: "Supplier qarzi", value: `${kpis.totalSupplierDebt} so‘m` },
+    { label: "Mijoz qarzi", value: `${kpis.totalClientDebt} so‘m` },
+    { label: "Yetkazib beruvchi qarzi", value: `${kpis.totalSupplierDebt} so‘m` },
   ];
 
   return (

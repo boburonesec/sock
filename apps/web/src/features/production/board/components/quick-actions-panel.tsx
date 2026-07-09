@@ -36,4 +36,4 @@ const actions: {
   },
 ];
 interface QuickActionsPanelProps { onActionSelect: (action: ProductionAction) => void; }
-export function QuickActionsPanel({ onActionSelect }: QuickActionsPanelProps) { return <InfoCard title="Tezkor amallar" description="Production asosiy write flowlari real ma’lumotga ulangan"><div className="space-y-2">{actions.map(({ label, action, icon: Icon, status }) => <Button key={action} variant="outline" className="w-full justify-start" onClick={() => onActionSelect(action)}><Icon size={18}/>{label}<span className="ml-auto text-xs font-normal text-muted-foreground">{status}</span></Button>)}</div></InfoCard>; }
+export function QuickActionsPanel({ onActionSelect }: QuickActionsPanelProps) { return <InfoCard title="Tezkor amallar" description="Ishlab chiqarishdagi asosiy kiritish amallari real ma’lumotga ulangan"><div className="space-y-2">{actions.map(({ label, action, icon: Icon, status }) => <Button key={action} variant="outline" className="w-full justify-start" onClick={() => onActionSelect(action)}><Icon size={18}/>{label}<span className="ml-auto text-xs font-normal text-muted-foreground">{status}</span></Button>)}</div></InfoCard>; }

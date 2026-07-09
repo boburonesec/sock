@@ -16,10 +16,10 @@ export function ClientDebtsTable({
   onSelect: (debt: ClientDebt) => void;
 }) {
   return (
-    <DataTable label="Client qarzdorligi">
+    <DataTable label="Mijoz qarzdorligi">
       <DataTableHead>
         <DataTableRow>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Telefon</DataTableHeader>
           <DataTableHeader>Jami buyurtma</DataTableHeader>
           <DataTableHeader>To‘langan</DataTableHeader>
@@ -49,7 +49,7 @@ export function ClientDebtsTable({
         ) : (
           <EmptyTableState
             colSpan={5}
-            title="Client qarzlari mavjud emas"
+            title="Mijoz qarzlari mavjud emas"
             description="Buyurtma va to‘lovlar paydo bo‘lgach, tizim hisob-kitob shu yerda ko‘rinadi."
           />
         )}

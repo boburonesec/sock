@@ -23,7 +23,7 @@ export function AttentionNeeded({ items }: { items: AttentionItem[] }) {
       {items.length === 0 ? (
         <EmptyState
           title="E’tibor talab qiladigan holat yo‘q"
-          description="Tizim attentionItems bo‘sh ro‘yxat qaytardi."
+          description="Hozircha tizim e’tibor talab qiladigan holat topmadi."
           className="min-h-40"
         />
       ) : (

@@ -33,7 +33,7 @@ const orderItemSchema = z.object({
 });
 
 const orderFormSchema = z.object({
-  clientId: z.string().min(1, "Client tanlanishi shart."),
+  clientId: z.string().min(1, "Mijoz tanlanishi shart."),
   deadline: z.string().optional(),
   note: z.string().optional(),
   items: z.array(orderItemSchema).min(1, "Kamida bitta mahsulot qo‘shing."),
@@ -131,7 +131,7 @@ export function OrderCreateDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Buyurtma yaratish"
-      description="Buyurtma CONFIRMED status bilan yaratiladi. Jami summa tizim tomonidan saqlanadi."
+      description="Buyurtma tasdiqlangan holatda yaratiladi. Jami summa tizim tomonidan saqlanadi."
       className="max-w-4xl"
     >
       <form
@@ -141,7 +141,7 @@ export function OrderCreateDrawer({
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             htmlFor="orderClient"
-            label="Client"
+            label="Mijoz"
             error={errors.clientId?.message}
             required
           >
@@ -151,7 +151,7 @@ export function OrderCreateDrawer({
               aria-invalid={Boolean(errors.clientId)}
               {...register("clientId")}
             >
-              <option value="">Client tanlang</option>
+              <option value="">Mijoz tanlang</option>
               {clients.map((client) => (
                 <option key={client.id} value={client.id}>
                   {client.name}
@@ -175,7 +175,7 @@ export function OrderCreateDrawer({
             <div>
               <p className="font-semibold">Mahsulotlar</p>
               <p className="text-xs text-muted-foreground">
-                Narx kiritilmasa, tizim aktiv ProductPrice’dan oladi.
+                Narx kiritilmasa, tizimdagi faol narx olinadi.
               </p>
             </div>
             <Button
@@ -294,13 +294,13 @@ export function OrderCreateDrawer({
 
         {clients.length === 0 ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Avval client yarating. Buyurtma active clientga bog‘lanadi.
+            Avval mijoz yarating. Buyurtma faol mijozga bog‘lanadi.
           </p>
         ) : null}
 
         {variants.length === 0 ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Avval product variant yarating. Buyurtma mahsulot variantiga bog‘lanadi.
+            Avval mahsulot varianti yarating. Buyurtma mahsulot variantiga bog‘lanadi.
           </p>
         ) : null}
 

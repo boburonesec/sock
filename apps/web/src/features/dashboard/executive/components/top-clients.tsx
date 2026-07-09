@@ -19,19 +19,19 @@ const statusTones: Record<ExecutiveHealthStatus, StatusTone> = {
 
 export function TopClients({ clients }: { clients: TopClient[] }) {
   return (
-    <DataTable label="Top clientlar">
+    <DataTable label="Eng faol mijozlar">
       <DataTableHead>
         <DataTableRow>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Jami buyurtma</DataTableHeader>
           <DataTableHeader>To‘langan</DataTableHeader>
           <DataTableHeader>Qarz</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
         {clients.length === 0 ? (
-          <EmptyTableState colSpan={5} title="Top clientlar yo‘q" description="Tizim bo‘sh ro‘yxat qaytardi." />
+          <EmptyTableState colSpan={5} title="Mijozlar bo‘yicha ma’lumot yo‘q" description="Hozircha tizim bu ro‘yxat uchun ma’lumot qaytarmadi." />
         ) : (
           clients.map((client) => (
             <DataTableRow key={client.clientId}>

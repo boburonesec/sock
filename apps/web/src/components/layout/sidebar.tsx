@@ -7,17 +7,36 @@ import { cn } from "@/lib/utils";
 import { navigationItems } from "@/lib/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
+const sectionLabels: Record<(typeof navigationItems)[number]["section"], string> = {
+  monitoring: "Kuzatuv",
+  work: "Kundalik ish",
+  system: "Tizim",
+};
+
 export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const roles = useAuthStore((state) => state.roles);
+  const permissions = useAuthStore((state) => state.permissions);
   const visibleNavigationItems = navigationItems.filter((item) => {
-    if (!item.ownerOnly) return true;
+    if (item.ownerOnly && !roles.includes("Owner")) {
+      return false;
+    }
 
-    return roles.includes("Owner");
+    if (!item.requiredPermissions?.length) {
+      return true;
+    }
+
+    return item.requiredPermissions.every((permission) => permissions.includes(permission));
   });
   const activeHref = visibleNavigationItems
     .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
     .sort((first, second) => second.href.length - first.href.length)[0]?.href;
+  const sections = (["monitoring", "work", "system"] as const)
+    .map((section) => ({
+      section,
+      items: visibleNavigationItems.filter((item) => item.section === section),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return <>
     {mobileOpen && <button aria-label="Menyuni yopish" onClick={onClose} className="fixed inset-0 z-30 bg-black/55 lg:hidden" />}
@@ -26,11 +45,18 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
         <Link href="/dashboard/executive" className="flex items-center gap-3" onClick={onClose}><span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground">P</span><span className="text-lg font-bold">Paypoq OS</span></Link>
         <button className="lg:hidden" onClick={onClose}><X /></button>
       </div>
-      <nav className="space-y-1">
-        {visibleNavigationItems.map(({ href, title, icon: Icon }) => {
-          const active = href === activeHref;
-          return <Link key={href} href={href} onClick={onClose} className={cn("flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground", active && "bg-primary/15 text-primary")}><Icon size={19} />{title}</Link>;
-        })}
+      <nav className="space-y-5">
+        {sections.map(({ section, items }) => (
+          <div key={section} className="space-y-1">
+            <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {sectionLabels[section]}
+            </p>
+            {items.map(({ href, title, icon: Icon }) => {
+              const active = href === activeHref;
+              return <Link key={href} href={href} onClick={onClose} className={cn("flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground", active && "bg-primary/15 text-primary")}><Icon size={19} />{title}</Link>;
+            })}
+          </div>
+        ))}
       </nav>
       <div className="mt-auto rounded-xl bg-muted p-3 text-xs text-muted-foreground"><div className="mb-1 font-semibold text-foreground">Paypoq OS</div><div>Fabrika boshqaruvi</div></div>
     </aside>

@@ -306,7 +306,7 @@ export function ProductionBoard() {
             ) : (
               <EmptyState
                 title="Bosqichlar mavjud emas"
-                description="Active ishlab chiqarish bosqichlari sozlangandan keyin ular shu yerda ko‘rinadi."
+                description="Faol ishlab chiqarish bosqichlari sozlangandan keyin ular shu yerda ko‘rinadi."
               />
             )}
           </div>
@@ -364,13 +364,14 @@ export function ProductionBoard() {
       </PageSection>
 
       <InfoCard
-        title="Production write holati"
-        description="Production asosiy write flowlari tizim ma’lumotga ulangan"
+        title="Ishlab chiqarish amallari holati"
+        description="Asosiy kiritish amallari tizim ma’lumotlariga ulangan"
       >
         <p className="text-sm text-muted-foreground">
-          Omborga qabul qilish production Ombor bosqichidan Warehouse Stock’ga
-          o‘tkazadi. Ishchi faolligi payroll hisoblamaydi, brak esa jarima yoki
-          inventory correction yaratmaydi.
+          Omborga qabul qilish Ombor bosqichidagi tayyor mahsulotni ombor
+          qoldig‘iga o‘tkazadi. Ishchi faolligi ish haqini shu zahoti
+          hisoblamaydi, brak esa avtomatik jarima yoki qoldiq tuzatishi
+          yaratmaydi.
         </p>
       </InfoCard>
 

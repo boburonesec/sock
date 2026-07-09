@@ -16,13 +16,13 @@ export function DebtsModule() {
   const [selectedDebt, setSelectedDebt] = useState<ClientDebt | null>(null);
 
   if (isPending) {
-    return <LoadingState label="Client qarzlari yuklanmoqda..." />;
+    return <LoadingState label="Mijoz qarzlari yuklanmoqda..." />;
   }
 
   if (isError) {
     return (
       <ErrorState
-        title="Client qarzlari yuklanmadi"
+        title="Mijoz qarzlari yuklanmadi"
         description={
           error instanceof Error
             ? error.message
@@ -44,16 +44,16 @@ export function DebtsModule() {
       <PageSection>
         <div className="grid gap-4 sm:max-w-sm">
           <KpiCard
-            label="Client qarz hisob-kitobi yozuvlari"
+            label="Mijoz qarz hisob-kitobi yozuvlari"
             value={`${debts.length} ta`}
-            description="ma’lumot qaytargan client qarzi hisob-kitob yozuvlari"
+            description="tizim qaytargan mijoz qarzi hisob-kitob yozuvlari"
             accent="warning"
           />
         </div>
       </PageSection>
 
       <PageSection
-        title="Client qarzdorligi"
+        title="Mijoz qarzdorligi"
         description="Qarz qiymatlari tizim hisob-kitob orqali qaytariladi."
       >
         <ClientDebtsTable debts={debts} onSelect={setSelectedDebt} />

@@ -42,11 +42,11 @@ export function PaymentsTable({
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>To‘lov raqami</DataTableHeader>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Buyurtma raqami</DataTableHeader>
           <DataTableHeader>Summa</DataTableHeader>
           <DataTableHeader>To‘lov usuli</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>To‘lov sanasi</DataTableHeader>
           <DataTableHeader>Qayd qilgan</DataTableHeader>
           <DataTableHeader>Izoh</DataTableHeader>
@@ -74,7 +74,7 @@ export function PaymentsTable({
               </DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={payment.reversedAt ? "danger" : "success"}>
-                  {payment.reversedAt ? "Bekor qilingan" : "Aktiv"}
+                  {payment.reversedAt ? "Bekor qilingan" : "Faol"}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{formatDate(payment.paymentDate)}</DataTableCell>

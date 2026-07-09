@@ -45,10 +45,10 @@ export function OrdersTable({
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Buyurtma raqami</DataTableHeader>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Sotuvchi</DataTableHeader>
           <DataTableHeader>Jami summa</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Muddat</DataTableHeader>
           <DataTableHeader>To‘lov holati</DataTableHeader>
         </DataTableRow>

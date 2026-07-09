@@ -12,10 +12,10 @@ type TopClient = SalesSummary["topClients"][number];
 
 export function TopClientsTable({ clients }: { clients: TopClient[] }) {
   return (
-    <DataTable label="Top clientlar">
+    <DataTable label="Eng faol mijozlar">
       <DataTableHead>
         <DataTableRow>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Jami buyurtma</DataTableHeader>
           <DataTableHeader>To‘langan</DataTableHeader>
           <DataTableHeader>Qarz</DataTableHeader>
@@ -38,8 +38,8 @@ export function TopClientsTable({ clients }: { clients: TopClient[] }) {
         ) : (
           <EmptyTableState
             colSpan={4}
-            title="Top clientlar mavjud emas"
-            description="Buyurtmalar paydo bo‘lgach, tizim top clientlarni qaytaradi."
+            title="Eng faol mijozlar mavjud emas"
+            description="Buyurtmalar paydo bo‘lgach, tizim eng faol mijozlarni qaytaradi."
           />
         )}
       </tbody>

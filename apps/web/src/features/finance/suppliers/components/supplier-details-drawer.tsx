@@ -33,6 +33,12 @@ function formatDate(value: string): string {
   );
 }
 
+const paymentStatusLabel: Record<string, string> = {
+  UNPAID: "To‘lanmagan",
+  PARTIALLY_PAID: "Qisman to‘langan",
+  PAID: "To‘langan",
+};
+
 export function SupplierDetailsDrawer({
   debt,
   purchases,
@@ -96,14 +102,14 @@ export function SupplierDetailsDrawer({
               {debt.debt} so‘m
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Tizim supplier qarz hisob-kitobi qiymati.
+              Tizim hisoblagan yetkazib beruvchi qarzi.
             </p>
           </InfoCard>
         </div>
 
-        <InfoCard title="Supplier ma’lumoti">
+        <InfoCard title="Yetkazib beruvchi ma’lumoti">
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>Status: {debt.supplier.status}</p>
+            <p>Holat: {debt.supplier.status}</p>
             <p>Telefon: {debt.supplier.phone ?? "Kiritilmagan"}</p>
             <p>Izoh: {debt.supplier.notes ?? "Izoh yo‘q"}</p>
           </div>
@@ -111,12 +117,12 @@ export function SupplierDetailsDrawer({
 
         <section>
           <p className="mb-3 text-sm font-semibold">Xaridlar tarixi</p>
-          <DataTable label="Supplier xaridlari" className="border-0 shadow-none">
+          <DataTable label="Yetkazib beruvchi xaridlari" className="border-0 shadow-none">
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeader>Sana</DataTableHeader>
-                <DataTableHeader>Purchase</DataTableHeader>
-                <DataTableHeader>Status</DataTableHeader>
+                <DataTableHeader>Xarid raqami</DataTableHeader>
+                <DataTableHeader>Holat</DataTableHeader>
                 <DataTableHeader>Summa</DataTableHeader>
               </DataTableRow>
             </DataTableHead>
@@ -128,7 +134,7 @@ export function SupplierDetailsDrawer({
                     <DataTableCell className="font-semibold">
                       {purchase.purchaseNumber}
                     </DataTableCell>
-                    <DataTableCell>{purchase.paymentStatus}</DataTableCell>
+                    <DataTableCell>{paymentStatusLabel[purchase.paymentStatus] ?? purchase.paymentStatus}</DataTableCell>
                     <DataTableCell className="font-semibold">
                       {purchase.totalAmount} so‘m
                     </DataTableCell>
@@ -138,7 +144,7 @@ export function SupplierDetailsDrawer({
                 <EmptyTableState
                   colSpan={4}
                   title="Xaridlar mavjud emas"
-                  description="Bu supplier uchun purchase yozuvlari topilmadi."
+                  description="Bu yetkazib beruvchi uchun xarid yozuvlari topilmadi."
                 />
               )}
             </tbody>
@@ -147,7 +153,7 @@ export function SupplierDetailsDrawer({
 
         <section>
           <p className="mb-3 text-sm font-semibold">To‘lovlar tarixi</p>
-          <DataTable label="Supplier to‘lovlari" className="border-0 shadow-none">
+          <DataTable label="Yetkazib beruvchi to‘lovlari" className="border-0 shadow-none">
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeader>Sana</DataTableHeader>
@@ -172,7 +178,7 @@ export function SupplierDetailsDrawer({
                 <EmptyTableState
                   colSpan={4}
                   title="To‘lovlar mavjud emas"
-                  description="Bu supplier uchun payment yozuvlari topilmadi."
+                  description="Bu yetkazib beruvchi uchun to‘lov yozuvlari topilmadi."
                 />
               )}
             </tbody>

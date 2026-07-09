@@ -31,9 +31,9 @@ export function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Buyurtma</DataTableHeader>
-          <DataTableHeader>Client</DataTableHeader>
+          <DataTableHeader>Mijoz</DataTableHeader>
           <DataTableHeader>Summa</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Sana</DataTableHeader>
         </DataTableRow>
       </DataTableHead>

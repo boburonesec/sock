@@ -26,7 +26,7 @@ export function RecentSettingsChangesTable({
           <DataTableHeader>Modul</DataTableHeader>
           <DataTableHeader>O‘zgartirgan</DataTableHeader>
           <DataTableHeader>Sana</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
@@ -41,7 +41,7 @@ export function RecentSettingsChangesTable({
             <DataTableRow key={change.id}>
               <DataTableCell className="font-semibold">{change.change}</DataTableCell>
               <DataTableCell>{change.module}</DataTableCell>
-              <DataTableCell>{change.changedBy ?? "System"}</DataTableCell>
+              <DataTableCell>{change.changedBy ?? "Tizim"}</DataTableCell>
               <DataTableCell>{dateFormatter.format(new Date(change.date))}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone="info">{change.status}</StatusBadge>

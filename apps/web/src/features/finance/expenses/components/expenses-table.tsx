@@ -34,7 +34,7 @@ export function ExpensesTable({ expenses }: { expenses: Expense[] }) {
           <DataTableHeader>Summa</DataTableHeader>
           <DataTableHeader>Sabab</DataTableHeader>
           <DataTableHeader>So‘rovchi</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>So‘rov sanasi</DataTableHeader>
           <DataTableHeader>Tasdiqlovchi</DataTableHeader>
           <DataTableHeader>To‘lov sanasi</DataTableHeader>

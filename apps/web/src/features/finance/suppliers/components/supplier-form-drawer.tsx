@@ -15,7 +15,7 @@ const supplierFormSchema = z.object({
   name: z
     .string()
     .transform((value) => value.trim())
-    .pipe(z.string().min(1, "Supplier nomi kiritilishi shart.")),
+    .pipe(z.string().min(1, "Yetkazib beruvchi nomi kiritilishi shart.")),
   phone: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -63,11 +63,11 @@ export function SupplierFormDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === "create" ? "Supplier qo‘shish" : "Supplierni tahrirlash"}
+      title={mode === "create" ? "Yetkazib beruvchi qo‘shish" : "Yetkazib beruvchini tahrirlash"}
       description={
         mode === "create"
-          ? "Yangi supplier Faol status bilan yaratiladi."
-          : "Supplier sozlama ma’lumotlari yangilanadi."
+          ? "Yangi yetkazib beruvchi faol holatda yaratiladi."
+          : "Yetkazib beruvchi ma’lumotlari yangilanadi."
       }
     >
       <form
@@ -76,7 +76,7 @@ export function SupplierFormDrawer({
       >
         <FormField
           htmlFor="supplierName"
-          label="Supplier nomi"
+          label="Yetkazib beruvchi nomi"
           error={errors.name?.message}
           required
         >
@@ -122,7 +122,7 @@ export function SupplierFormDrawer({
           {isSubmitting
             ? "Saqlanmoqda..."
             : mode === "create"
-              ? "Supplier yaratish"
+              ? "Yetkazib beruvchi yaratish"
               : "O‘zgarishni saqlash"}
         </Button>
       </form>

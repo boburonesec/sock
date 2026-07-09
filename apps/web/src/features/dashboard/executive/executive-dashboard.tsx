@@ -38,7 +38,7 @@ export function ExecutiveDashboard() {
         description={
           error instanceof Error
             ? error.message
-            : "Executive summary ma’lumotlarini olishda xatolik yuz berdi."
+            : "Boshqaruv paneli ma’lumotlarini olishda xatolik yuz berdi."
         }
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
@@ -75,43 +75,43 @@ export function ExecutiveDashboard() {
     {
       label: "Oylik xarajat",
       value: `${summary.kpis.monthlyExpenses} so‘m`,
-      description: "PAID xarajatlar",
+      description: "To‘langan xarajatlar",
       accent: "neutral" as const,
     },
     {
-      label: "Jami client qarzi",
+      label: "Jami mijoz qarzi",
       value: `${summary.kpis.totalClientDebt} so‘m`,
       description: "Tizim qarz hisob-kitobi",
       accent: "warning" as const,
     },
     {
-      label: "Jami supplier qarzi",
+      label: "Jami yetkazib beruvchi qarzi",
       value: `${summary.kpis.totalSupplierDebt} so‘m`,
       description: "Tizim qarz hisob-kitobi",
       accent: "warning" as const,
     },
     {
-      label: "Aktiv xodimlar",
+      label: "Faol xodimlar",
       value: `${summary.kpis.activeEmployees} ta`,
       description: "Faol xodimlar",
       accent: "success" as const,
     },
     {
-      label: "Aktiv buyurtmalar",
+      label: "Faol buyurtmalar",
       value: `${summary.kpis.activeOrders} ta`,
-      description: "Confirmed / Waiting / Ready",
+      description: "Tasdiqlangan, kutilayotgan yoki tayyor",
       accent: "primary" as const,
     },
     {
       label: "Mahsulot modellari",
       value: `${summary.kpis.totalProducts} ta`,
-      description: "Aktiv product catalog",
+      description: "Faol mahsulot katalogi",
       accent: "success" as const,
     },
     {
       label: "Past qoldiq materiallar",
       value: `${summary.kpis.lowStockMaterials} ta`,
-      description: "Warehouse summary qiymati",
+      description: "Ombor hisoblagan qiymat",
       accent: "danger" as const,
     },
   ];
@@ -152,16 +152,16 @@ export function ExecutiveDashboard() {
 
       <PageSection
         title="Qarzdorlik ko‘rinishi"
-        description="Client va supplier debt tizim hisoblagan hisob-kitob"
+        description="Mijoz va yetkazib beruvchi qarzi tizim tomonidan hisoblangan"
       >
         <DebtOverview kpis={summary.kpis} />
       </PageSection>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <PageSection title="Top mahsulotlar">
+        <PageSection title="Eng ko‘p sotilgan mahsulotlar">
           <TopProducts products={summary.topProducts} />
         </PageSection>
-        <PageSection title="Top clientlar">
+        <PageSection title="Eng faol mijozlar">
           <TopClients clients={summary.topClients} />
         </PageSection>
       </div>

@@ -49,7 +49,7 @@ export default function ProfilePage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="panel p-5">
-          <p className="text-xs uppercase text-muted-foreground">Status</p>
+          <p className="text-xs uppercase text-muted-foreground">Holat</p>
           <p className="mt-2 font-semibold">{currentUser?.status ?? "Noma’lum"}</p>
         </div>
         <div className="panel p-5">

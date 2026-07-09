@@ -13,6 +13,7 @@ import {
   organizationApi,
   type OrganizationFactory,
   type OrganizationUser,
+  type OrganizationUserRole,
 } from "@/lib/api/organization";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -22,6 +23,44 @@ const organizationKeys = {
 };
 
 type CompanyTab = "factories" | "users";
+
+const accountRoleOptions: Array<{
+  value: OrganizationUserRole;
+  label: string;
+  description: string;
+  submitLabel: string;
+}> = [
+  {
+    value: "Manager",
+    label: "Menejer",
+    description: "Operatsiyalarni keng boshqaradi",
+    submitLabel: "Menejer account ochish",
+  },
+  {
+    value: "Seller",
+    label: "Sotuvchi",
+    description: "Mijoz, buyurtma va to‘lovlarni yuritadi",
+    submitLabel: "Sotuvchi account ochish",
+  },
+  {
+    value: "Warehouse Operator",
+    label: "Omborchi",
+    description: "Ombor qoldiqlari va harakatlarini yuritadi",
+    submitLabel: "Omborchi account ochish",
+  },
+  {
+    value: "Shift Receiver",
+    label: "Smena qabul qiluvchi",
+    description: "Ishlab chiqarish va ishchi faolligini kiritadi",
+    submitLabel: "Smena qabul qiluvchi account ochish",
+  },
+  {
+    value: "Accountant",
+    label: "Buxgalter",
+    description: "Moliya, avans va ish haqini yuritadi",
+    submitLabel: "Buxgalter account ochish",
+  },
+];
 
 function formatStatus(status: string): string {
   if (status === "ACTIVE") return "Faol";
@@ -49,14 +88,15 @@ export function CompanySettingsPage() {
   const isMultiBranch = branchMode === "MULTI";
   const [activeTab, setActiveTab] = useState<CompanyTab>("users");
   const [factoryDrawerOpen, setFactoryDrawerOpen] = useState(false);
-  const [managerDrawerOpen, setManagerDrawerOpen] = useState(false);
+  const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<OrganizationUser | null>(null);
   const [factoryForm, setFactoryForm] = useState({ name: "" });
-  const [managerForm, setManagerForm] = useState({
+  const [accountForm, setAccountForm] = useState({
     name: "",
     email: "",
     password: "",
+    roleName: "Manager" as OrganizationUserRole,
     factoryId: "",
   });
   const [passwordForm, setPasswordForm] = useState({ password: "" });
@@ -91,10 +131,10 @@ export function CompanySettingsPage() {
   }, [factories, isMultiBranch, selectedFactoryId]);
 
   useEffect(() => {
-    if (isMultiBranch && !managerForm.factoryId && factories[0]?.id) {
-      setManagerForm((current) => ({ ...current, factoryId: factories[0].id }));
+    if (isMultiBranch && !accountForm.factoryId && factories[0]?.id) {
+      setAccountForm((current) => ({ ...current, factoryId: factories[0].id }));
     }
-  }, [factories, isMultiBranch, managerForm.factoryId]);
+  }, [factories, isMultiBranch, accountForm.factoryId]);
 
   useEffect(() => {
     if (!isMultiBranch && activeTab === "factories") {
@@ -119,22 +159,27 @@ export function CompanySettingsPage() {
     },
   });
 
-  const createManager = useMutation({
+  const selectedRoleOption =
+    accountRoleOptions.find((option) => option.value === accountForm.roleName) ?? accountRoleOptions[0];
+
+  const createAccount = useMutation({
     mutationFn: () =>
-      organizationApi.createManager({
-        name: managerForm.name,
-        email: managerForm.email,
-        password: managerForm.password,
-        factoryId: isMultiBranch ? managerForm.factoryId : undefined,
+      organizationApi.createUser({
+        name: accountForm.name,
+        email: accountForm.email,
+        password: accountForm.password,
+        roleName: accountForm.roleName,
+        factoryId: isMultiBranch ? accountForm.factoryId : undefined,
       }),
     onSuccess: async () => {
-      setManagerForm((current) => ({
+      setAccountForm((current) => ({
         name: "",
         email: "",
         password: "",
+        roleName: current.roleName,
         factoryId: current.factoryId,
       }));
-      setManagerDrawerOpen(false);
+      setAccountDrawerOpen(false);
       await invalidateOrganization();
     },
   });
@@ -177,9 +222,9 @@ export function CompanySettingsPage() {
     createFactory.mutate();
   }
 
-  function submitManager(event: FormEvent<HTMLFormElement>) {
+  function submitAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    createManager.mutate();
+    createAccount.mutate();
   }
 
   function submitPassword(event: FormEvent<HTMLFormElement>) {
@@ -236,6 +281,21 @@ export function CompanySettingsPage() {
 
   return (
     <div className="space-y-5">
+      <section className="grid gap-3 rounded-xl border bg-card p-4 text-sm md:grid-cols-3">
+        <div>
+          <p className="font-semibold">Kichik sex</p>
+          <p className="mt-1 text-muted-foreground">Owner o‘zi ishlashi mumkin, qo‘shimcha account shart emas.</p>
+        </div>
+        <div>
+          <p className="font-semibold">Operatsion boshqaruv</p>
+          <p className="mt-1 text-muted-foreground">Kundalik ishlar uchun bitta Menejer account oching.</p>
+        </div>
+        <div>
+          <p className="font-semibold">Katta korxona</p>
+          <p className="mt-1 text-muted-foreground">Sotuvchi, Omborchi, Smena qabul qiluvchi va Buxgalterni ajrating.</p>
+        </div>
+      </section>
+
       <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         {isMultiBranch ? (
           <div className="inline-flex w-fit rounded-lg border bg-card p-1">
@@ -243,12 +303,12 @@ export function CompanySettingsPage() {
               Filiallar
             </TabButton>
             <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")}>
-              Xodimlar
+              Foydalanuvchilar
             </TabButton>
           </div>
         ) : (
           <div>
-            <h2 className="text-lg font-semibold">Xodimlar</h2>
+            <h2 className="text-lg font-semibold">Foydalanuvchilar</h2>
             <p className="text-sm text-muted-foreground">Korxona ichidagi accountlar</p>
           </div>
         )}
@@ -260,11 +320,11 @@ export function CompanySettingsPage() {
         ) : (
           <Button
             type="button"
-            onClick={() => setManagerDrawerOpen(true)}
+            onClick={() => setAccountDrawerOpen(true)}
             disabled={isMultiBranch && factories.length === 0}
           >
             <Plus size={16} />
-            Xodim qo‘shish
+            Foydalanuvchi qo‘shish
           </Button>
         )}
       </div>
@@ -319,57 +379,77 @@ export function CompanySettingsPage() {
       ) : null}
 
       <Drawer
-        open={managerDrawerOpen}
+        open={accountDrawerOpen}
         onOpenChange={(open) => {
-          setManagerDrawerOpen(open);
+          setAccountDrawerOpen(open);
           if (!open) {
-            setManagerForm((current) => ({
+            setAccountForm((current) => ({
               name: "",
               email: "",
               password: "",
+              roleName: current.roleName,
               factoryId: current.factoryId,
             }));
-            createManager.reset();
+            createAccount.reset();
           }
         }}
-        title="Xodim qo‘shish"
-        description="Xodim tizimga email va parol orqali kira oladi."
+        title="Yangi account ochish"
+        description="Foydalanuvchining roli uning qaysi sahifalarda ishlashini belgilaydi."
       >
-        <form className="space-y-4" onSubmit={submitManager}>
-          <FormField htmlFor="manager-name" label="Ism" required>
+        <form className="space-y-4" onSubmit={submitAccount}>
+          <FormField htmlFor="account-role" label="Rol" required>
+            <select
+              id="account-role"
+              className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
+              value={accountForm.roleName}
+              onChange={(event) =>
+                setAccountForm({
+                  ...accountForm,
+                  roleName: event.target.value as OrganizationUserRole,
+                })
+              }
+            >
+              {accountRoleOptions.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label} — {role.description}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField htmlFor="account-name" label="Ism" required>
             <Input
-              id="manager-name"
+              id="account-name"
               placeholder="Masalan: Ali Valiyev"
-              value={managerForm.name}
-              onChange={(event) => setManagerForm({ ...managerForm, name: event.target.value })}
+              value={accountForm.name}
+              onChange={(event) => setAccountForm({ ...accountForm, name: event.target.value })}
             />
           </FormField>
-          <FormField htmlFor="manager-email" label="Email" required>
+          <FormField htmlFor="account-email" label="Email" required>
             <Input
-              id="manager-email"
+              id="account-email"
               type="email"
-              placeholder="manager@example.com"
-              value={managerForm.email}
-              onChange={(event) => setManagerForm({ ...managerForm, email: event.target.value })}
+              placeholder="account@example.com"
+              value={accountForm.email}
+              onChange={(event) => setAccountForm({ ...accountForm, email: event.target.value })}
             />
           </FormField>
-          <FormField htmlFor="manager-password" label="Parol" required>
+          <FormField htmlFor="account-password" label="Parol" required>
             <Input
-              id="manager-password"
+              id="account-password"
               type="text"
               minLength={8}
               placeholder="Kamida 8 ta belgi"
-              value={managerForm.password}
-              onChange={(event) => setManagerForm({ ...managerForm, password: event.target.value })}
+              value={accountForm.password}
+              onChange={(event) => setAccountForm({ ...accountForm, password: event.target.value })}
             />
           </FormField>
           {isMultiBranch ? (
-            <FormField htmlFor="manager-factory" label="Filial" required>
+            <FormField htmlFor="account-factory" label="Filial" required>
               <select
-                id="manager-factory"
+                id="account-factory"
                 className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
-                value={managerForm.factoryId}
-                onChange={(event) => setManagerForm({ ...managerForm, factoryId: event.target.value })}
+                value={accountForm.factoryId}
+                onChange={(event) => setAccountForm({ ...accountForm, factoryId: event.target.value })}
               >
                 {factories.map((factory) => (
                   <option key={factory.id} value={factory.id}>
@@ -379,23 +459,23 @@ export function CompanySettingsPage() {
               </select>
             </FormField>
           ) : null}
-          {createManager.isError ? (
+          {createAccount.isError ? (
             <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-              Xodim yaratilmadi. Email takrorlanmaganini tekshiring.
+              Account ochilmadi. Email takrorlanmaganini va rol tanlanganini tekshiring.
             </p>
           ) : null}
           <Button
             className="w-full"
             type="submit"
             disabled={
-              !managerForm.name.trim() ||
-              !managerForm.email.trim() ||
-              managerForm.password.trim().length < 8 ||
-              (isMultiBranch && !managerForm.factoryId) ||
-              createManager.isPending
+              !accountForm.name.trim() ||
+              !accountForm.email.trim() ||
+              accountForm.password.trim().length < 8 ||
+              (isMultiBranch && !accountForm.factoryId) ||
+              createAccount.isPending
             }
           >
-            {createManager.isPending ? "Yaratilmoqda..." : "Xodim yaratish"}
+            {createAccount.isPending ? "Yaratilmoqda..." : selectedRoleOption.submitLabel}
           </Button>
         </form>
       </Drawer>
@@ -411,8 +491,8 @@ export function CompanySettingsPage() {
             updateFactoryAccess.reset();
           }
         }}
-        title={selectedUser?.name ?? "Xodim"}
-        description={isMultiBranch ? "Parol va filial ruxsatlarini boshqarish" : "Xodim ma’lumotlari va parolini boshqarish"}
+        title={selectedUser?.name ?? "Foydalanuvchi"}
+        description={isMultiBranch ? "Rol, parol va filial ruxsatlarini boshqarish" : "Rol, ma’lumotlar va parolni boshqarish"}
       >
         {selectedUser ? (
           <div className="space-y-5">
@@ -570,7 +650,7 @@ function FactoriesTab({
             <h2 className="mt-1 text-xl font-semibold">{selectedFactory.name}</h2>
             <div className="mt-5 grid gap-3 text-sm">
               <div className="rounded-lg bg-muted/40 p-3">
-                <p className="text-muted-foreground">Biriktirilgan xodimlar</p>
+                <p className="text-muted-foreground">Biriktirilgan foydalanuvchilar</p>
                 <p className="mt-1 text-2xl font-bold">{selectedFactory.userCount}</p>
               </div>
               <div className="rounded-lg bg-muted/40 p-3">
@@ -580,7 +660,7 @@ function FactoriesTab({
             </div>
           </div>
           <div className="rounded-xl border p-4">
-            <h3 className="font-semibold">Ushbu filialdagi xodimlar</h3>
+            <h3 className="font-semibold">Ushbu filialdagi foydalanuvchilar</h3>
             <div className="mt-3 divide-y">
               {selectedFactoryUsers.map((user) => (
                 <div key={user.id} className="flex items-center justify-between gap-3 py-3 text-sm">
@@ -594,7 +674,7 @@ function FactoriesTab({
                 </div>
               ))}
               {selectedFactoryUsers.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">Bu filialga hali xodim biriktirilmagan.</p>
+                <p className="py-6 text-sm text-muted-foreground">Bu filialga hali foydalanuvchi biriktirilmagan.</p>
               ) : null}
             </div>
           </div>
@@ -614,7 +694,7 @@ function UsersTab({
   onOpenUser: (user: OrganizationUser) => void;
 }) {
   if (users.length === 0) {
-    return <EmptyPanel title="Xodim yo‘q" description="O‘ng yuqoridagi tugma orqali xodim qo‘shing." />;
+    return <EmptyPanel title="Foydalanuvchi yo‘q" description="O‘ng yuqoridagi tugma orqali foydalanuvchi qo‘shing." />;
   }
 
   return (

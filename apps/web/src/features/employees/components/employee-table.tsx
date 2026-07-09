@@ -18,7 +18,7 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Ism</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Yaratilgan</DataTableHeader>
           <DataTableHeader>Yangilangan</DataTableHeader>
           <DataTableHeader>Faollik / ish haqi</DataTableHeader>

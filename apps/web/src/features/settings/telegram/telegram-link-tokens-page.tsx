@@ -144,7 +144,7 @@ export function TelegramLinkTokensPage() {
                 <DataTableHeader>Turi</DataTableHeader>
                 <DataTableHeader>Kimga ulangan</DataTableHeader>
                 <DataTableHeader>Telegram ID</DataTableHeader>
-                <DataTableHeader>Status</DataTableHeader>
+                <DataTableHeader>Holat</DataTableHeader>
                 <DataTableHeader>Ulangan vaqt</DataTableHeader>
                 <DataTableHeader>Holat o‘zgargan vaqt</DataTableHeader>
                 <DataTableHeader>Amal</DataTableHeader>
@@ -300,7 +300,7 @@ function formatAccountStatus(value: string): string {
 function formatTargetType(value: string): string {
   const labels: Record<string, string> = {
     EMPLOYEE: "Xodim",
-    CLIENT: "Client",
+    CLIENT: "Mijoz",
     USER: "Foydalanuvchi",
   };
 

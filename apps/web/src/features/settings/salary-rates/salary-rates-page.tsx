@@ -107,7 +107,7 @@ export function SalaryRatesPage() {
     <div>
       <PageHeader
         title="Ish haqi stavkalari"
-        description="Bosqich va product variant bo‘yicha ishbay stavkalarni boshqarish"
+        description="Bosqich va mahsulot varianti bo‘yicha ishbay stavkalarni boshqarish"
       />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

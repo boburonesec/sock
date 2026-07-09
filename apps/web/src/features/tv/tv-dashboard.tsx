@@ -39,7 +39,7 @@ export function TvDashboard() {
       <main className="dark grid min-h-screen place-items-center bg-background p-8 text-foreground">
         <div className="text-center">
           <span className="mx-auto block h-16 w-16 animate-spin rounded-full border-4 border-muted border-t-primary" />
-          <p className="mt-6 text-3xl font-black">Factory TV yuklanmoqda...</p>
+          <p className="mt-6 text-3xl font-black">Fabrika TV yuklanmoqda...</p>
           <p className="mt-2 text-xl text-muted-foreground">Paypoq OS</p>
         </div>
       </main>
@@ -51,11 +51,11 @@ export function TvDashboard() {
       <main className="dark grid min-h-screen place-items-center bg-background p-8 text-foreground">
         <div className="max-w-3xl rounded-3xl border border-rose-500/45 bg-rose-500/10 p-10 text-center text-rose-300">
           <CircleAlert className="mx-auto" size={64} />
-          <h1 className="mt-6 text-4xl font-black">TV dashboard yuklanmadi</h1>
+          <h1 className="mt-6 text-4xl font-black">TV panel yuklanmadi</h1>
           <p className="mt-4 text-xl opacity-90">
             {error instanceof Error
               ? error.message
-              : "Factory TV summary ma’lumotlarini olishda xatolik yuz berdi."}
+              : "Fabrika TV ma’lumotlarini olishda xatolik yuz berdi."}
           </p>
           <button
             type="button"
@@ -138,7 +138,7 @@ export function TvDashboard() {
 
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-2xl font-bold lg:text-4xl">Bosqich inventari</h2>
+            <h2 className="text-2xl font-bold lg:text-4xl">Bosqich qoldiqlari</h2>
             <p className="text-base text-muted-foreground lg:text-xl">
               Hozirgi qoldiq
             </p>

@@ -539,7 +539,7 @@ export function StagesMasterDataPage() {
   return (
     <MasterDataListPage
       title="Ishlab chiqarish bosqichlari"
-      description="Factory Stage Inventory oqimining sozlangan bosqichlari"
+      description="Fabrika ishlab chiqarish oqimining sozlangan bosqichlari"
       emptyDescription="Hozircha faol ishlab chiqarish bosqichlari mavjud emas."
       queryKey={queryKeys.product.stages()}
       queryFn={productApi.getStages}

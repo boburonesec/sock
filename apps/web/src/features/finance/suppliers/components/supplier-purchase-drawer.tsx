@@ -34,7 +34,7 @@ const purchaseItemSchema = z.object({
 });
 
 const purchaseFormSchema = z.object({
-  supplierId: z.string().min(1, "Supplier tanlanishi shart."),
+  supplierId: z.string().min(1, "Yetkazib beruvchi tanlanishi shart."),
   purchaseDate: z.string().optional(),
   note: z.string().optional(),
   items: z.array(purchaseItemSchema).min(1, "Kamida bitta material qo‘shing."),
@@ -112,7 +112,7 @@ export function SupplierPurchaseDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Xarid qayd qilish"
-      description="Xarid summasi tizim tomonidan hisoblanadi. Material ombor qoldig‘i bu flow’da oshirilmaydi."
+      description="Xarid summasi tizim tomonidan hisoblanadi. Bu amal material ombor qoldig‘ini oshirmaydi."
       className="max-w-4xl"
     >
       <form
@@ -122,7 +122,7 @@ export function SupplierPurchaseDrawer({
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             htmlFor="purchaseSupplier"
-            label="Supplier"
+            label="Yetkazib beruvchi"
             error={errors.supplierId?.message}
             required
           >
@@ -132,7 +132,7 @@ export function SupplierPurchaseDrawer({
               aria-invalid={Boolean(errors.supplierId)}
               {...register("supplierId")}
             >
-              <option value="">Supplier tanlang</option>
+              <option value="">Yetkazib beruvchi tanlang</option>
               {suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>
                   {supplier.name}
@@ -156,7 +156,7 @@ export function SupplierPurchaseDrawer({
             <div>
               <p className="font-semibold">Materiallar</p>
               <p className="text-xs text-muted-foreground">
-                Xarid qoldiqni oshirmaydi; material receipt alohida flow.
+                Xarid qoldiqni oshirmaydi; material qabul qilish alohida amal.
               </p>
             </div>
             <Button

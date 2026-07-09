@@ -40,7 +40,7 @@ export function PayrollPeriodsTable({
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Oy</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Jami oylik</DataTableHeader>
           <DataTableHeader>To‘langan</DataTableHeader>
           <DataTableHeader>Qoldiq</DataTableHeader>

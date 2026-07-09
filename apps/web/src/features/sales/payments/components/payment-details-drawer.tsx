@@ -50,9 +50,9 @@ export function PaymentDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled>Clientga o‘tish · Tez orada</Button>
+          <Button disabled>Mijozga o‘tish · Tez orada</Button>
           <Button disabled variant="outline">
-            Orderga o‘tish · Tez orada
+            Buyurtmaga o‘tish · Tez orada
           </Button>
           <Button
             type="button"
@@ -67,7 +67,7 @@ export function PaymentDetailsDrawer({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <InfoCard title="Client ma’lumoti">
+          <InfoCard title="Mijoz ma’lumoti">
             <p className="font-semibold">{payment.client.name}</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {payment.client.phone ?? "Telefon kiritilmagan"}
@@ -80,7 +80,7 @@ export function PaymentDetailsDrawer({
             <div className="flex items-center justify-between gap-3">
               <p className="text-xl font-bold">{payment.amount} so‘m</p>
               <StatusBadge tone={payment.reversedAt ? "danger" : "success"}>
-                {payment.reversedAt ? "Bekor qilingan" : "Aktiv"}
+                {payment.reversedAt ? "Bekor qilingan" : "Faol"}
               </StatusBadge>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -98,7 +98,7 @@ export function PaymentDetailsDrawer({
 
         <InfoCard title="Qarz xulosasi">
           <p className="text-sm text-muted-foreground">
-            Bu bo‘lim faqat to‘lov yozuvlarini qaytaradi. Client qarzi
+            Bu bo‘lim faqat to‘lov yozuvlarini qaytaradi. Mijoz qarzi
             alohida tizim hisob-kitob orqali olinadi; ekran bu yerda qarz
             yoki qoldiqni hisoblamaydi.
           </p>
@@ -107,13 +107,13 @@ export function PaymentDetailsDrawer({
         <section>
           <p className="mb-3 text-sm font-semibold">Bog‘langan buyurtmalar</p>
           <DataTable
-            label="To‘lov allocationlari"
+            label="To‘lov taqsimotlari"
             className="border-0 shadow-none"
           >
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeader>Buyurtma raqami</DataTableHeader>
-                <DataTableHeader>Allocation summasi</DataTableHeader>
+                <DataTableHeader>Taqsimot summasi</DataTableHeader>
               </DataTableRow>
             </DataTableHead>
             <tbody>
@@ -132,7 +132,7 @@ export function PaymentDetailsDrawer({
                 <EmptyTableState
                   colSpan={2}
                   title="Bog‘langan buyurtma yo‘q"
-                  description="V1’da to‘lovlar to‘liq allocation bilan yaratiladi. Agar bu holat ko‘rinsa, ma’lumotni tekshirish kerak."
+                  description="To‘lovlar to‘liq taqsimot bilan yaratiladi. Agar bu holat ko‘rinsa, ma’lumotni tekshirish kerak."
                 />
               )}
             </tbody>
@@ -146,7 +146,7 @@ export function PaymentDetailsDrawer({
         </InfoCard>
 
         {payment.reversedAt ? (
-          <InfoCard title="Reversal sababi">
+          <InfoCard title="Bekor qilish sababi">
             <p className="text-sm text-muted-foreground">
               {payment.reversalReason ?? "Sabab kiritilmagan"}
             </p>

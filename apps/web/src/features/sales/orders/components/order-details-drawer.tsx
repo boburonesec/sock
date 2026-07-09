@@ -19,6 +19,22 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
+const orderStatusLabel: Record<string, string> = {
+  DRAFT: "Qoralama",
+  CONFIRMED: "Tasdiqlangan",
+  WAITING_PRODUCTION: "Ishlab chiqarish kutilmoqda",
+  READY: "Tayyor",
+  DELIVERED: "Yetkazilgan",
+  CLOSED: "Yopilgan",
+  CANCELLED: "Bekor qilingan",
+};
+
+const paymentStatusLabel: Record<string, string> = {
+  UNPAID: "To‘lanmagan",
+  PARTIALLY_PAID: "Qisman to‘langan",
+  PAID: "To‘langan",
+};
+
 interface OrderDetailsDrawerProps {
   order: SalesOrder | null;
   isDelivering?: boolean;
@@ -63,7 +79,7 @@ export function OrderDetailsDrawer({
             disabled={!isReturnable || isReturning}
             onClick={() => onReturnDelivery?.(order)}
           >
-            {isReturning ? "Return qilinmoqda..." : "Delivery return qilish"}
+            {isReturning ? "Qaytarilmoqda..." : "Yetkazuvni qaytarish"}
           </Button>
           <Button disabled variant="outline">Tahrirlash · Tez orada</Button>
           <Button disabled variant="outline">Tasdiqlash · Tez orada</Button>
@@ -71,13 +87,13 @@ export function OrderDetailsDrawer({
         </div>
         {!isDeliverable ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            V1 policy: faqat to‘liq to‘langan va yopilmagan buyurtmalar
+            Faqat to‘liq to‘langan va yopilmagan buyurtmalar
             yetkaziladi.
           </p>
         ) : null}
         {isReturnable ? (
           <p className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
-            Delivery return qilinganda stock Finished Products zonasiga qaytadi.
+            Yetkazuv qaytarilganda mahsulot tayyor mahsulot zonasiga qaytadi.
             To‘lov avtomatik bekor qilinmaydi.
           </p>
         ) : null}
@@ -86,14 +102,14 @@ export function OrderDetailsDrawer({
           <InfoCard title="Jami summa">
             <p className="text-xl font-bold">{order.totalAmount} so‘m</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Buyurtma yaratilishidagi frozen tizim qiymat.
+              Buyurtma yaratilgan paytdagi tizim qiymati.
             </p>
           </InfoCard>
           <InfoCard title="Buyurtma holati">
-            <p className="text-xl font-bold">{order.status}</p>
+            <p className="text-xl font-bold">{orderStatusLabel[order.status] ?? order.status}</p>
           </InfoCard>
           <InfoCard title="To‘lov holati">
-            <p className="text-xl font-bold">{order.paymentStatus}</p>
+            <p className="text-xl font-bold">{paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               To‘lovlar buyurtmadan alohida yuritiladi.
             </p>

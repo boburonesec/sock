@@ -23,6 +23,13 @@ export interface OrganizationUser {
   updatedAt?: ApiDateTime;
 }
 
+export type OrganizationUserRole =
+  | "Manager"
+  | "Accountant"
+  | "Seller"
+  | "Warehouse Operator"
+  | "Shift Receiver";
+
 export const organizationApi = {
   getFactories: () =>
     apiClient<{ data: OrganizationFactory[] }>("/organization/factories"),
@@ -40,6 +47,18 @@ export const organizationApi = {
     factoryId?: string;
   }) =>
     apiClient<{ data: OrganizationUser }>("/organization/managers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  createUser: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    roleName: OrganizationUserRole;
+    factoryId?: string;
+  }) =>
+    apiClient<{ data: OrganizationUser }>("/organization/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

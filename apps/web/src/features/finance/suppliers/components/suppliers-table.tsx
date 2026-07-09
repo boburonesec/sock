@@ -27,15 +27,15 @@ export function SuppliersTable({
   onSelect: (debt: SupplierDebt) => void;
 }) {
   return (
-    <DataTable label="Supplier qarzdorligi">
+    <DataTable label="Yetkazib beruvchi qarzdorligi">
       <DataTableHead>
         <DataTableRow>
-          <DataTableHeader>Supplier</DataTableHeader>
+          <DataTableHeader>Yetkazib beruvchi</DataTableHeader>
           <DataTableHeader>Telefon</DataTableHeader>
           <DataTableHeader>Jami xarid</DataTableHeader>
           <DataTableHeader>To‘langan</DataTableHeader>
           <DataTableHeader>Qarz</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
@@ -66,8 +66,8 @@ export function SuppliersTable({
         ) : (
           <EmptyTableState
             colSpan={6}
-            title="Supplier qarzlari mavjud emas"
-            description="Supplier xaridlari va to‘lovlari paydo bo‘lgach, tizim hisob-kitob shu yerda ko‘rinadi."
+            title="Yetkazib beruvchi qarzlari mavjud emas"
+            description="Xaridlar va to‘lovlar paydo bo‘lgach, tizim hisob-kitobi shu yerda ko‘rinadi."
           />
         )}
       </tbody>

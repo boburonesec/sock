@@ -28,7 +28,7 @@ export function ClientDebtDetailsDrawer({
         <div className="flex flex-wrap gap-2">
           <Button disabled>To‘lov qayd qilish · Tez orada</Button>
           <Button disabled variant="outline">
-            Clientga o‘tish · Tez orada
+            Mijozga o‘tish · Tez orada
           </Button>
           <Button disabled variant="outline">
             Buyurtmalarni ko‘rish · Tez orada
@@ -52,9 +52,9 @@ export function ClientDebtDetailsDrawer({
           </InfoCard>
         </div>
 
-        <InfoCard title="Client ma’lumoti">
+        <InfoCard title="Mijoz ma’lumoti">
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>Status: {debt.client.status}</p>
+            <p>Holat: {debt.client.status}</p>
             <p>Telefon: {debt.client.phone ?? "Kiritilmagan"}</p>
             <p>Manzil: {debt.client.address ?? "Kiritilmagan"}</p>
             <p>Izoh: {debt.client.notes ?? "Izoh yo‘q"}</p>
@@ -64,8 +64,8 @@ export function ClientDebtDetailsDrawer({
         <InfoCard title="Buyurtma va to‘lov tafsilotlari">
           <p className="text-sm text-muted-foreground">
             Bu ekran hozircha qarz hisob-kitobi bo‘limidan kelgan umumiy
-            tizim hisoblagan qiymatlarni ko‘rsatadi. Buyurtmalar breakdowni,
-            oxirgi to‘lov va status alohida tizim response berilganda
+            tizim hisoblagan qiymatlarni ko‘rsatadi. Buyurtmalar tafsiloti,
+            oxirgi to‘lov va holat alohida tizim javobi berilganda
             ulanadi; ekran qarzni hisoblamaydi.
           </p>
         </InfoCard>

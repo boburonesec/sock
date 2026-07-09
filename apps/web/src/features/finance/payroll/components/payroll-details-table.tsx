@@ -29,7 +29,7 @@ export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
           <DataTableHeader>Yakuniy oylik</DataTableHeader>
           <DataTableHeader>To‘langan</DataTableHeader>
           <DataTableHeader>Qoldiq</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>

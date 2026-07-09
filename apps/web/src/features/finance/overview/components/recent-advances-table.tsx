@@ -31,7 +31,7 @@ export function RecentAdvancesTable({ advances }: { advances: Advance[] }) {
         <DataTableRow>
           <DataTableHeader>Xodim</DataTableHeader>
           <DataTableHeader>Summa</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Sana</DataTableHeader>
         </DataTableRow>
       </DataTableHead>

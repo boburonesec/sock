@@ -55,15 +55,15 @@ export function SalesOverviewModule() {
       <PageSection>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
-            label="Clientlar"
+            label="Mijozlar"
             value={`${summary.kpis.clientCount} ta`}
-            description="Aktiv clientlar soni"
+            description="Faol mijozlar soni"
             accent="primary"
           />
           <KpiCard
-            label="Aktiv buyurtmalar"
+            label="Faol buyurtmalar"
             value={`${summary.kpis.activeOrderCount} ta`}
-            description="Tizim hisoblagan aktiv buyurtmalar"
+            description="Tizim hisoblagan faol buyurtmalar"
             accent="success"
           />
           <KpiCard
@@ -73,7 +73,7 @@ export function SalesOverviewModule() {
             accent="primary"
           />
           <KpiCard
-            label="Jami client qarzi"
+            label="Jami mijoz qarzi"
             value={`${summary.kpis.totalClientDebt} so‘m`}
             description="Tizim qarz hisob-kitobi qiymati"
             accent="warning"
@@ -83,8 +83,8 @@ export function SalesOverviewModule() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <PageSection
-          title="Top clientlar"
-          description="Tizim qaytargan top clientlar ro‘yxati"
+          title="Eng faol mijozlar"
+          description="Tizim qaytargan eng faol mijozlar ro‘yxati"
         >
           <TopClientsTable clients={summary.topClients} />
         </PageSection>

@@ -15,7 +15,7 @@ const clientFormSchema = z.object({
   name: z
     .string()
     .transform((value) => value.trim())
-    .pipe(z.string().min(1, "Client nomi kiritilishi shart.")),
+    .pipe(z.string().min(1, "Mijoz nomi kiritilishi shart.")),
   phone: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
@@ -66,11 +66,11 @@ export function ClientFormDrawer({
     });
   }, [client, mode, open, reset]);
 
-  const title = mode === "create" ? "Client qo‘shish" : "Clientni tahrirlash";
+  const title = mode === "create" ? "Mijoz qo‘shish" : "Mijozni tahrirlash";
   const description =
     mode === "create"
-      ? "Yangi client Faol status bilan yaratiladi."
-      : "Client sozlama ma’lumotlari yangilanadi.";
+      ? "Yangi mijoz faol holatda yaratiladi."
+      : "Mijoz ma’lumotlari yangilanadi.";
 
   return (
     <Drawer
@@ -85,7 +85,7 @@ export function ClientFormDrawer({
       >
         <FormField
           htmlFor="clientName"
-          label="Client nomi"
+          label="Mijoz nomi"
           error={errors.name?.message}
           required
         >
@@ -141,7 +141,7 @@ export function ClientFormDrawer({
           {isSubmitting
             ? "Saqlanmoqda..."
             : mode === "create"
-              ? "Client yaratish"
+              ? "Mijoz yaratish"
               : "O‘zgarishni saqlash"}
         </Button>
       </form>

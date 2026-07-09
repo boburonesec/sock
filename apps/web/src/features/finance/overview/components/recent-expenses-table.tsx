@@ -30,7 +30,7 @@ export function RecentExpensesTable({ expenses }: { expenses: Expense[] }) {
         <DataTableRow>
           <DataTableHeader>Kategoriya</DataTableHeader>
           <DataTableHeader>Summa</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Sana</DataTableHeader>
         </DataTableRow>
       </DataTableHead>

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Boxes, Building2, ClipboardList, Factory, LayoutDashboard, Package, Settings, Users, WalletCards } from "lucide-react";
+import { BarChart3, Boxes, ClipboardList, Factory, History, LayoutDashboard, Package, Settings, Users, WalletCards } from "lucide-react";
 
 export interface PageDefinition {
   title: string;
@@ -9,25 +9,27 @@ export interface PageDefinition {
 export interface NavigationItem extends PageDefinition {
   href: string;
   icon: LucideIcon;
+  section: "monitoring" | "work" | "system";
   ownerOnly?: boolean;
+  requiredPermissions?: string[];
 }
 
 export const navigationItems: NavigationItem[] = [
-  { href: "/dashboard/executive", title: "Boshqaruv paneli", description: "Umumiy biznes ko‘rinishi", icon: LayoutDashboard },
-  { href: "/dashboard/operations", title: "Operatsiyalar", description: "Korxona operatsiyalari", icon: Factory },
-  { href: "/production", title: "Ishlab chiqarish", description: "Ishlab chiqarish moduli", icon: Boxes },
-  { href: "/warehouse", title: "Ombor", description: "Ombor moduli", icon: Package },
-  { href: "/sales", title: "Sotuvlar", description: "Sotuvlar moduli", icon: ClipboardList },
-  { href: "/finance", title: "Moliya", description: "Moliya moduli", icon: WalletCards },
-  { href: "/employees", title: "Xodimlar", description: "Xodimlar moduli", icon: Users },
-  { href: "/reports", title: "Hisobotlar", description: "Hisobotlar moduli", icon: BarChart3 },
-  { href: "/settings/company", title: "Korxona sozlamalari", description: "Filiallar va menejerlar", icon: Building2, ownerOnly: true },
-  { href: "/settings", title: "Sozlamalar", description: "Tizim sozlamalari", icon: Settings },
+  { href: "/dashboard/executive", title: "Boshqaruv paneli", description: "Umumiy biznes ko‘rinishi", icon: LayoutDashboard, section: "monitoring", requiredPermissions: ["dashboard.view"] },
+  { href: "/dashboard/operations", title: "Operatsiyalar", description: "Korxona operatsiyalari", icon: Factory, section: "monitoring", requiredPermissions: ["dashboard.view"] },
+  { href: "/reports", title: "Hisobotlar", description: "Hisobotlar moduli", icon: BarChart3, section: "monitoring", requiredPermissions: ["reports.view"] },
+  { href: "/audit", title: "Audit log", description: "Tizim amallari tarixi", icon: History, section: "monitoring", requiredPermissions: ["audit.view"] },
+  { href: "/production", title: "Ishlab chiqarish", description: "Ishlab chiqarish moduli", icon: Boxes, section: "work", requiredPermissions: ["production.view"] },
+  { href: "/warehouse", title: "Ombor", description: "Ombor moduli", icon: Package, section: "work", requiredPermissions: ["warehouse.view"] },
+  { href: "/sales", title: "Sotuvlar", description: "Sotuvlar moduli", icon: ClipboardList, section: "work", requiredPermissions: ["sales.view"] },
+  { href: "/finance", title: "Moliya", description: "Moliya moduli", icon: WalletCards, section: "work", requiredPermissions: ["finance.view"] },
+  { href: "/employees", title: "Xodimlar", description: "Xodimlar moduli", icon: Users, section: "work", requiredPermissions: ["employees.view"] },
+  { href: "/settings", title: "Sozlamalar", description: "Tizim sozlamalari", icon: Settings, section: "system", requiredPermissions: ["settings.view"] },
 ];
 
 export const pageDefinitions: Record<string, PageDefinition> = {
   "/": { title: "Paypoq OS", description: "Ishlab chiqarish boshqaruvi" },
-  "/dashboard/executive": { title: "Boshqaruv paneli", description: "Owner va manager uchun umumiy biznes ko‘rinishi" },
+  "/dashboard/executive": { title: "Boshqaruv paneli", description: "Ega va menejer uchun umumiy biznes ko‘rinishi" },
   "/dashboard/operations": { title: "Operatsiyalar paneli", description: "Korxona operatsion ko‘rinishi" },
   "/dashboard/finance": { title: "Moliya paneli", description: "Moliya bo‘yicha umumiy ko‘rinish" },
   "/dashboard/sales": { title: "Sotuvlar paneli", description: "Sotuvlar bo‘yicha umumiy ko‘rinish" },
@@ -60,7 +62,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/reports/finance": { title: "Moliya hisoboti", description: "Hisobotlar moduli" },
   "/reports/warehouse": { title: "Ombor hisoboti", description: "Hisobotlar moduli" },
   "/settings": { title: "Sozlamalar", description: "Asosiy ma’lumotlar va tizim sozlamalari" },
-  "/settings/company": { title: "Korxona sozlamalari", description: "Filiallar va menejer accountlari" },
+  "/settings/company": { title: "Korxona sozlamalari", description: "Filiallar va foydalanuvchi hisoblari" },
   "/settings/products": { title: "Mahsulotlar", description: "Sozlamalar" },
   "/settings/product-models": { title: "Mahsulot modellari", description: "Sozlamalar" },
   "/settings/colors": { title: "Ranglar", description: "Sozlamalar" },
@@ -78,7 +80,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
 };
 
 export function getPageDefinition(pathname: string): PageDefinition {
-  if (/^\/sales\/clients\/[^/]+$/.test(pathname)) return { title: "Client tafsilotlari", description: "Client ma’lumotlari, buyurtmalar va to‘lovlar" };
+  if (/^\/sales\/clients\/[^/]+$/.test(pathname)) return { title: "Mijoz tafsilotlari", description: "Mijoz ma’lumotlari, buyurtmalar va to‘lovlar" };
   if (/^\/sales\/orders\/[^/]+$/.test(pathname)) return { title: "Buyurtma tafsilotlari", description: "Buyurtma mahsulotlari va to‘lovlari" };
   if (/^\/finance\/payroll\/[^/]+$/.test(pathname)) return { title: "Ish haqi tafsilotlari", description: "Xodimlar bo‘yicha ish haqi davri" };
   if (/^\/employees\/[^/]+$/.test(pathname)) return { title: "Xodim tafsilotlari", description: "Xodim faoliyati va hisob-kitoblari" };

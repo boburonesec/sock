@@ -27,7 +27,7 @@ export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
   return (
     <PageSection
       title="So‘nggi faollik"
-      description="Tizim qaytargan oxirgi cross-domain yozuvlar"
+      description="Tizimdagi oxirgi muhim yozuvlar"
     >
       <DataTable label="So‘nggi faollik">
         <DataTableHead>
@@ -43,7 +43,7 @@ export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
             <EmptyTableState
               colSpan={4}
               title="So‘nggi faollik yo‘q"
-              description="Tizim recentActivity bo‘sh ro‘yxat qaytardi."
+              description="Hozircha so‘nggi faollik bo‘yicha ma’lumot yo‘q."
             />
           ) : (
             items.map((item) => (

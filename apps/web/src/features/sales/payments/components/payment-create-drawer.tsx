@@ -22,12 +22,12 @@ const allocationSchema = z.object({
   amount: z
     .string()
     .transform((value) => value.trim())
-    .refine((value) => Number(value) > 0, "Allocation summasi musbat bo‘lishi kerak."),
+    .refine((value) => Number(value) > 0, "Taqsimot summasi musbat bo‘lishi kerak."),
 });
 
 const paymentFormSchema = z
   .object({
-    clientId: z.string().min(1, "Client tanlanishi shart."),
+    clientId: z.string().min(1, "Mijoz tanlanishi shart."),
     amount: z
       .string()
       .transform((value) => value.trim())
@@ -37,7 +37,7 @@ const paymentFormSchema = z
     }),
     paymentDate: z.string().optional(),
     note: z.string().optional(),
-    allocations: z.array(allocationSchema).min(1, "Kamida bitta allocation kerak."),
+    allocations: z.array(allocationSchema).min(1, "Kamida bitta taqsimot kerak."),
   })
   .refine(
     (values) => {
@@ -50,12 +50,18 @@ const paymentFormSchema = z
       return Math.abs(paymentAmount - allocationTotal) < 0.000001;
     },
     {
-      message: "Allocationlar jami to‘lov summasiga teng bo‘lishi kerak.",
+      message: "Taqsimotlar jami to‘lov summasiga teng bo‘lishi kerak.",
       path: ["allocations"],
     },
   );
 
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
+
+const paymentStatusLabel: Record<string, string> = {
+  UNPAID: "To‘lanmagan",
+  PARTIALLY_PAID: "Qisman to‘langan",
+  PAID: "To‘langan",
+};
 
 interface PaymentCreateDrawerProps {
   open: boolean;
@@ -138,7 +144,7 @@ export function PaymentCreateDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="To‘lov qayd qilish"
-      description="V1’da to‘lov summasi to‘liq buyurtmalarga allocation qilinadi."
+      description="To‘lov summasi to‘liq buyurtmalarga taqsimlanadi."
       className="max-w-4xl"
     >
       <form
@@ -148,7 +154,7 @@ export function PaymentCreateDrawer({
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             htmlFor="paymentClient"
-            label="Client"
+            label="Mijoz"
             error={errors.clientId?.message}
             required
           >
@@ -158,7 +164,7 @@ export function PaymentCreateDrawer({
               aria-invalid={Boolean(errors.clientId)}
               {...register("clientId")}
             >
-              <option value="">Client tanlang</option>
+              <option value="">Mijoz tanlang</option>
               {clients.map((client) => (
                 <option key={client.id} value={client.id}>
                   {client.name}
@@ -215,7 +221,7 @@ export function PaymentCreateDrawer({
         <section className="space-y-3 rounded-xl border bg-muted/10 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-semibold">Allocationlar</p>
+              <p className="font-semibold">Taqsimotlar</p>
               <p className="text-xs text-muted-foreground">
                 To‘lov summasi to‘liq buyurtmalarga bog‘lanishi shart.
               </p>
@@ -253,7 +259,7 @@ export function PaymentCreateDrawer({
                     {clientOrders.map((order) => (
                       <option key={order.id} value={order.id}>
                         {order.orderNumber} · {order.totalAmount} so‘m ·{" "}
-                        {order.paymentStatus}
+                        {paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}
                       </option>
                     ))}
                   </Select>
@@ -261,7 +267,7 @@ export function PaymentCreateDrawer({
 
                 <FormField
                   htmlFor={`paymentAllocationAmount-${field.id}`}
-                  label="Allocation summa"
+                  label="Taqsimot summasi"
                   error={errors.allocations?.[index]?.amount?.message}
                   required
                 >
@@ -282,7 +288,7 @@ export function PaymentCreateDrawer({
                     variant="outline"
                     disabled={formDisabled || fields.length === 1}
                     onClick={() => remove(index)}
-                    aria-label="Allocation qatorini o‘chirish"
+                    aria-label="Taqsimot qatorini o‘chirish"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -308,16 +314,16 @@ export function PaymentCreateDrawer({
         </FormField>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
-          <p className="font-medium">Allocation tekshiruvi</p>
+          <p className="font-medium">Taqsimot tekshiruvi</p>
           <p className="text-muted-foreground">
             To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m ·
-            Allocation: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
+            Taqsimot: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
           </p>
         </div>
 
         {selectedClientId && clientOrders.length === 0 ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Bu client uchun allocation qilinadigan buyurtma topilmadi.
+            Bu mijoz uchun taqsimlanadigan buyurtma topilmadi.
           </p>
         ) : null}
 

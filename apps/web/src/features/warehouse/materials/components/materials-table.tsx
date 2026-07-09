@@ -32,7 +32,7 @@ export function MaterialsTable({
           <DataTableHeader>Miqdor</DataTableHeader>
           <DataTableHeader>Birlik</DataTableHeader>
           <DataTableHeader>Minimal limit</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Yangilangan</DataTableHeader>
         </DataTableRow>
       </DataTableHead>

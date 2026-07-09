@@ -22,7 +22,7 @@ export function RecentReportsTable({ reports }: { reports: RecentReport[] }) {
           <DataTableHeader>Kategoriya</DataTableHeader>
           <DataTableHeader>Oxirgi yangilanish</DataTableHeader>
           <DataTableHeader>Mas’ul</DataTableHeader>
-          <DataTableHeader>Status</DataTableHeader>
+          <DataTableHeader>Holat</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
@@ -38,7 +38,7 @@ export function RecentReportsTable({ reports }: { reports: RecentReport[] }) {
               <DataTableCell className="font-semibold">{report.name}</DataTableCell>
               <DataTableCell>{report.category}</DataTableCell>
               <DataTableCell>{dateFormatter.format(new Date(report.updatedAt))}</DataTableCell>
-              <DataTableCell>{report.owner ?? "System"}</DataTableCell>
+              <DataTableCell>{report.owner ?? "Tizim"}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone="info">{report.status}</StatusBadge>
               </DataTableCell>

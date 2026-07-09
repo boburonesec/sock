@@ -6,7 +6,7 @@ export default function CompanySettingsRoute() {
     <>
       <PageHeader
         title="Korxona sozlamalari"
-        description="Filiallar va menejer accountlarini boshqarish"
+        description="Filiallar, foydalanuvchilar va account ruxsatlarini boshqarish"
       />
       <CompanySettingsPage />
     </>

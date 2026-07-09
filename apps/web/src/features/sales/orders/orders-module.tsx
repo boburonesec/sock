@@ -146,7 +146,7 @@ export function OrdersModule() {
 
       <PageSection
         title="Buyurtmalar"
-        description="Clientlar buyurtma yaratmaydi; buyurtmalar sotuvchilar tomonidan yaratiladi."
+        description="Mijozlar buyurtma yaratmaydi; buyurtmalar sotuvchilar tomonidan kiritiladi."
       >
         <div className="mb-4 flex justify-end">
           <Button

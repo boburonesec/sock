@@ -6,15 +6,15 @@ import type { ExecutiveSummary } from "@/lib/api/dashboard";
 export function DebtOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
   const cards = [
     {
-      label: "Client qarzi",
+      label: "Mijoz qarzi",
       value: `${kpis.totalClientDebt} so‘m`,
-      description: "Orders minus payments hisob-kitob",
+      description: "Buyurtmalar minus to‘lovlar hisob-kitobi",
       href: "/sales/debts",
     },
     {
-      label: "Supplier qarzi",
+      label: "Yetkazib beruvchi qarzi",
       value: `${kpis.totalSupplierDebt} so‘m`,
-      description: "Purchases minus payments hisob-kitob",
+      description: "Xaridlar minus to‘lovlar hisob-kitobi",
       href: "/finance/suppliers",
     },
   ];
