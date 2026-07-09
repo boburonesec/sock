@@ -47,6 +47,10 @@ How to install and operate the product:
 
 docs/USER_GUIDE_V1.md
 
+Business acceptance / human QA walkthrough (requirements vs reality):
+
+docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md
+
 If a required rule is missing or ambiguous, do not invent business logic. Ask for clarification.
 
 Do not recreate deleted historical QA/audit docs. Keep `docs/` lean: product

@@ -8,6 +8,9 @@ platforma emas.
 [`docs/USER_GUIDE_V1.md`](docs/USER_GUIDE_V1.md) ·
 [`docs/screenshots/`](docs/screenshots/)
 
+**Business qabul / chuqur QA walkthrough (siz yurasiz):**
+[`docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md`](docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md)
+
 Tizimning markaziy g‘oyasi:
 
 - ishlab chiqarishni bosqich inventari orqali ko‘rish
