@@ -4,6 +4,10 @@ Paypoq OS — paypoq fabrikalari uchun qurilayotgan Manufacturing Operations
 Platform. Bu generic ERP emas, to‘liq buxgalteriya tizimi emas va V1’da IoT
 platforma emas.
 
+**Qanday o‘rnatish va ishlatish (screenshotlar bilan):**
+[`docs/USER_GUIDE_V1.md`](docs/USER_GUIDE_V1.md) ·
+[`docs/screenshots/`](docs/screenshots/)
+
 Tizimning markaziy g‘oyasi:
 
 - ishlab chiqarishni bosqich inventari orqali ko‘rish
@@ -18,7 +22,7 @@ Tizimning markaziy g‘oyasi:
 
 ```text
 paypoq-os/
-├── docs/              # Product, QA, runbook va roadmap hujjatlari
+├── docs/              # Product source-of-truth, USER_GUIDE, deploy/runbook
 ├── apps/
 │   ├── api/           # NestJS + Prisma backend
 │   ├── bot/           # Telegram employee/client read-only bot
@@ -334,11 +338,16 @@ Qisqa start:
 
 ```bash
 cp .env.docker.example .env.docker
+# .env.docker ichidagi secretlarni haqiqiy qiymatlar bilan almashtiring
 docker compose --env-file .env.docker build
 docker compose --env-file .env.docker up -d postgres
 docker compose --env-file .env.docker --profile migrate run --rm migrate
 docker compose --env-file .env.docker up -d api web bot
 ```
+
+Muhim: `docker compose` buyruqlarida **har doim** `--env-file .env.docker`
+bering. Env file bo‘lmasa compose `TELEGRAM_BOT_TOKEN` va boshqa required
+secretlar tufayli fail bo‘ladi — hatto faqat `postgres` ishga tushirsangiz ham.
 
 ## MVP smoke test
 
@@ -361,7 +370,6 @@ MVP_SMOKE_BASE_URL=http://localhost:3001 pnpm smoke:mvp
 Smoke test hujjati:
 
 - `docs/MVP_SMOKE_TEST_SUITE_V1.md`
-- `docs/CI_AND_RBAC_HARDENING_V1.md`
 
 Telegram subsystem smoke:
 
@@ -391,22 +399,42 @@ pnpm restore:db path/to/backup.dump
 pnpm deploy:smoke
 ```
 
-Production hardening hujjatlari:
+## Hujjatlar
 
-- `docs/BACKUP_AND_RECOVERY_V1.md`
-- `docs/BACKUP_SCHEDULER_V1.md`
-- `docs/PROCESS_SUPERVISION_V1.md`
+**Asosiy foydalanish yo‘riqnomasi:**
+
+- `docs/USER_GUIDE_V1.md`
+
+**Mahsulot source-of-truth:**
+
+- `docs/product-requirements.md`
+- `docs/DOMAIN_MODEL_V1.md`
+- `docs/page-map-v1.md`
+- `docs/ui-specification-v1.md`
+- `docs/codex-master-context-v1.md`
+
+**Deploy / ops:**
+
+- `docs/DOCKER_DEPLOYMENT_V1.md`
 - `docs/PM2_PRODUCTION_DEPLOYMENT_V1.md`
+- `docs/BACKUP_AND_RECOVERY_V1.md`
 - `docs/SECRETS_MANAGEMENT_V1.md`
-- `docs/SECRETS_ROTATION_V1.md`
-- `docs/OBSERVABILITY_V1.md`
-- `docs/UPTIME_MONITORING_V1.md`
-- `docs/POST_DEPLOY_SMOKE_V1.md`
-- `docs/PRODUCTION_OPERATIONS_AUDIT_V1.md`
-- `docs/PRODUCTION_GO_NO_GO_V2.md`
-- `docs/REAL_FACTORY_DEPLOYMENT_RUNBOOK_V1.md`
-- `docs/PRODUCTION_ACCEPTANCE_V1.md`
-- `docs/PRODUCTION_GO_NO_GO_V3.md`
+- `docs/MVP_PILOT_RUNBOOK_V1.md`
+- `docs/TELEGRAM_BOT_RUNBOOK_V1.md`
+- `docs/MVP_SMOKE_TEST_SUITE_V1.md`
+
+**Holat va cheklovlar:**
+
+- `docs/MVP_KNOWN_LIMITATIONS_V2.md`
+- `docs/PAYPOQ_OS_FINAL_GO_DECISION_V1.md`
+- `docs/PRODUCT_ROADMAP_V1.md`
+- `docs/PROJECT_STRUCTURE_V1.md`
+
+**Active business policies:**
+
+- `docs/CORRECTION_REVERSAL_POLICY_V1.md`
+- `docs/DELIVERY_RETURN_POLICY_V1.md`
+- `docs/SALES_PAYMENT_REVERSAL_POLICY_V1.md`
 
 ## Asosiy modullar
 
@@ -422,58 +450,16 @@ Production hardening hujjatlari:
 - Reports overview
 - Factory TV
 - Telegram Bot
-
-## Muhim cheklovlar
-
-MVP demo va controlled pilot uchun tayyor, lekin keng production rollout uchun
-hali quyidagilar yetishmaydi:
-
-- automated backup scheduler and off-server retention
-- monitored restore rehearsal ownership
-- production monitoring/alert ownership
-- audit browsing UI
-- supplier payment reversal
-- production movement correction
-- material receipt correction
-- partial delivery/return
-- invoice/print flow
-- full accounting ledger
-- IoT integration
-
-To‘liq ro‘yxat:
-
-- `docs/MVP_KNOWN_LIMITATIONS_V2.md`
-
-## Pilot hujjatlari
-
-- `docs/MVP_PILOT_RUNBOOK_V1.md`
-- `docs/MVP_DEPLOYMENT_CHECKLIST_V1.md`
-- `docs/MVP_DEMO_SCRIPT_V2.md`
-- `docs/TELEGRAM_BOT_RUNBOOK_V1.md`
-- `docs/TELEGRAM_BOT_PILOT_QA_V1.md`
-- `docs/TELEGRAM_BOT_DEPLOYMENT_HARDENING_V1.md`
-- `docs/TELEGRAM_PLATFORM_COMPLETE_QA_V1.md`
-
-## Project structure va roadmap
-
-- `docs/PROJECT_STRUCTURE_V1.md`
-- `docs/PRODUCT_ROADMAP_V1.md`
-- `docs/OPERATIONS_GUIDE_V1.md`
-- `docs/CI_PIPELINE_REVIEW_V1.md`
-- `docs/GITHUB_REPOSITORY_READINESS_V1.md`
-- `docs/PRODUCTION_READINESS_AUDIT_V1.md`
-- `docs/PRODUCTION_GO_NO_GO_V1.md`
-- `docs/PRODUCTION_OPERATIONS_AUDIT_V1.md`
-- `docs/PRODUCTION_GO_NO_GO_V2.md`
+- Mobile
+- Super Admin
 
 ## AI agentlar uchun
 
 Kod yozishdan oldin:
 
 - `AGENTS.md`
-- relevant `docs/*`
-
-o‘qilishi kerak.
+- `docs/USER_GUIDE_V1.md`
+- relevant product docs
 
 Golden rule:
 
