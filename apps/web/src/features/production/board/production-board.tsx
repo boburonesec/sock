@@ -286,10 +286,11 @@ export function ProductionBoard() {
         title="Bosqichlar oqimi"
         description="Bosqichni tanlab, undagi ma’lumot mahsulot tarkibini ko‘ring"
       >
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
+          {/* Mobile: actions first (operator priority). Desktop: stages left, actions right. */}
+          <div className="order-2 min-w-0 xl:order-1">
             {summary.stageTotals.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
                 {summary.stageTotals.map((stage) => (
                   <ProductionStageCard
                     key={stage.stageId}
@@ -310,7 +311,9 @@ export function ProductionBoard() {
               />
             )}
           </div>
-          <QuickActionsPanel onActionSelect={setActiveAction} />
+          <div className="order-1 xl:order-2 xl:sticky xl:top-20 xl:self-start">
+            <QuickActionsPanel onActionSelect={setActiveAction} />
+          </div>
         </div>
       </PageSection>
 

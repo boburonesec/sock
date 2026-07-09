@@ -313,13 +313,14 @@ export function CompanySettingsPage() {
           </div>
         )}
         {isMultiBranch && activeTab === "factories" ? (
-          <Button type="button" onClick={() => setFactoryDrawerOpen(true)}>
+          <Button type="button" className="w-full sm:w-auto" onClick={() => setFactoryDrawerOpen(true)}>
             <Plus size={16} />
             Filial qo‘shish
           </Button>
         ) : (
           <Button
             type="button"
+            className="w-full sm:w-auto"
             onClick={() => setAccountDrawerOpen(true)}
             disabled={isMultiBranch && factories.length === 0}
           >
@@ -663,12 +664,15 @@ function FactoriesTab({
             <h3 className="font-semibold">Ushbu filialdagi foydalanuvchilar</h3>
             <div className="mt-3 divide-y">
               {selectedFactoryUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                  <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-muted-foreground">{user.email}</p>
+                <div
+                  key={user.id}
+                  className="flex flex-col gap-2 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{user.name}</p>
+                    <p className="truncate text-muted-foreground">{user.email}</p>
                   </div>
-                  <span className="rounded-full border px-3 py-1 text-xs">
+                  <span className="w-fit shrink-0 rounded-full border px-3 py-1 text-xs">
                     {user.roles.map(formatRole).join(", ")}
                   </span>
                 </div>
@@ -699,11 +703,12 @@ function UsersTab({
 
   return (
     <section className="panel overflow-hidden">
+      {/* Desktop header */}
       <div
         className={
           isMultiBranch
-            ? "grid grid-cols-[1.3fr_1fr_1fr_120px] border-b px-5 py-3 text-xs uppercase text-muted-foreground"
-            : "grid grid-cols-[1.5fr_1fr_120px] border-b px-5 py-3 text-xs uppercase text-muted-foreground"
+            ? "hidden border-b px-5 py-3 text-xs uppercase text-muted-foreground md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_120px]"
+            : "hidden border-b px-5 py-3 text-xs uppercase text-muted-foreground md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px]"
         }
       >
         <span>Ism</span>
@@ -716,28 +721,58 @@ function UsersTab({
           <button
             key={user.id}
             type="button"
-            className={
-              isMultiBranch
-                ? "grid w-full grid-cols-[1.3fr_1fr_1fr_120px] items-center px-5 py-4 text-left text-sm hover:bg-muted/30"
-                : "grid w-full grid-cols-[1.5fr_1fr_120px] items-center px-5 py-4 text-left text-sm hover:bg-muted/30"
-            }
+            className="w-full px-4 py-4 text-left text-sm hover:bg-muted/30 sm:px-5"
             onClick={() => onOpenUser(user)}
           >
-            <span>
-              <span className="block font-medium">{user.name}</span>
-              <span className="block text-muted-foreground">{user.email}</span>
-            </span>
-            <span className="text-muted-foreground">
-              {user.roles.length ? user.roles.map(formatRole).join(", ") : "Belgilanmagan"}
-            </span>
-            {isMultiBranch ? (
-              <span className="text-muted-foreground">
-                {user.factories.length ? user.factories.map((factory) => factory.name).join(", ") : "Biriktirilmagan"}
+            {/* Mobile card layout */}
+            <div className="space-y-2 md:hidden">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{user.name}</p>
+                  <p className="truncate text-muted-foreground">{user.email}</p>
+                </div>
+                <span className="shrink-0 rounded-full border px-3 py-1 text-xs">
+                  {formatStatus(user.status)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {user.roles.length ? user.roles.map(formatRole).join(", ") : "Belgilanmagan"}
+              </p>
+              {isMultiBranch ? (
+                <p className="text-xs text-muted-foreground">
+                  {user.factories.length
+                    ? user.factories.map((factory) => factory.name).join(", ")
+                    : "Filial biriktirilmagan"}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Desktop row layout */}
+            <div
+              className={
+                isMultiBranch
+                  ? "hidden md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_120px] md:items-center"
+                  : "hidden md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px] md:items-center"
+              }
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{user.name}</span>
+                <span className="block truncate text-muted-foreground">{user.email}</span>
               </span>
-            ) : null}
-            <span className="w-fit rounded-full border px-3 py-1 text-xs">
-              {formatStatus(user.status)}
-            </span>
+              <span className="truncate text-muted-foreground">
+                {user.roles.length ? user.roles.map(formatRole).join(", ") : "Belgilanmagan"}
+              </span>
+              {isMultiBranch ? (
+                <span className="truncate text-muted-foreground">
+                  {user.factories.length
+                    ? user.factories.map((factory) => factory.name).join(", ")
+                    : "Biriktirilmagan"}
+                </span>
+              ) : null}
+              <span className="w-fit rounded-full border px-3 py-1 text-xs">
+                {formatStatus(user.status)}
+              </span>
+            </div>
           </button>
         ))}
       </div>

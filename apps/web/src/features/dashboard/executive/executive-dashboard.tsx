@@ -118,12 +118,12 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {quickLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="rounded-lg border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-muted"
+            className="rounded-lg border bg-card px-3 py-3 text-center text-sm font-semibold transition hover:bg-muted sm:py-2 sm:text-left"
           >
             {link.label}
           </Link>

@@ -28,9 +28,46 @@
   }
 
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Avoid accidental horizontal scroll on small phones */
+    overflow-x: hidden;
+    /* Safer tap targets on mobile browsers */
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Prevent iOS zoom-on-focus for form controls under 16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  @media (min-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: inherit;
+    }
+  }
 }
 
 @layer utilities {
   .panel { @apply rounded-xl border bg-card text-card-foreground shadow-sm; }
+  .safe-px {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  .safe-pb {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .safe-pt {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  /* Edge-to-edge horizontal scroll for tables on narrow screens */
+  .table-scroll {
+    @apply -mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0;
+  }
 }

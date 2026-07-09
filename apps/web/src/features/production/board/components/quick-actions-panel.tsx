@@ -36,4 +36,26 @@ const actions: {
   },
 ];
 interface QuickActionsPanelProps { onActionSelect: (action: ProductionAction) => void; }
-export function QuickActionsPanel({ onActionSelect }: QuickActionsPanelProps) { return <InfoCard title="Tezkor amallar" description="Ishlab chiqarishdagi asosiy kiritish amallari real ma’lumotga ulangan"><div className="space-y-2">{actions.map(({ label, action, icon: Icon, status }) => <Button key={action} variant="outline" className="w-full justify-start" onClick={() => onActionSelect(action)}><Icon size={18}/>{label}<span className="ml-auto text-xs font-normal text-muted-foreground">{status}</span></Button>)}</div></InfoCard>; }
+export function QuickActionsPanel({ onActionSelect }: QuickActionsPanelProps) {
+  return (
+    <InfoCard
+      title="Tezkor amallar"
+      description="Ishlab chiqarishdagi asosiy kiritish amallari"
+    >
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        {actions.map(({ label, action, icon: Icon }) => (
+          <Button
+            key={action}
+            type="button"
+            variant="outline"
+            className="h-auto min-h-11 w-full justify-start whitespace-normal py-3 text-left"
+            onClick={() => onActionSelect(action)}
+          >
+            <Icon size={18} className="shrink-0" />
+            <span className="min-w-0 flex-1">{label}</span>
+          </Button>
+        ))}
+      </div>
+    </InfoCard>
+  );
+}

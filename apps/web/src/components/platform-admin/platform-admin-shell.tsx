@@ -51,19 +51,23 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b bg-card/70">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
-          <div>
-            <Link href="/admin/tenants" className="text-lg font-black">
+    <main className="min-h-dvh bg-background text-foreground">
+      <header className="border-b bg-card/70 safe-pt">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
+          <div className="min-w-0">
+            <Link href="/admin/tenants" className="text-base font-black sm:text-lg">
               Paypoq OS Admin
             </Link>
-            <p className="text-xs text-muted-foreground">
-              Korxonalarni boshqarish paneli · {platformAdmin?.email}
+            <p className="truncate text-xs text-muted-foreground">
+              <span className="hidden sm:inline">Korxonalarni boshqarish paneli · </span>
+              {platformAdmin?.email}
             </p>
           </div>
-          <nav className="flex items-center gap-3">
-            <Link className="text-sm text-muted-foreground hover:text-foreground" href="/admin/tenants">
+          <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <Link
+              className="hidden text-sm text-muted-foreground hover:text-foreground sm:inline"
+              href="/admin/tenants"
+            >
               Korxonalar
             </Link>
             <div>
@@ -177,7 +181,7 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
           </nav>
         </div>
       </header>
-      <section className="mx-auto max-w-7xl px-6 py-8">{children}</section>
+      <section className="mx-auto max-w-7xl px-3 py-5 safe-pb sm:px-6 sm:py-8">{children}</section>
     </main>
   );
 }

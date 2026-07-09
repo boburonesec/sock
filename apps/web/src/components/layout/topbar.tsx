@@ -74,32 +74,43 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/90 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <button className="lg:hidden" aria-label="Menyu" onClick={onMenuClick}>
-        <Menu />
-      </button>
-      <div className="hidden lg:block">
-        <p className="text-sm font-medium">Paypoq OS</p>
-        <p className="text-xs text-muted-foreground">Fabrika boshqaruvi</p>
-      </div>
-      <div className="ml-auto flex items-center gap-2">
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-2 border-b bg-background/90 px-3 backdrop-blur safe-pt sm:h-16 sm:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-2">
         <button
-          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted"
+          type="button"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-muted lg:hidden"
+          aria-label="Menyuni ochish"
+          onClick={onMenuClick}
+        >
+          <Menu size={22} />
+        </button>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">Paypoq OS</p>
+          <p className="hidden truncate text-xs text-muted-foreground sm:block">
+            Fabrika boshqaruvi
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <button
+          type="button"
+          className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted"
           aria-label="Mavzuni almashtirish"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
           {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <button
-          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted"
+          type="button"
+          className="hidden h-11 w-11 place-items-center rounded-lg hover:bg-muted sm:grid"
           aria-label="Bildirishnomalar"
         >
           <Bell size={18} />
         </button>
-        <div className="ml-1">
+        <div>
           <button
             type="button"
-            className="grid h-10 w-10 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
+            className="grid h-11 w-11 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
             aria-label="Akkaunt oynasini ochish"
             onClick={() => {
               setAccountOpen(true);
@@ -219,7 +230,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
               </Button>
             </div>
           </Drawer>
-              </div>
+        </div>
       </div>
     </header>
   );
