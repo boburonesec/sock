@@ -228,6 +228,10 @@ export class FinanceService {
     );
   }
 
+  async getBonuses(context: RequestContext): Promise<CollectionResponse<AdvanceResponse>> {
+    return this.listAdjustmentsByType(context, EmployeeAdjustmentType.BONUS);
+  }
+
   async createPenalty(
     context: RequestContext,
     dto: CreateEmployeeAdjustmentDto,
@@ -239,6 +243,50 @@ export class FinanceService {
       EmployeeAdjustmentStatus.APPROVED,
       'PENALTY_CREATED',
     );
+  }
+
+  async getPenalties(context: RequestContext): Promise<CollectionResponse<AdvanceResponse>> {
+    return this.listAdjustmentsByType(context, EmployeeAdjustmentType.PENALTY);
+  }
+
+  private async listAdjustmentsByType(
+    context: RequestContext,
+    type: EmployeeAdjustmentType,
+  ): Promise<CollectionResponse<AdvanceResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const rows = await this.prisma.employeeAdjustment.findMany({
+      where: {
+        tenantId,
+        factoryId,
+        type,
+      },
+      orderBy: { requestedAt: 'desc' },
+      select: {
+        id: true,
+        amount: true,
+        reason: true,
+        status: true,
+        requestedAt: true,
+        approvedAt: true,
+        paidAt: true,
+        cancelledAt: true,
+        createdAt: true,
+        updatedAt: true,
+        employee: { select: { id: true, name: true, status: true } },
+        payrollPeriod: { select: { id: true, month: true, status: true } },
+        requestedBy: { select: { id: true, name: true } },
+        approvedBy: { select: { id: true, name: true } },
+        paidBy: { select: { id: true, name: true } },
+      },
+    });
+
+    return {
+      data: rows.map((row) => ({
+        ...row,
+        amount: row.amount.toString(),
+      })),
+    };
   }
 
   private async createEmployeeAdjustment(

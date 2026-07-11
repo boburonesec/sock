@@ -24,6 +24,21 @@ export class SettingsController {
     return this.settingsService.getOverview(context);
   }
 
+  @Get('roles')
+  getRoles(@CurrentContext() context: RequestContext) {
+    return this.settingsService.getRoles(context);
+  }
+
+  @Get('permissions')
+  getPermissions() {
+    return this.settingsService.getPermissions();
+  }
+
+  @Get('expense-categories')
+  getExpenseCategories(@CurrentContext() context: RequestContext) {
+    return this.settingsService.getExpenseCategories(context);
+  }
+
   @Get('salary-rates')
   getSalaryRates(
     @CurrentContext() context: RequestContext,

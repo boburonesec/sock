@@ -51,6 +51,11 @@ export class FinanceController {
     return this.financeService.createAdvance(context, dto);
   }
 
+  @Get('bonuses')
+  getBonuses(@CurrentContext() context: RequestContext): Promise<CollectionResponse<AdvanceResponse>> {
+    return this.financeService.getBonuses(context);
+  }
+
   @Post('bonuses')
   @RequirePermissions('finance.write')
   createBonus(
@@ -58,6 +63,11 @@ export class FinanceController {
     @Body() dto: CreateEmployeeAdjustmentDto,
   ): Promise<SingleResponse<AdvanceResponse>> {
     return this.financeService.createBonus(context, dto);
+  }
+
+  @Get('penalties')
+  getPenalties(@CurrentContext() context: RequestContext): Promise<CollectionResponse<AdvanceResponse>> {
+    return this.financeService.getPenalties(context);
   }
 
   @Post('penalties')

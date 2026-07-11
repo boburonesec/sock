@@ -20,11 +20,11 @@ import {
 const DEFAULT_WAREHOUSE_NAME = 'Main Warehouse';
 const DEFAULT_FACTORY_NAME = 'Asosiy filial';
 const DEFAULT_WAREHOUSE_ZONES = [
-  'Finished Products',
-  'Raw Materials',
-  'Packaging',
-  'Labels',
-  'Defects',
+  'Tayyor mahsulot',
+  'Xom ashyo',
+  'Qadoqlash',
+  'Etiketka',
+  'Brak',
 ] as const;
 
 const DEFAULT_PRODUCTION_STAGES = [

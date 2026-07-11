@@ -105,7 +105,7 @@ export class SettingsService {
       this.categoryCard({
         id: 'materials',
         name: 'Materiallar',
-        description: 'Yarn, elastic, labels va packaging master data',
+        description: 'Ip, material va qadoqlash master ma’lumotlari',
         countLabel: `${materials.length} ta`,
         records: materials,
         href: '/settings/materials',
@@ -121,7 +121,7 @@ export class SettingsService {
       this.categoryCard({
         id: 'production-stages',
         name: 'Ishlab chiqarish bosqichlari',
-        description: 'Stage Inventory oqimi uchun bosqichlar',
+        description: 'Bosqich inventari oqimi uchun bosqichlar',
         countLabel: `${productionStages.length} ta`,
         records: productionStages,
         href: '/settings/stages',
@@ -129,7 +129,7 @@ export class SettingsService {
       this.categoryCard({
         id: 'salary-rates',
         name: 'Ishbay stavkalar',
-        description: 'Bosqich va product variant bo‘yicha dona stavkalari',
+        description: 'Bosqich va mahsulot variant bo‘yicha dona stavkalari',
         countLabel: `${salaryRates.length} ta`,
         records: salaryRates,
         href: '/settings/salary-rates',
@@ -137,7 +137,7 @@ export class SettingsService {
       this.categoryCard({
         id: 'expense-categories',
         name: 'Xarajat kategoriyalari',
-        description: 'Operational expense kategoriyalari',
+        description: 'Operatsion xarajat kategoriyalari',
         countLabel: `${expenseCategories.length} ta`,
         records: expenseCategories,
         href: '/settings/expense-categories',
@@ -145,7 +145,7 @@ export class SettingsService {
       this.categoryCard({
         id: 'warehouse-zones',
         name: 'Ombor zonalari',
-        description: 'Main Warehouse va zonalar konfiguratsiyasi',
+        description: 'Asosiy ombor va uning zonalari',
         countLabel: `${warehouseZones.length} ta`,
         records: warehouseZones,
         href: '/settings/zones',
@@ -153,26 +153,19 @@ export class SettingsService {
       this.categoryCard({
         id: 'roles',
         name: 'Rollar',
-        description: 'Tenant-scoped user rollari',
+        description: `Foydalanuvchi rollari va ularga biriktirilgan ruxsatlar (${permissions.length} ta tizim ruxsati)`,
         countLabel: `${roles.length} ta`,
         records: roles,
         href: '/settings/roles',
       }),
-      this.categoryCard({
-        id: 'permissions',
-        name: 'Ruxsatlar',
-        description: 'Platform-defined permission katalogi',
-        countLabel: `${permissions.length} ta`,
-        records: permissions,
-        href: '/settings/roles',
-      }),
+      // Alohida "Ruxsatlar" kartasi yo‘q: operator uchun ruxsatlar rol ichida ko‘rinadi.
     ];
 
     const configurationHealth: SettingsConfigurationHealthResponse[] = [
       {
         id: 'product-catalog',
-        label: 'Product catalog',
-        description: `${products.length} ta product, ${productVariants.length} ta variant, ${colors.length} rang, ${materials.length} material, ${seasons.length} mavsum.`,
+        label: 'Mahsulot katalogi',
+        description: `${products.length} ta mahsulot, ${productVariants.length} ta variant, ${colors.length} rang, ${materials.length} material, ${seasons.length} mavsum.`,
         status: this.configured(
           products.length > 0 &&
             productVariants.length > 0 &&
@@ -183,20 +176,20 @@ export class SettingsService {
       },
       {
         id: 'production-stages',
-        label: 'Production stages',
-        description: `${productionStages.length} ta faol ishlab chiqarish bosqichi, ${salaryRates.length} ta ishbay stavka.`,
+        label: 'Ishlab chiqarish bosqichlari',
+        description: `${productionStages.length} ta faol bosqich, ${salaryRates.length} ta ishbay stavka.`,
         status: this.configured(productionStages.length > 0 && salaryRates.length > 0),
       },
       {
         id: 'warehouse-zones',
-        label: 'Warehouse zones',
+        label: 'Ombor zonalari',
         description: `${warehouseZones.length} ta faol ombor zonasi.`,
         status: this.configured(warehouseZones.length > 0),
       },
       {
-        id: 'permissions',
-        label: 'Permissions',
-        description: `${roles.length} ta rol, ${permissions.length} ta platform ruxsati.`,
+        id: 'roles',
+        label: 'Rollar',
+        description: `${roles.length} ta rol (ruxsatlar rol ichida biriktirilgan).`,
         status: this.configured(roles.length > 0 && permissions.length > 0),
       },
     ];
@@ -209,6 +202,86 @@ export class SettingsService {
         // actions count as settings changes. Until then, do not fake changes.
         recentChanges: [],
       },
+    };
+  }
+
+  async getRoles(context: RequestContext) {
+    const tenantId = context.tenantId;
+    const roles = await this.prisma.role.findMany({
+      where: { tenantId, deletedAt: null },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        permissions: {
+          select: {
+            permission: {
+              select: { id: true, key: true, name: true },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      data: roles.map((role) => ({
+        id: role.id,
+        name: role.name,
+        permissionCount: String(role.permissions.length),
+        permissions: role.permissions.map((row) => ({
+          id: row.permission.id,
+          key: row.permission.key,
+          name: row.permission.name,
+        })),
+        createdAt: role.createdAt.toISOString(),
+        updatedAt: role.updatedAt.toISOString(),
+      })),
+    };
+  }
+
+  async getPermissions() {
+    const permissions = await this.prisma.permission.findMany({
+      orderBy: { key: 'asc' },
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      data: permissions.map((permission) => ({
+        ...permission,
+        createdAt: permission.createdAt.toISOString(),
+        updatedAt: permission.updatedAt.toISOString(),
+      })),
+    };
+  }
+
+  async getExpenseCategories(context: RequestContext) {
+    const tenantId = context.tenantId;
+    const categories = await this.prisma.expenseCategory.findMany({
+      where: { tenantId, deletedAt: null },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      data: categories.map((category) => ({
+        ...category,
+        createdAt: category.createdAt.toISOString(),
+        updatedAt: category.updatedAt.toISOString(),
+      })),
     };
   }
 
