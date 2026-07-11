@@ -111,10 +111,10 @@ const productionStages = [
 
 const expenseCategoryNames = [
   'Transport',
-  'Materials',
-  'Packaging',
-  'Equipment Repair',
-  'Other',
+  'Materiallar',
+  'Qadoqlash',
+  'Uskuna ta’miri',
+  'Boshqa',
 ] as const;
 
 const colorNames = ['Qora', 'Oq', 'Kulrang'] as const;
