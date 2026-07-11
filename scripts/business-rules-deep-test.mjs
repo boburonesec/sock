@@ -262,7 +262,7 @@ async function main() {
     note("BR-02 skipped", "no employee");
   }
 
-  // ---------- BR-03 Client debt math + paid-only delivery ----------
+  // ---------- BR-03 Client debt + unpaid delivery + payment path ----------
   {
     const client = await raw("POST", "/sales/clients", {
       token: t,
@@ -296,6 +296,17 @@ async function main() {
           fail("BR-03 order total from backend", `total=${total}`);
         }
 
+        // Pre-delivery edit should work
+        const edited = await raw("PATCH", `/sales/orders/${orderId}`, {
+          token: t,
+          body: {
+            clientId,
+            items: [{ productVariantId: variantId, quantity: qty, unitPrice }],
+          },
+        });
+        if (edited.ok) pass("BR-03 pre-delivery edit allowed");
+        else fail("BR-03 pre-delivery edit allowed", JSON.stringify(edited.json).slice(0, 150));
+
         // Debt after order (before payment) should include this order
         const debts1 = dataOf((await raw("GET", "/sales/debts", { token: t })).json);
         const debtRows = Array.isArray(debts1) ? debts1 : debts1?.items || [];
@@ -309,15 +320,29 @@ async function main() {
           fail("BR-03 debt increases after unpaid order", `debt=${debtBeforePay} total=${total}`);
         }
 
-        // Unpaid delivery must fail
+        // Unpaid delivery is allowed when stock exists (payment is independent).
+        // Without finished stock this may 409 for stock — treat as expected.
         const unpaidDel = await raw("POST", `/sales/orders/${orderId}/deliver`, {
           token: t,
-          body: {},
+          body: { deliveryCost: "1000", deliveryCostNote: "deep logistics" },
         });
-        if (unpaidDel.status >= 400) {
-          pass("BR-03 unpaid delivery blocked", String(unpaidDel.status));
+        if (unpaidDel.ok) {
+          const dd = dataOf(unpaidDel.json);
+          if (dd.status === "DELIVERED" && dd.paymentStatus === "UNPAID") {
+            pass("BR-03 unpaid delivery allowed", "DELIVERED+UNPAID");
+          } else {
+            pass(
+              "BR-03 unpaid delivery allowed",
+              `status=${dd.status} pay=${dd.paymentStatus}`,
+            );
+          }
+        } else if (unpaidDel.status === 409) {
+          note(
+            "BR-03 unpaid delivery not completed",
+            "likely insufficient Finished Products stock — payment gate removed",
+          );
         } else {
-          fail("BR-03 unpaid delivery blocked", "delivery allowed while unpaid");
+          fail("BR-03 unpaid delivery", JSON.stringify(unpaidDel.json).slice(0, 150));
         }
 
         // Partial payment
@@ -333,18 +358,16 @@ async function main() {
         });
         if (payPartial.ok) pass("BR-03 partial payment accepted");
         else {
-          // some systems require full allocation only of full amount — note
           if (payPartial.status >= 400) {
             note(
               "BR-03 partial payment rejected",
-              "system may require full payment only — check product policy",
+              "allocation rules may block remainder path",
             );
           } else fail("BR-03 partial payment", JSON.stringify(payPartial.json).slice(0, 150));
         }
 
         // Full remaining payment
         const remain = String(total - dec(half) > 0 && payPartial.ok ? total - dec(half) : total);
-        // If partial worked, pay remainder; else pay full
         const payFull = await raw("POST", "/sales/payments", {
           token: t,
           body: {
@@ -359,11 +382,9 @@ async function main() {
             ],
           },
         });
-        // If partial already fully allocated somehow, ignore
         if (payFull.ok || payFull.status === 409) {
           pass("BR-03 full payment path", payFull.ok ? "paid" : "409 ok");
         } else {
-          // try full amount if remainder failed
           const payAll = await raw("POST", "/sales/payments", {
             token: t,
             body: {
@@ -390,13 +411,16 @@ async function main() {
         if (overPay.status >= 400) pass("BR-03 over-allocation blocked", String(overPay.status));
         else fail("BR-03 over-allocation blocked", "accepted over allocation");
 
-        // Deliver after paid (may fail if no finished stock)
-        const del = await raw("POST", `/sales/orders/${orderId}/deliver`, {
-          token: t,
-          body: {},
-        });
+        // If not yet delivered, try deliver now (stock may still block)
+        let del = unpaidDel;
+        if (!unpaidDel.ok) {
+          del = await raw("POST", `/sales/orders/${orderId}/deliver`, {
+            token: t,
+            body: {},
+          });
+        }
         if (del.ok) {
-          pass("BR-03 deliver when paid");
+          pass("BR-03 deliver path", "delivered");
           const pays = dataOf((await raw("GET", "/sales/payments", { token: t })).json);
           const payList = Array.isArray(pays) ? pays : [];
           const payment = payList.find(
@@ -429,16 +453,24 @@ async function main() {
                 body: { reason: "deep-test-after-return" },
               });
               if (rev3.ok) pass("BR-03 reverse allowed after return");
-              else fail("BR-03 reverse allowed after return", JSON.stringify(rev3.json).slice(0, 150));
+              else {
+                fail(
+                  "BR-03 reverse allowed after return",
+                  JSON.stringify(rev3.json).slice(0, 150),
+                );
+              }
             } else {
-              fail("BR-03 delivery return after deliver", JSON.stringify(ret.json).slice(0, 150));
+              fail(
+                "BR-03 delivery return after deliver",
+                JSON.stringify(ret.json).slice(0, 150),
+              );
             }
           } else {
             note("BR-03 reverse chain", "could not resolve payment id from list");
           }
         } else {
           note(
-            "BR-03 deliver when paid",
+            "BR-03 deliver path",
             `blocked (likely stock): ${del.status} ${JSON.stringify(del.json).slice(0, 120)}`,
           );
         }

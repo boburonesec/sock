@@ -374,7 +374,30 @@ async function main() {
           const order = o.json?.data || o.json;
           const total = order?.totalAmount || order?.total || "50000";
 
-          // Full payment allocation
+          // Delivery does not require payment — only finished stock.
+          const delUnpaid = await req("POST", `/sales/orders/${orderId}/deliver`, {
+            token: owner.token,
+            body: {
+              deliveryCost: "2500",
+              deliveryCostNote: "manual case logistics",
+            },
+          });
+          if (delUnpaid.status === 201 || delUnpaid.status === 200) {
+            ok("Deliver order without requiring payment");
+          } else {
+            const msg = JSON.stringify(delUnpaid.json).slice(0, 280);
+            if (
+              delUnpaid.status >= 400 &&
+              /stock|inventory|ombor|qoldiq|available|Finished/i.test(msg)
+            ) {
+              ok(
+                "Deliver blocked by stock only (payment not required)",
+                String(delUnpaid.status),
+              );
+            } else fail("Deliver order", msg);
+          }
+
+          // Client payment is independent debt collection
           const pay = await req("POST", "/sales/payments", {
             token: owner.token,
             body: {
@@ -386,20 +409,6 @@ async function main() {
           });
           if (pay.status === 201 || pay.status === 200) ok("Create full payment for order");
           else fail("Create full payment for order", JSON.stringify(pay.json).slice(0, 300));
-
-          // Delivery (requires paid)
-          const del = await req("POST", `/sales/orders/${orderId}/deliver`, {
-            token: owner.token,
-            body: {},
-          });
-          if (del.status === 201 || del.status === 200) ok("Deliver paid order");
-          else {
-            // may fail if stock insufficient — note detail
-            const msg = JSON.stringify(del.json).slice(0, 280);
-            if (del.status >= 400 && /stock|inventory|ombor|qoldiq|available/i.test(msg)) {
-              ok("Deliver paid order blocked by stock (expected if no finished stock)", String(del.status));
-            } else fail("Deliver paid order", msg);
-          }
         } else fail("Create order", JSON.stringify(o.json).slice(0, 300));
       }
     }

@@ -291,26 +291,37 @@ async function createEmployeeAndSalaryRate(variantId) {
   })).data;
 
   // Salary rates are stage-level only (amount per piece). At most one active
-  // rate per stage (partial unique index). Archive any open rate, then create.
+  // rate per stage (partial unique index). Stage moves and manual activities
+  // both require an active rate on the stage being worked.
+  const stagesNeedingRates = [firstStage.id, secondStage.id];
   const existingRates = (await request('/settings/salary-rates')).data ?? [];
   for (const rate of existingRates) {
     const stageId = rate.stageId ?? rate.productionStageId ?? rate.stage?.id;
-    if (stageId === firstStage.id && !rate.effectiveTo && !rate.deletedAt) {
+    if (
+      stagesNeedingRates.includes(stageId) &&
+      !rate.effectiveTo &&
+      !rate.deletedAt
+    ) {
       await request(`/settings/salary-rates/${rate.id}/archive`, {
         method: 'PATCH',
       });
     }
   }
 
-  await request('/settings/salary-rates', {
-    method: 'POST',
-    body: {
-      stageId: firstStage.id,
-      amount: '7',
-    },
-  });
+  for (const stageId of stagesNeedingRates) {
+    await request('/settings/salary-rates', {
+      method: 'POST',
+      body: {
+        stageId,
+        amount: stageId === firstStage.id ? '7' : '5',
+      },
+    });
+  }
 
-  pass('employee and salary rate setup', { employeeId: employee.id });
+  pass('employee and salary rate setup', {
+    employeeId: employee.id,
+    rateStages: stagesNeedingRates.length,
+  });
 
   return { employee, stages, firstStage, secondStage, omborStage };
 }
@@ -540,31 +551,115 @@ async function runSalesRecoveryChain({ tenantId, clientName, variant, finishedZo
     method: 'POST',
     body: { name: clientName },
   })).data;
-  const order = (await request('/sales/orders', {
-    method: 'POST',
-    body: {
-      clientId: client.id,
-      items: [{ productVariantId: variant.id, quantity: 2, unitPrice: '100' }],
-    },
-  })).data;
-  const payment = (await request('/sales/payments', {
-    method: 'POST',
-    body: {
-      clientId: client.id,
-      amount: '200',
-      method: 'CASH',
-      allocations: [{ orderId: order.id, amount: '200' }],
-    },
-  })).data;
-  const delivered = (await request(`/sales/orders/${order.id}/deliver`, {
-    method: 'POST',
-  })).data;
 
-  assert(delivered.status === 'DELIVERED', 'order should be delivered');
+  // Create is a commercial record — not physical delivery to the client.
+  const created = (
+    await request('/sales/orders', {
+      method: 'POST',
+      body: {
+        clientId: client.id,
+        items: [{ productVariantId: variant.id, quantity: 2, unitPrice: '100' }],
+      },
+    })
+  ).data;
+  assert(created.status === 'CONFIRMED', 'new order should be CONFIRMED');
+  assert(created.paymentStatus === 'UNPAID', 'new order should be UNPAID');
+  assert(created.totalAmount === '200', `expected total 200, got ${created.totalAmount}`);
+
+  // Pre-delivery edit (seller mistake correction).
+  const order = (
+    await request(`/sales/orders/${created.id}`, {
+      method: 'PATCH',
+      body: {
+        clientId: client.id,
+        items: [{ productVariantId: variant.id, quantity: 2, unitPrice: '100' }],
+        note: `Smoke edit ${suffix}`,
+      },
+    })
+  ).data;
+  assert(order.id === created.id, 'edit should keep same order id');
+  assert(order.totalAmount === '200', 'edited order total should remain 200');
+
+  // Cancel path for a separate never-delivered order (no payments).
+  const cancelCandidate = (
+    await request('/sales/orders', {
+      method: 'POST',
+      body: {
+        clientId: client.id,
+        items: [{ productVariantId: variant.id, quantity: 1, unitPrice: '50' }],
+      },
+    })
+  ).data;
+  const cancelled = (
+    await request(`/sales/orders/${cancelCandidate.id}/cancel`, {
+      method: 'POST',
+      body: {},
+    })
+  ).data;
+  assert(cancelled.status === 'CANCELLED', 'pre-delivery cancel should set CANCELLED');
+
+  // Delivery does NOT require client payment — only finished stock.
+  // Optional factory logistics cost is recorded as a paid Transport expense.
+  const delivered = (
+    await request(`/sales/orders/${order.id}/deliver`, {
+      method: 'POST',
+      body: {
+        deliveryCost: '1500',
+        deliveryCostNote: `Smoke courier ${suffix}`,
+      },
+    })
+  ).data;
+
+  assert(delivered.status === 'DELIVERED', 'order should be delivered while UNPAID');
+  assert(
+    delivered.paymentStatus === 'UNPAID',
+    `paymentStatus should stay UNPAID after unpaid deliver, got ${delivered.paymentStatus}`,
+  );
+
+  const logisticsExpense = await prisma.expense.findFirst({
+    where: {
+      tenantId,
+      status: 'PAID',
+      reason: { contains: order.orderNumber },
+    },
+    orderBy: { createdAt: 'desc' },
+    include: { category: { select: { name: true } } },
+  });
+  assert(logisticsExpense, 'delivery logistics should create a paid expense');
+  assert(
+    Number(logisticsExpense.amount) === 1500,
+    `logistics expense amount should be 1500, got ${logisticsExpense.amount}`,
+  );
+  assert(
+    /Transport|Logistika|Yetkazish/i.test(logisticsExpense.category?.name ?? ''),
+    `logistics category unexpected: ${logisticsExpense.category?.name}`,
+  );
+
+  // Client product payment remains a separate debt path (can pay after delivery).
+  const payment = (
+    await request('/sales/payments', {
+      method: 'POST',
+      body: {
+        clientId: client.id,
+        amount: '200',
+        method: 'CASH',
+        allocations: [{ orderId: order.id, amount: '200' }],
+      },
+    })
+  ).data;
+
+  const paidOrder = (await request('/sales/orders')).data.find((item) => item.id === order.id);
+  assert(paidOrder?.paymentStatus === 'PAID', 'order should become PAID after allocation');
 
   await expectStatus(`/sales/payments/${payment.id}/reverse`, 409, {
     method: 'POST',
     body: { reason: `Blocked before return ${suffix}` },
+  });
+
+  // Cancel must not work after delivery.
+  await expectStatus(`/sales/orders/${order.id}/cancel`, 409, {
+    method: 'POST',
+    body: {},
   });
 
   const stockAfterDelivery = await prisma.stock.findFirst({
@@ -577,12 +672,17 @@ async function runSalesRecoveryChain({ tenantId, clientName, variant, finishedZo
   assert(stockAfterDelivery, 'stock should exist after delivery');
   const quantityBeforeReturn = Number(stockAfterDelivery.quantity);
 
-  const returned = (await request(`/sales/orders/${order.id}/return-delivery`, {
-    method: 'POST',
-  })).data;
+  const returned = (
+    await request(`/sales/orders/${order.id}/return-delivery`, {
+      method: 'POST',
+    })
+  ).data;
 
   assert(returned.status === 'READY', 'returned order should be READY');
-  assert(returned.paymentStatus === 'PAID', 'payment status should remain PAID after return');
+  assert(
+    returned.paymentStatus === 'PAID',
+    'payment status should remain PAID after return',
+  );
 
   const stockAfterReturn = await prisma.stock.findFirst({
     where: {
@@ -597,10 +697,12 @@ async function runSalesRecoveryChain({ tenantId, clientName, variant, finishedZo
     'delivery return should restore full order quantity to stock',
   );
 
-  const reversed = (await request(`/sales/payments/${payment.id}/reverse`, {
-    method: 'POST',
-    body: { reason: `Smoke reversal after return ${suffix}` },
-  })).data;
+  const reversed = (
+    await request(`/sales/payments/${payment.id}/reverse`, {
+      method: 'POST',
+      body: { reason: `Smoke reversal after return ${suffix}` },
+    })
+  ).data;
 
   assert(reversed.reversedAt, 'payment should be marked reversed');
 
@@ -615,7 +717,8 @@ async function runSalesRecoveryChain({ tenantId, clientName, variant, finishedZo
   const debt = (await request('/sales/debts')).data.find(
     (item) => item.client.id === client.id,
   );
-  assert(debt?.debt === '200', `debt should increase to 200, got ${debt?.debt}`);
+  // Cancelled order (50) is not in debt; main order 200 is unpaid after reverse.
+  assert(debt?.debt === '200', `debt should be 200, got ${debt?.debt}`);
 
   const returnMovement = await prisma.stockMovement.findFirst({
     where: {
@@ -628,10 +731,12 @@ async function runSalesRecoveryChain({ tenantId, clientName, variant, finishedZo
   });
   assert(returnMovement, 'delivery return should create RETURN StockMovement');
 
-  pass('client order payment delivery return and payment reversal', {
+  pass('sales edit/cancel, unpaid deliver + logistics, payment, return, reverse', {
     clientId: client.id,
     orderId: order.id,
     paymentId: payment.id,
+    logisticsExpenseId: logisticsExpense.id,
+    cancelledOrderId: cancelCandidate.id,
   });
 
   return { client, order, payment };
@@ -772,7 +877,11 @@ async function verifyCriticalAudits(tenantId) {
   const actions = [
     'STOCK_CORRECTED',
     'CLIENT_PAYMENT_REVERSED',
+    'SALES_ORDER_UPDATED',
+    'SALES_ORDER_CANCELLED',
+    'SALES_ORDER_DELIVERED',
     'SALES_ORDER_DELIVERY_RETURNED',
+    'EXPENSE_CREATED',
     'STOCK_MOVEMENT_CREATED',
     'SUPPLIER_PAYMENT_CREATED',
     'PAYROLL_PERIOD_CLOSED',

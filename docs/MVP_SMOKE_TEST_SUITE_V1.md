@@ -14,12 +14,13 @@ It verifies that the main factory operating chain still works end-to-end:
 ```text
 Auth
 → Product setup
-→ Employee + salary rate
-→ Production
+→ Employee + salary rates (all stages used)
+→ Production (stage move auto-activity + manual activity)
 → Warehouse
-→ Sales
-→ Payment
-→ Delivery
+→ Sales create
+→ Pre-delivery edit / cancel
+→ Unpaid delivery (+ optional logistics expense)
+→ Client payment (independent of delivery)
 → Delivery return
 → Payment reversal
 → Supplier flow
@@ -33,16 +34,19 @@ Covered:
 
 - auth login and request context
 - product / variant / price setup
-- employee (with stage assignment) and stage-level salary rate setup
+- employee (with stage assignment) and stage-level salary rates for stages used
 - production batch
-- stage movement with `employeeIds` (required for activity snapshot)
-- worker activity
+- stage movement with `employeeIds` (auto worker activity snapshots)
+- manual worker activity (requires active salary rate on that stage)
 - defect
 - finished product receipt
 - material receipt
 - stock correction
-- client / order / payment
-- delivery
+- client / order create
+- pre-delivery order edit + cancel
+- **unpaid delivery** (payment not required; stock required)
+- optional factory logistics expense on deliver (Transport / PAID)
+- client payment allocation (debt path, independent of delivery)
 - delivery return
 - payment reversal after delivery return
 - supplier purchase / payment
@@ -59,7 +63,6 @@ Not covered:
 - production movement correction
 - material receipt correction
 - concurrency / race-condition stress testing
-
 ## How to Run
 
 From repository root:
