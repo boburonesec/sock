@@ -27,6 +27,8 @@
     "demo:reset": "pnpm --filter @paypoq/api demo:reset",
     "demo:seed": "pnpm --filter @paypoq/api demo:seed",
     "demo:prepare": "pnpm --filter @paypoq/api demo:prepare",
+    "db:reset:clean": "node scripts/db-reset-clean.mjs",
+    "db:reset:empty": "node scripts/db-reset-empty.mjs",
     "backup:db": "bash scripts/backup-db.sh",
     "restore:db": "bash scripts/restore-db.sh",
     "deploy:smoke": "bash scripts/deploy-smoke.sh",

@@ -1,0 +1,14 @@
+-- Paypoq OS: local/dev database full wipe (application tables only)
+-- Keeps: public._prisma_migrations
+-- Safe only on local/demo databases.
+--
+-- EMPTY (recommended for super-admin 0-dan start):
+--   ALLOW_DEMO_RESET=true pnpm db:reset:empty
+--   → truncate all + only platform@paypoq.local
+--   → NO tenants / factories / factory users
+--
+-- CLEAN baseline (demo tenant + roles, no demo sales data):
+--   ALLOW_DEMO_RESET=true pnpm db:reset:clean
+--
+-- Dynamic TRUNCATE is done by apps/api/scripts/demo-reset.mjs
+-- (all public tables except _prisma_migrations).
