@@ -34,31 +34,31 @@ const accountRoleOptions: Array<{
     value: "Manager",
     label: "Menejer",
     description: "Operatsiyalarni keng boshqaradi",
-    submitLabel: "Menejer account ochish",
+    submitLabel: "Menejer qo‘shish",
   },
   {
     value: "Seller",
     label: "Sotuvchi",
     description: "Mijoz, buyurtma va to‘lovlarni yuritadi",
-    submitLabel: "Sotuvchi account ochish",
+    submitLabel: "Sotuvchi qo‘shish",
   },
   {
     value: "Warehouse Operator",
     label: "Omborchi",
     description: "Ombor qoldiqlari va harakatlarini yuritadi",
-    submitLabel: "Omborchi account ochish",
+    submitLabel: "Omborchi qo‘shish",
   },
   {
     value: "Shift Receiver",
     label: "Smena qabul qiluvchi",
     description: "Ishlab chiqarish va ishchi faolligini kiritadi",
-    submitLabel: "Smena qabul qiluvchi account ochish",
+    submitLabel: "Smena qabul qiluvchi qo‘shish",
   },
   {
     value: "Accountant",
     label: "Buxgalter",
     description: "Moliya, avans va ish haqini yuritadi",
-    submitLabel: "Buxgalter account ochish",
+    submitLabel: "Buxgalter qo‘shish",
   },
 ];
 
@@ -188,7 +188,7 @@ export function CompanySettingsPage() {
   const resetPassword = useMutation({
     mutationFn: () => {
       if (!selectedUser) {
-        throw new Error("Foydalanuvchi tanlanmagan.");
+        throw new Error("Operator tanlanmagan.");
       }
 
       return organizationApi.updateUserPassword(selectedUser.id, {
@@ -204,7 +204,7 @@ export function CompanySettingsPage() {
   const updateFactoryAccess = useMutation({
     mutationFn: () => {
       if (!selectedUser) {
-        throw new Error("Foydalanuvchi tanlanmagan.");
+        throw new Error("Operator tanlanmagan.");
       }
 
       return organizationApi.updateUserFactoryAccess(selectedUser.id, {
@@ -250,7 +250,7 @@ export function CompanySettingsPage() {
     return (
       <ErrorState
         title="Ruxsat yo‘q"
-        description="Korxona sozlamalarini faqat asosiy account boshqara oladi."
+        description="Korxona sozlamalarini faqat korxona egasi boshqara oladi."
       />
     );
   }
@@ -285,11 +285,11 @@ export function CompanySettingsPage() {
       <section className="grid gap-3 rounded-xl border bg-card p-4 text-sm md:grid-cols-3">
         <div>
           <p className="font-semibold">Kichik sex</p>
-          <p className="mt-1 text-muted-foreground">Owner o‘zi ishlashi mumkin, qo‘shimcha account shart emas.</p>
+          <p className="mt-1 text-muted-foreground">Korxona egasi o‘zi ishlashi mumkin, qo‘shimcha operator shart emas.</p>
         </div>
         <div>
           <p className="font-semibold">Operatsion boshqaruv</p>
-          <p className="mt-1 text-muted-foreground">Kundalik ishlar uchun bitta Menejer account oching.</p>
+          <p className="mt-1 text-muted-foreground">Kundalik ishlar uchun bitta Menejer operator qo‘shing.</p>
         </div>
         <div>
           <p className="font-semibold">Katta korxona</p>
@@ -304,13 +304,15 @@ export function CompanySettingsPage() {
               Filiallar
             </TabButton>
             <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")}>
-              Foydalanuvchilar
+              Operatorlar
             </TabButton>
           </div>
         ) : (
           <div>
-            <h2 className="text-lg font-semibold">Foydalanuvchilar</h2>
-            <p className="text-sm text-muted-foreground">Korxona ichidagi accountlar</p>
+            <h2 className="text-lg font-semibold">Operatorlar</h2>
+            <p className="text-sm text-muted-foreground">
+              Dasturga kiradigan hisoblar (menejer, sotuvchi…). Ishbay ishchilar — «Xodimlar» bo‘limida.
+            </p>
           </div>
         )}
         {isMultiBranch && activeTab === "factories" ? (
@@ -326,7 +328,7 @@ export function CompanySettingsPage() {
             disabled={isMultiBranch && factories.length === 0}
           >
             <Plus size={16} />
-            Foydalanuvchi qo‘shish
+            Operator qo‘shish
           </Button>
         )}
       </div>
@@ -395,8 +397,8 @@ export function CompanySettingsPage() {
             createAccount.reset();
           }
         }}
-        title="Yangi account ochish"
-        description="Foydalanuvchining roli uning qaysi sahifalarda ishlashini belgilaydi."
+        title="Yangi operator ochish"
+        description="Operator roli uning dasturda qaysi bo‘limlarda ishlashini belgilaydi. Ishbay ishchilar bu yerga kiritilmaydi."
       >
         <form className="space-y-4" onSubmit={submitAccount}>
           <FormField htmlFor="account-role" label="Rol" required>
@@ -463,7 +465,7 @@ export function CompanySettingsPage() {
           ) : null}
           {createAccount.isError ? (
             <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-              Account ochilmadi. Email takrorlanmaganini va rol tanlanganini tekshiring.
+              Operator qo‘shilmadi. Email takrorlanmaganini va rol tanlanganini tekshiring.
             </p>
           ) : null}
           <Button
@@ -493,8 +495,12 @@ export function CompanySettingsPage() {
             updateFactoryAccess.reset();
           }
         }}
-        title={selectedUser?.name ?? "Foydalanuvchi"}
-        description={isMultiBranch ? "Rol, parol va filial ruxsatlarini boshqarish" : "Rol, ma’lumotlar va parolni boshqarish"}
+        title={selectedUser?.name ?? "Operator"}
+        description={
+          isMultiBranch
+            ? "Operator roli, paroli va filial ruxsatlarini boshqarish"
+            : "Operator roli, ma’lumotlari va parolini boshqarish"
+        }
       >
         {selectedUser ? (
           <div className="space-y-5">
@@ -652,7 +658,7 @@ function FactoriesTab({
             <h2 className="mt-1 text-xl font-semibold">{selectedFactory.name}</h2>
             <div className="mt-5 grid gap-3 text-sm">
               <div className="rounded-lg bg-muted/40 p-3">
-                <p className="text-muted-foreground">Biriktirilgan foydalanuvchilar</p>
+                <p className="text-muted-foreground">Biriktirilgan operatorlar</p>
                 <p className="mt-1 text-2xl font-bold">{selectedFactory.userCount}</p>
               </div>
               <div className="rounded-lg bg-muted/40 p-3">
@@ -662,7 +668,7 @@ function FactoriesTab({
             </div>
           </div>
           <div className="rounded-xl border p-4">
-            <h3 className="font-semibold">Ushbu filialdagi foydalanuvchilar</h3>
+            <h3 className="font-semibold">Ushbu filialdagi operatorlar</h3>
             <div className="mt-3 divide-y">
               {selectedFactoryUsers.map((user) => (
                 <div
@@ -679,7 +685,7 @@ function FactoriesTab({
                 </div>
               ))}
               {selectedFactoryUsers.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">Bu filialga hali foydalanuvchi biriktirilmagan.</p>
+                <p className="py-6 text-sm text-muted-foreground">Bu filialga hali operator biriktirilmagan.</p>
               ) : null}
             </div>
           </div>
@@ -699,7 +705,12 @@ function UsersTab({
   onOpenUser: (user: OrganizationUser) => void;
 }) {
   if (users.length === 0) {
-    return <EmptyPanel title="Foydalanuvchi yo‘q" description="O‘ng yuqoridagi tugma orqali foydalanuvchi qo‘shing." />;
+    return (
+      <EmptyPanel
+        title="Operator yo‘q"
+        description="O‘ng yuqoridagi tugma orqali dasturga kiradigan operator qo‘shing. Ishbay ishchilar «Xodimlar» bo‘limida."
+      />
+    );
   }
 
   return (

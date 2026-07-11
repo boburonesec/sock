@@ -45,10 +45,10 @@ function formatBranchMode(mode: string): string {
 function formatHealthMetricLabel(key: string): string {
   const labels: Record<string, string> = {
     factoryCount: "Filiallar",
-    userCount: "Foydalanuvchilar",
-    activeUserCount: "Faol foydalanuvchilar",
-    activeEmployeeCount: "Faol xodimlar",
-    employeeCount: "Xodimlar",
+    userCount: "Operatorlar",
+    activeUserCount: "Faol operatorlar",
+    activeEmployeeCount: "Faol ishbay xodimlar",
+    employeeCount: "Ishbay xodimlar",
     productCount: "Mahsulotlar",
     orderCount: "Buyurtmalar",
     warehouseCount: "Omborlar",
@@ -61,7 +61,7 @@ function formatHealthMetricLabel(key: string): string {
 
 function formatUserRole(role: string): string {
   const labels: Record<string, string> = {
-    Owner: "Asosiy account",
+    Owner: "Korxona egasi",
     Manager: "Menejer",
     Accountant: "Buxgalter",
     Seller: "Sotuvchi",
@@ -127,7 +127,7 @@ export default function PlatformTenantDetailPage() {
   const updatePassword = useMutation({
     mutationFn: () => {
       if (!selectedUser) {
-        throw new Error("Foydalanuvchi tanlanmagan.");
+        throw new Error("Operator tanlanmagan.");
       }
 
       return platformAdminApi.updateTenantUserPassword(tenantId, selectedUser.id, {
@@ -220,7 +220,7 @@ export default function PlatformTenantDetailPage() {
                 <div className="flex flex-wrap gap-3">
                   {!hasMainAccount ? (
                     <Button variant="outline" onClick={() => setOwnerDrawerOpen(true)}>
-                      Asosiy account ochish
+                      Korxona egasini ochish
                     </Button>
                   ) : null}
                   <Button onClick={() => setConfirmAction("activate")} disabled={tenant.status === "ACTIVE"}>
@@ -298,9 +298,9 @@ export default function PlatformTenantDetailPage() {
               </div>
 
               <div className="panel p-5">
-                <h2 className="font-semibold">Foydalanuvchilar</h2>
+                <h2 className="font-semibold">Operatorlar</h2>
                 <div className="mt-4 space-y-3">
-                  {tenant.users.length === 0 && <p className="text-sm text-muted-foreground">Foydalanuvchi yo‘q.</p>}
+                  {tenant.users.length === 0 && <p className="text-sm text-muted-foreground">Operator yo‘q.</p>}
                   {tenant.users.map((user) => (
                     <button
                       key={user.id}
@@ -350,7 +350,7 @@ export default function PlatformTenantDetailPage() {
           </div>
         )}
 
-        <Drawer open={ownerDrawerOpen} onOpenChange={setOwnerDrawerOpen} title="Asosiy account ochish">
+        <Drawer open={ownerDrawerOpen} onOpenChange={setOwnerDrawerOpen} title="Korxona egasini ochish">
           <form className="space-y-4" onSubmit={submitOwner}>
             <FormField htmlFor="owner-name" label="Ism" required>
               <Input id="owner-name" value={ownerForm.name} onChange={(event) => setOwnerForm({ ...ownerForm, name: event.target.value })} />
@@ -362,11 +362,11 @@ export default function PlatformTenantDetailPage() {
               <Input id="owner-password" type="text" value={ownerForm.password} onChange={(event) => setOwnerForm({ ...ownerForm, password: event.target.value })} />
             </FormField>
             <p className="text-xs text-muted-foreground">
-              Asosiy account korxona ichiga kiradi. Agar korxonada hali filial bo‘lmasa, tizim avtomatik Asosiy filial yaratadi.
+              Korxona egasi dasturga kiradi va boshqa operatorlarni boshqaradi. Agar filial bo‘lmasa, tizim avtomatik Asosiy filial yaratadi.
             </p>
-            {createOwner.isError && <p className="text-sm text-rose-300">Asosiy account yaratilmadi.</p>}
+            {createOwner.isError && <p className="text-sm text-rose-300">Korxona egasi yaratilmadi.</p>}
             <Button className="w-full" disabled={!ownerForm.name.trim() || !ownerForm.email.trim() || createOwner.isPending}>
-              {createOwner.isPending ? "Yaratilmoqda..." : "Asosiy account ochish"}
+              {createOwner.isPending ? "Yaratilmoqda..." : "Korxona egasini ochish"}
             </Button>
           </form>
         </Drawer>
@@ -380,8 +380,8 @@ export default function PlatformTenantDetailPage() {
               updatePassword.reset();
             }
           }}
-          title={selectedUser?.name ?? "Foydalanuvchi"}
-          description="Foydalanuvchi ma’lumotlari va parolini yangilash"
+          title={selectedUser?.name ?? "Operator"}
+          description="Operator ma’lumotlari va parolini yangilash"
         >
           {selectedUser ? (
             <div className="space-y-5">
@@ -436,7 +436,7 @@ export default function PlatformTenantDetailPage() {
           description={
             confirmAction === "activate"
               ? "Korxona faol holatga o‘tkaziladi."
-              : "Korxona vaqtincha to‘xtatiladi. Bu holatda foydalanuvchilar kirishi cheklanishi kerak."
+              : "Korxona vaqtincha to‘xtatiladi. Bu holatda operatorlar kirishi cheklanadi."
           }
           confirmLabel="Tasdiqlash"
           destructive={confirmAction === "suspend"}

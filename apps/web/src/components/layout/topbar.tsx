@@ -19,7 +19,7 @@ function formatStatus(status?: string): string {
 
 function formatRole(role: string): string {
   const labels: Record<string, string> = {
-    Owner: "Asosiy account",
+    Owner: "Korxona egasi",
     Manager: "Menejer",
     Accountant: "Buxgalter",
     Seller: "Sotuvchi",
@@ -129,7 +129,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
               }
             }}
             title="Akkaunt"
-            description="Foydalanuvchi ma’lumotlari va parol sozlamalari"
+            description="Operator ma’lumotlari va parol sozlamalari"
           >
             <div className="space-y-5">
               <section className="rounded-xl border p-4">

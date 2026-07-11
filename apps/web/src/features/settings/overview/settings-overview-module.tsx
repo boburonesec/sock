@@ -18,14 +18,14 @@ const settingsHubItems = [
   {
     href: "/settings/company",
     title: "Korxona",
-    description: "Filiallar, foydalanuvchilar va hisob ruxsatlari",
+    description: "Filiallar, operatorlar va hisob ruxsatlari",
     icon: Building2,
     ownerOnly: true,
   },
   {
     href: "/settings/company",
-    title: "Foydalanuvchilar",
-    description: "Menejer, sotuvchi, omborchi va boshqa foydalanuvchilar",
+    title: "Operatorlar",
+    description: "Dasturga kiradigan hisoblar (menejer, sotuvchi…). Ishbay ishchilar — Xodimlar",
     icon: Users,
     ownerOnly: true,
   },
@@ -174,7 +174,7 @@ export function SettingsOverviewModule() {
         description={
           isOwner
             ? "Tizim hisoblagan sozlama kategoriyalari."
-            : "Tizim hisoblagan sozlama kategoriyalari. Foydalanuvchi, filial va rol boshqaruvi korxona egasida qoladi."
+            : "Tizim hisoblagan sozlama kategoriyalari. Operator, filial va rol boshqaruvi korxona egasida qoladi."
         }
       >
         <SettingsCategoryCards categories={visibleCategoryCards} />

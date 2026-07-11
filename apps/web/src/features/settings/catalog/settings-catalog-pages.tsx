@@ -126,11 +126,11 @@ export function SettingsRolesPage() {
     <>
       <PageHeader
         title="Rollar"
-        description="Har bir rol qanday ishlarni bajarishi mumkinligi. Foydalanuvchiga rol biriktirish — Korxona sozlamalaridan."
+        description="Har bir rol dasturda qanday ishlarni bajarishi mumkinligi. Operatorga rol biriktirish — Korxona sozlamalaridan. Ishbay ishchilar — Xodimlar bo‘limida."
         action={
           <Link href="/settings/company">
             <Button type="button" variant="outline">
-              Foydalanuvchilar
+              Operatorlar
             </Button>
           </Link>
         }
@@ -138,7 +138,7 @@ export function SettingsRolesPage() {
 
       <p className="mb-4 text-sm text-muted-foreground">
         Hozircha rollar tizim tomonidan beriladi (o‘zgartirish/yangi rol ochish MVP da yo‘q).
-        Operator uchun muhimi: foydalanuvchiga to‘g‘ri rolni tanlash.
+        Muhimi: dasturga kiradigan operatorga to‘g‘ri rolni tanlash.
       </p>
 
       {roles.length === 0 ? (

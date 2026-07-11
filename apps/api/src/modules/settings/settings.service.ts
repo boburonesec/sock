@@ -153,7 +153,7 @@ export class SettingsService {
       this.categoryCard({
         id: 'roles',
         name: 'Rollar',
-        description: `Foydalanuvchi rollari va ularga biriktirilgan ruxsatlar (${permissions.length} ta tizim ruxsati)`,
+        description: `Operator rollari va ularga biriktirilgan ruxsatlar (${permissions.length} ta tizim ruxsati)`,
         countLabel: `${roles.length} ta`,
         records: roles,
         href: '/settings/roles',

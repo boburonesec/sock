@@ -152,7 +152,7 @@ export default function PlatformTenantsPage() {
                       Filiallar: {tenant.factoryCount ?? "0"}
                     </span>
                     <span className="rounded-full border px-3 py-1">
-                      Foydalanuvchilar: {tenant.userCount ?? "0"}
+                      Operatorlar: {tenant.userCount ?? "0"}
                     </span>
                   </div>
                 </div>

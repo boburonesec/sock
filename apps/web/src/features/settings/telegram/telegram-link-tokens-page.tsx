@@ -130,7 +130,7 @@ export function TelegramLinkTokensPage() {
 
       <PageSection
         title="Telegram akkauntlari"
-        description="Xodim, mijoz yoki foydalanuvchiga bog‘langan Telegram akkauntlari."
+        description="Xodim, mijoz yoki operatorga bog‘langan Telegram akkauntlari."
       >
         {accounts.length === 0 ? (
           <EmptyState
@@ -301,7 +301,7 @@ function formatTargetType(value: string): string {
   const labels: Record<string, string> = {
     EMPLOYEE: "Xodim",
     CLIENT: "Mijoz",
-    USER: "Foydalanuvchi",
+    USER: "Operator",
   };
 
   return labels[value] ?? value;

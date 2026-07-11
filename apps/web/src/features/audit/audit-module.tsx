@@ -68,7 +68,7 @@ export function AuditModule() {
             <DataTableHeader>Vaqt</DataTableHeader>
             <DataTableHeader>Amal</DataTableHeader>
             <DataTableHeader>Obyekt</DataTableHeader>
-            <DataTableHeader>Foydalanuvchi</DataTableHeader>
+            <DataTableHeader>Operator</DataTableHeader>
             <DataTableHeader>ID</DataTableHeader>
           </DataTableRow>
         </DataTableHead>

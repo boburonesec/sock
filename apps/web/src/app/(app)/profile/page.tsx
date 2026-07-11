@@ -30,9 +30,9 @@ export default function ProfilePage() {
       <section className="panel p-5">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs uppercase text-muted-foreground">Foydalanuvchi</p>
+            <p className="text-xs uppercase text-muted-foreground">Operator</p>
             <h2 className="mt-1 text-xl font-semibold">
-              {currentUser?.name ?? "Paypoq OS foydalanuvchisi"}
+              {currentUser?.name ?? "Paypoq OS operatori"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">{currentUser?.email}</p>
           </div>

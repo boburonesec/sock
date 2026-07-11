@@ -90,7 +90,7 @@ export function PaymentDetailsDrawer({
             {payment.reversedAt ? (
               <p className="mt-2 text-xs text-rose-300">
                 Bekor qilingan: {formatDate(payment.reversedAt)} ·{" "}
-                {payment.reversedBy?.name ?? "Noma’lum foydalanuvchi"}
+                {payment.reversedBy?.name ?? "Noma’lum operator"}
               </p>
             ) : null}
           </InfoCard>
