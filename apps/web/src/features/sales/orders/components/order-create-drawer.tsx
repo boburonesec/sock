@@ -15,6 +15,7 @@ import type { ProductVariantReference } from "@/lib/api/types";
 import type {
   Client,
   CreateSalesOrderPayload,
+  SalesOrder,
 } from "@/lib/api/sales";
 
 const orderItemSchema = z.object({
@@ -48,6 +49,8 @@ interface OrderCreateDrawerProps {
   isSubmitting: boolean;
   isOptionsLoading: boolean;
   errorMessage?: string | null;
+  /** When set, form runs in edit mode for a pre-delivery order. */
+  order?: SalesOrder | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: CreateSalesOrderPayload) => Promise<void>;
 }
@@ -59,9 +62,11 @@ export function OrderCreateDrawer({
   isSubmitting,
   isOptionsLoading,
   errorMessage,
+  order = null,
   onOpenChange,
   onSubmit,
 }: OrderCreateDrawerProps) {
+  const isEdit = Boolean(order);
   const {
     control,
     register,
@@ -86,15 +91,31 @@ export function OrderCreateDrawer({
   const watchedItems = watch("items");
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    if (order) {
       reset({
-        clientId: "",
-        deadline: "",
+        clientId: order.client.id,
+        deadline: order.deadline
+          ? new Date(order.deadline).toISOString().slice(0, 10)
+          : "",
         note: "",
-        items: [{ productVariantId: "", quantity: 1, unitPrice: "" }],
+        items: order.items.map((item) => ({
+          productVariantId: item.productVariant.id,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
       });
+      return;
     }
-  }, [open, reset]);
+
+    reset({
+      clientId: "",
+      deadline: "",
+      note: "",
+      items: [{ productVariantId: "", quantity: 1, unitPrice: "" }],
+    });
+  }, [open, order, reset]);
 
   const variantOptions = useMemo(
     () =>
@@ -130,8 +151,12 @@ export function OrderCreateDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Buyurtma yaratish"
-      description="Buyurtma tasdiqlangan holatda yaratiladi. Jami summa tizim tomonidan saqlanadi."
+      title={isEdit ? `Buyurtmani tahrirlash · ${order?.orderNumber ?? ""}` : "Buyurtma yaratish"}
+      description={
+        isEdit
+          ? "Faqat yetkazilmagan buyurtma o‘zgartiriladi. Yaratilgan buyurtma hali mijozga chiqmagan yozuv."
+          : "Buyurtma yozuvi yaratiladi — bu mijozga yetkazilgan degani emas. Jami summa tizim tomonidan saqlanadi."
+      }
       className="max-w-4xl"
     >
       <form
@@ -318,7 +343,13 @@ export function OrderCreateDrawer({
           className="w-full"
           disabled={formDisabled || clients.length === 0 || variants.length === 0}
         >
-          {isSubmitting ? "Buyurtma yaratilmoqda..." : "Buyurtma yaratish"}
+          {isSubmitting
+            ? isEdit
+              ? "Saqlanmoqda..."
+              : "Buyurtma yaratilmoqda..."
+            : isEdit
+              ? "O‘zgarishlarni saqlash"
+              : "Buyurtma yaratish"}
         </Button>
       </form>
     </Drawer>

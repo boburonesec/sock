@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ExpenseStatus,
   PaymentStatus,
   Prisma,
   SalesOrderStatus,
@@ -21,7 +22,9 @@ import {
   ClientDto,
   CreateClientPaymentDto,
   CreateSalesOrderDto,
+  DeliverSalesOrderDto,
   ReverseClientPaymentDto,
+  UpdateSalesOrderDto,
 } from './sales.dto';
 import {
   ClientDebtResponse,
@@ -59,6 +62,16 @@ const NON_DELIVERABLE_ORDER_STATUSES: SalesOrderStatus[] = [
   SalesOrderStatus.DELIVERED,
   SalesOrderStatus.CLOSED,
 ];
+
+/** Editable / cancellable before goods leave the factory (not yet delivered). */
+const PRE_DELIVERY_EDITABLE_STATUSES: SalesOrderStatus[] = [
+  SalesOrderStatus.DRAFT,
+  SalesOrderStatus.CONFIRMED,
+  SalesOrderStatus.WAITING_PRODUCTION,
+  SalesOrderStatus.READY,
+];
+
+const LOGISTICS_EXPENSE_CATEGORY_NAMES = ['Transport', 'Logistika', 'Yetkazish'] as const;
 
 @Injectable()
 export class SalesService {
@@ -407,62 +420,12 @@ export class SalesService {
         throw new NotFoundException('Active client not found.');
       }
 
-      const variantIds = [...new Set(dto.items.map((item) => item.productVariantId))];
-      const variants = await tx.productVariant.findMany({
-        where: {
-          id: { in: variantIds },
-          tenantId,
-          deletedAt: null,
-          product: { deletedAt: null },
-        },
-        select: {
-          id: true,
-          productId: true,
-        },
-      });
-      const variantMap = new Map(variants.map((variant) => [variant.id, variant]));
-
-      if (variantMap.size !== variantIds.length) {
-        throw new NotFoundException('Active product variant not found.');
-      }
-
-      const orderItems: Prisma.SalesOrderItemCreateWithoutOrderInput[] = [];
-      let totalAmount = new Prisma.Decimal(0);
-
-      for (const item of dto.items) {
-        const variant = variantMap.get(item.productVariantId);
-
-        if (!variant) {
-          throw new NotFoundException('Active product variant not found.');
-        }
-
-        const unitPrice =
-          item.unitPrice != null
-            ? this.parsePositiveDecimal(item.unitPrice, 'Unit price')
-            : await this.resolveActiveProductPrice(
-                tx,
-                tenantId,
-                variant.id,
-                now,
-              );
-        const totalPrice = unitPrice.mul(item.quantity);
-
-        totalAmount = totalAmount.plus(totalPrice);
-        orderItems.push({
-          tenant: { connect: { id: tenantId } },
-          productVariant: {
-            connect: {
-              id_tenantId: {
-                id: variant.id,
-                tenantId,
-              },
-            },
-          },
-          quantity: item.quantity,
-          unitPrice,
-          totalPrice,
-        });
-      }
+      const { orderItems, totalAmount } = await this.buildOrderItems(
+        tx,
+        tenantId,
+        dto.items,
+        now,
+      );
 
       const order = await tx.salesOrder.create({
         data: {
@@ -522,12 +485,196 @@ export class SalesService {
     return { data: createdOrder };
   }
 
-  async deliverOrder(
+  async updateOrder(
+    context: RequestContext,
+    orderId: string,
+    dto: UpdateSalesOrderDto,
+  ): Promise<{ data: SalesOrderResponse }> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const now = new Date();
+
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.salesOrder.findFirst({
+        where: { id: orderId, tenantId, factoryId },
+        select: {
+          ...salesOrderSelect,
+          allocations: {
+            where: { payment: { reversedAt: null } },
+            select: { amount: true },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Sales order not found.');
+      }
+
+      if (!PRE_DELIVERY_EDITABLE_STATUSES.includes(existing.status)) {
+        throw new ConflictException(
+          `Order with status ${existing.status} cannot be edited. Only pre-delivery orders can be changed.`,
+        );
+      }
+
+      const client = await tx.client.findFirst({
+        where: {
+          id: dto.clientId,
+          tenantId,
+          status: 'ACTIVE',
+          deletedAt: null,
+        },
+        select: clientSelect,
+      });
+
+      if (!client) {
+        throw new NotFoundException('Active client not found.');
+      }
+
+      const { orderItems, totalAmount } = await this.buildOrderItems(
+        tx,
+        tenantId,
+        dto.items,
+        now,
+      );
+
+      const paidAmount = this.sumDecimal(
+        existing.allocations.map((allocation) => allocation.amount),
+      );
+
+      if (paidAmount.gt(totalAmount)) {
+        throw new ConflictException(
+          'Cannot reduce order total below already allocated payments. Reverse payments first or keep a higher total.',
+        );
+      }
+
+      const nextPaymentStatus = this.resolveOrderPaymentStatus(
+        totalAmount,
+        paidAmount,
+      );
+
+      await tx.salesOrderItem.deleteMany({
+        where: { orderId: existing.id, tenantId },
+      });
+
+      const order = await tx.salesOrder.update({
+        where: { id_tenantId: { id: existing.id, tenantId } },
+        data: {
+          client: {
+            connect: {
+              id_tenantId: {
+                id: client.id,
+                tenantId,
+              },
+            },
+          },
+          deadline: dto.deadline ? new Date(dto.deadline) : null,
+          totalAmount,
+          paymentStatus: nextPaymentStatus,
+          items: { create: orderItems },
+        },
+        select: salesOrderSelect,
+      });
+
+      const response = this.mapSalesOrder(order);
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: 'SALES_ORDER_UPDATED',
+        entityType: 'SalesOrder',
+        entityId: order.id,
+        before: this.mapSalesOrder(existing),
+        after: response,
+        metadata: dto.note ? { note: dto.note } : null,
+      });
+
+      return response;
+    });
+
+    return { data: updatedOrder };
+  }
+
+  async cancelOrder(
     context: RequestContext,
     orderId: string,
   ): Promise<{ data: SalesOrderResponse }> {
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
+    const now = new Date();
+
+    const cancelledOrder = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.salesOrder.findFirst({
+        where: { id: orderId, tenantId, factoryId },
+        select: {
+          ...salesOrderSelect,
+          allocations: {
+            where: { payment: { reversedAt: null } },
+            select: {
+              id: true,
+              amount: true,
+              payment: { select: { id: true, reversedAt: true } },
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Sales order not found.');
+      }
+
+      if (!PRE_DELIVERY_EDITABLE_STATUSES.includes(existing.status)) {
+        throw new ConflictException(
+          `Order with status ${existing.status} cannot be cancelled. Return delivery first if already delivered.`,
+        );
+      }
+
+      if (existing.allocations.length > 0) {
+        throw new ConflictException(
+          'Order has allocated client payments. Reverse those payments before cancelling the order.',
+        );
+      }
+
+      const order = await tx.salesOrder.update({
+        where: { id_tenantId: { id: existing.id, tenantId } },
+        data: {
+          status: SalesOrderStatus.CANCELLED,
+          cancelledAt: now,
+        },
+        select: salesOrderSelect,
+      });
+
+      const response = this.mapSalesOrder(order);
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: 'SALES_ORDER_CANCELLED',
+        entityType: 'SalesOrder',
+        entityId: order.id,
+        before: this.mapSalesOrder(existing),
+        after: response,
+      });
+
+      return response;
+    });
+
+    return { data: cancelledOrder };
+  }
+
+  async deliverOrder(
+    context: RequestContext,
+    orderId: string,
+    dto: DeliverSalesOrderDto = {},
+  ): Promise<{ data: SalesOrderResponse }> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const deliveryCost =
+      dto.deliveryCost != null && dto.deliveryCost !== ''
+        ? this.parsePositiveDecimal(dto.deliveryCost, 'Delivery cost')
+        : null;
+
     const deliveredOrder = await this.prisma.$transaction(async (tx) => {
       const order = await tx.salesOrder.findFirst({
         where: { id: orderId, tenantId, factoryId },
@@ -538,10 +685,7 @@ export class SalesService {
         throw new NotFoundException('Sales order not found.');
       }
 
-      if (order.paymentStatus !== PaymentStatus.PAID) {
-        throw new ConflictException('Only fully paid orders can be delivered in v1.');
-      }
-
+      // Client product payment is independent of delivery (debt remains until paid).
       if (NON_DELIVERABLE_ORDER_STATUSES.includes(order.status)) {
         throw new ConflictException(
           `Order with status ${order.status} cannot be delivered.`,
@@ -677,6 +821,24 @@ export class SalesService {
         });
       }
 
+      let logisticsExpenseId: string | null = null;
+
+      if (deliveryCost) {
+        logisticsExpenseId = await this.createLogisticsExpenseWithTransaction(
+          tx,
+          {
+            tenantId,
+            factoryId,
+            userId: context.userId,
+            amount: deliveryCost,
+            orderNumber: order.orderNumber,
+            orderId: order.id,
+            note: dto.deliveryCostNote ?? null,
+            now,
+          },
+        );
+      }
+
       const updatedOrder = await tx.salesOrder.update({
         where: { id_tenantId: { id: order.id, tenantId } },
         data: { status: SalesOrderStatus.DELIVERED },
@@ -693,6 +855,12 @@ export class SalesService {
         entityId: order.id,
         before: this.mapSalesOrder(order),
         after: response,
+        metadata: logisticsExpenseId
+          ? {
+              logisticsExpenseId,
+              deliveryCost: deliveryCost?.toString() ?? null,
+            }
+          : null,
       });
 
       return response;
@@ -1416,6 +1584,184 @@ export class SalesService {
       Date.UTC(year, month, day) -
         TASHKENT_UTC_OFFSET_HOURS * 60 * 60 * 1000,
     );
+  }
+
+  private async buildOrderItems(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    items: CreateSalesOrderDto['items'],
+    now: Date,
+  ): Promise<{
+    orderItems: Prisma.SalesOrderItemCreateWithoutOrderInput[];
+    totalAmount: Prisma.Decimal;
+  }> {
+    const variantIds = [...new Set(items.map((item) => item.productVariantId))];
+    const variants = await tx.productVariant.findMany({
+      where: {
+        id: { in: variantIds },
+        tenantId,
+        deletedAt: null,
+        product: { deletedAt: null },
+      },
+      select: {
+        id: true,
+        productId: true,
+      },
+    });
+    const variantMap = new Map(variants.map((variant) => [variant.id, variant]));
+
+    if (variantMap.size !== variantIds.length) {
+      throw new NotFoundException('Active product variant not found.');
+    }
+
+    const orderItems: Prisma.SalesOrderItemCreateWithoutOrderInput[] = [];
+    let totalAmount = new Prisma.Decimal(0);
+
+    for (const item of items) {
+      const variant = variantMap.get(item.productVariantId);
+
+      if (!variant) {
+        throw new NotFoundException('Active product variant not found.');
+      }
+
+      const unitPrice =
+        item.unitPrice != null
+          ? this.parsePositiveDecimal(item.unitPrice, 'Unit price')
+          : await this.resolveActiveProductPrice(tx, tenantId, variant.id, now);
+      const totalPrice = unitPrice.mul(item.quantity);
+
+      totalAmount = totalAmount.plus(totalPrice);
+      orderItems.push({
+        tenant: { connect: { id: tenantId } },
+        productVariant: {
+          connect: {
+            id_tenantId: {
+              id: variant.id,
+              tenantId,
+            },
+          },
+        },
+        quantity: item.quantity,
+        unitPrice,
+        totalPrice,
+      });
+    }
+
+    return { orderItems, totalAmount };
+  }
+
+  /**
+   * Factory-paid logistics/courier cost on delivery — not client product payment.
+   * Recorded as an immediately PAID Expense under Transport category.
+   */
+  private async createLogisticsExpenseWithTransaction(
+    tx: Prisma.TransactionClient,
+    params: {
+      tenantId: string;
+      factoryId: string;
+      userId: string | null | undefined;
+      amount: Prisma.Decimal;
+      orderNumber: string;
+      orderId: string;
+      note: string | null;
+      now: Date;
+    },
+  ): Promise<string> {
+    let category = await tx.expenseCategory.findFirst({
+      where: {
+        tenantId: params.tenantId,
+        deletedAt: null,
+        name: { in: [...LOGISTICS_EXPENSE_CATEGORY_NAMES] },
+      },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+
+    if (!category) {
+      category = await tx.expenseCategory.create({
+        data: {
+          tenantId: params.tenantId,
+          name: 'Transport',
+        },
+        select: { id: true, name: true },
+      });
+    }
+
+    const reasonBase = `Buyurtma ${params.orderNumber} yetkazish logistika xarajati`;
+    const reason = params.note
+      ? `${reasonBase}. ${params.note}`.slice(0, 500)
+      : reasonBase;
+
+    const created = await tx.expense.create({
+      data: {
+        tenantId: params.tenantId,
+        factoryId: params.factoryId,
+        categoryId: category.id,
+        amount: params.amount,
+        reason,
+        status: ExpenseStatus.PAID,
+        requestedByUserId: params.userId ?? null,
+        approvedByUserId: params.userId ?? null,
+        paidByUserId: params.userId ?? null,
+        requestedAt: params.now,
+        approvedAt: params.now,
+        paidAt: params.now,
+      },
+      select: { id: true, amount: true, reason: true, status: true },
+    });
+
+    for (const action of ['REQUESTED', 'APPROVED', 'PAID'] as const) {
+      await tx.expenseApproval.create({
+        data: {
+          tenantId: params.tenantId,
+          expenseId: created.id,
+          action,
+          actorUserId: params.userId ?? null,
+        },
+      });
+    }
+
+    await this.auditService.createWithTransaction(tx, {
+      tenantId: params.tenantId,
+      factoryId: params.factoryId,
+      userId: params.userId,
+      action: 'EXPENSE_CREATED',
+      entityType: 'Expense',
+      entityId: created.id,
+      after: {
+        id: created.id,
+        amount: created.amount.toString(),
+        reason: created.reason,
+        status: created.status,
+        category: category.name,
+      },
+      metadata: {
+        source: 'ORDER_DELIVERY_LOGISTICS',
+        orderId: params.orderId,
+        orderNumber: params.orderNumber,
+      },
+    });
+
+    await this.auditService.createWithTransaction(tx, {
+      tenantId: params.tenantId,
+      factoryId: params.factoryId,
+      userId: params.userId,
+      action: 'EXPENSE_PAID',
+      entityType: 'Expense',
+      entityId: created.id,
+      after: {
+        id: created.id,
+        amount: created.amount.toString(),
+        status: created.status,
+      },
+      metadata: {
+        source: 'ORDER_DELIVERY_LOGISTICS',
+        orderId: params.orderId,
+        orderNumber: params.orderNumber,
+      },
+    });
+
+    return created.id;
   }
 
   private async resolveActiveProductPrice(

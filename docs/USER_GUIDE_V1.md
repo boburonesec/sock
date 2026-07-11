@@ -245,7 +245,7 @@ Noto‘g‘ri qoldiq bo‘lsa:
 
 ```text
 Mijoz tanlash → variant + miqdor → buyurtma yaratish
-→ to‘lov → (to‘liq paid) yetkazish
+→ (ixtiyoriy to‘lov, alohida) → yetkazish (stock + ixtiyoriy logistika chiqimi)
 ```
 
 ![Buyurtmalar](screenshots/11-sales-orders.png)
@@ -276,9 +276,13 @@ Demo misol:
 
 | Amal | Shart | Natija |
 | --- | --- | --- |
-| Yetkazish | To‘liq paid | Stock OUT, status DELIVERED |
+| Yetkazish | Yetkazilmagan status + Finished Products stock | Stock OUT, status DELIVERED. Mijoz to‘lovi **shart emas**. Ixtiyoriy logistika summasi → moliya **Transport** chiqimi (PAID) |
+| Tahrirlash / bekor | Faqat yetkazilmagan (DRAFT/CONFIRMED/READY/…) | Qatorlar/mijoz o‘zgaradi yoki CANCELLED. To‘lov bog‘langan bo‘lsa bekor bloklanadi |
 | Return | Faqat DELIVERED | Stock RETURN, status READY |
+| Payment (mijoz) | Allocation | Debt = buyurtmalar − to‘lovlar |
 | Payment reversal | Policy bo‘yicha | Debt qayta hisoblanadi |
+
+**Muhim:** Buyurtma yaratish = yozuv (mijozga chiqmagan). Mijozga chiqish = «Yetkazildi qilish». Logistika to‘lovi — fabrika chiqimi, mijoz mahsulot to‘lovi emas.
 
 Siyosatlar: `DELIVERY_RETURN_POLICY_V1.md`, `SALES_PAYMENT_REVERSAL_POLICY_V1.md`
 

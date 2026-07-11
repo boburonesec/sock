@@ -39,8 +39,11 @@ interface OrderDetailsDrawerProps {
   order: SalesOrder | null;
   isDelivering?: boolean;
   isReturning?: boolean;
+  isCancelling?: boolean;
   onDeliver?: (order: SalesOrder) => void;
   onReturnDelivery?: (order: SalesOrder) => void;
+  onEdit?: (order: SalesOrder) => void;
+  onCancel?: (order: SalesOrder) => void;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -48,13 +51,18 @@ export function OrderDetailsDrawer({
   order,
   isDelivering = false,
   isReturning = false,
+  isCancelling = false,
   onDeliver,
   onReturnDelivery,
+  onEdit,
+  onCancel,
   onOpenChange,
 }: OrderDetailsDrawerProps) {
   if (!order) return null;
   const isDeliverable = isOrderDeliverable(order);
+  const isEditable = isOrderEditable(order);
   const isReturnable = order.status === "DELIVERED";
+  const busy = isDelivering || isReturning || isCancelling;
 
   return (
     <Drawer
@@ -68,7 +76,7 @@ export function OrderDetailsDrawer({
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            disabled={!isDeliverable || isDelivering}
+            disabled={!isDeliverable || busy}
             onClick={() => onDeliver?.(order)}
           >
             {isDelivering ? "Yetkazilmoqda..." : "Yetkazildi qilish"}
@@ -76,22 +84,51 @@ export function OrderDetailsDrawer({
           <Button
             type="button"
             variant="outline"
-            disabled={!isReturnable || isReturning}
+            disabled={!isEditable || busy}
+            onClick={() => onEdit?.(order)}
+          >
+            Tahrirlash
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!isEditable || busy}
+            onClick={() => onCancel?.(order)}
+          >
+            {isCancelling ? "Bekor qilinmoqda..." : "Bekor qilish"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!isReturnable || busy}
             onClick={() => onReturnDelivery?.(order)}
           >
             {isReturning ? "Qaytarilmoqda..." : "Yetkazuvni qaytarish"}
           </Button>
         </div>
-        {!isDeliverable ? (
+
+        {isDeliverable ? (
+          <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            Yetkazish mijoz to‘loviga bog‘liq emas. Ombor (Finished Products)
+            yetarli bo‘lsa yetkazish mumkin. Logistika chiqimi ixtiyoriy —
+            fabrika xarajati sifatida yoziladi.
+          </p>
+        ) : null}
+        {!isDeliverable && order.status !== "DELIVERED" && order.status !== "CANCELLED" ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Faqat to‘liq to‘langan va yopilmagan buyurtmalar
-            yetkaziladi.
+            Bu holatda yetkazish mumkin emas ({orderStatusLabel[order.status] ?? order.status}).
+          </p>
+        ) : null}
+        {isEditable ? (
+          <p className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
+            Buyurtma hali yo‘lga chiqmagan — tahrirlash yoki bekor qilish mumkin.
+            Yaratilgan buyurtma mijozga borgandek hisoblanmaydi.
           </p>
         ) : null}
         {isReturnable ? (
           <p className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
             Yetkazuv qaytarilganda mahsulot tayyor mahsulot zonasiga qaytadi.
-            To‘lov avtomatik bekor qilinmaydi.
+            Mijoz to‘lovi avtomatik bekor qilinmaydi.
           </p>
         ) : null}
 
@@ -99,14 +136,18 @@ export function OrderDetailsDrawer({
           <InfoCard title="Jami summa">
             <p className="text-xl font-bold">{order.totalAmount} so‘m</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Buyurtma yaratilgan paytdagi tizim qiymati.
+              Mijoz mahsulot qarzi asosi. Logistika alohida chiqim.
             </p>
           </InfoCard>
           <InfoCard title="Buyurtma holati">
-            <p className="text-xl font-bold">{orderStatusLabel[order.status] ?? order.status}</p>
+            <p className="text-xl font-bold">
+              {orderStatusLabel[order.status] ?? order.status}
+            </p>
           </InfoCard>
-          <InfoCard title="To‘lov holati">
-            <p className="text-xl font-bold">{paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}</p>
+          <InfoCard title="Mijoz to‘lovi">
+            <p className="text-xl font-bold">
+              {paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               To‘lovlar buyurtmadan alohida yuritiladi.
             </p>
@@ -147,7 +188,11 @@ export function OrderDetailsDrawer({
 
         <InfoCard title="Davr ma’lumoti">
           <p className="text-sm text-muted-foreground">
-            Yaratilgan: {formatDate(order.createdAt)} · Muddat: {formatDate(order.deadline)}
+            Yaratilgan: {formatDate(order.createdAt)} · Muddat:{" "}
+            {formatDate(order.deadline)}
+            {order.cancelledAt
+              ? ` · Bekor: ${formatDate(order.cancelledAt)}`
+              : ""}
           </p>
         </InfoCard>
       </div>
@@ -156,8 +201,11 @@ export function OrderDetailsDrawer({
 }
 
 function isOrderDeliverable(order: SalesOrder): boolean {
-  return (
-    order.paymentStatus === "PAID" &&
-    !["DRAFT", "CANCELLED", "DELIVERED", "CLOSED"].includes(order.status)
+  return !["DRAFT", "CANCELLED", "DELIVERED", "CLOSED"].includes(order.status);
+}
+
+function isOrderEditable(order: SalesOrder): boolean {
+  return ["DRAFT", "CONFIRMED", "WAITING_PRODUCTION", "READY"].includes(
+    order.status,
   );
 }

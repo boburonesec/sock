@@ -94,6 +94,26 @@ export class CreateSalesOrderDto {
   items!: CreateSalesOrderItemDto[];
 }
 
+/** Same shape as create — only pre-delivery orders may be updated. */
+export class UpdateSalesOrderDto extends CreateSalesOrderDto {}
+
+/**
+ * Delivery is independent of client payment.
+ * Optional deliveryCost is factory logistics (courier) — recorded as a paid Expense.
+ */
+export class DeliverSalesOrderDto {
+  @Transform(({ value }) => normalizeOptionalString(value))
+  @IsOptional()
+  @IsNumberString()
+  deliveryCost?: string | null;
+
+  @Transform(({ value }) => normalizeOptionalString(value))
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  deliveryCostNote?: string | null;
+}
+
 export class CreateClientPaymentAllocationDto {
   @Transform(({ value }) => trimString(value))
   @IsString()

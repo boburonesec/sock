@@ -71,6 +71,26 @@ const EXACT: Record<string, string> = {
     '«Tayyor mahsulot» ombor zonasi topilmadi.',
   'Sales order has no items to return.':
     'Buyurtmada qaytarish uchun mahsulot yo‘q.',
+  'Order has allocated client payments. Reverse those payments before cancelling the order.':
+    'Buyurtmaga bog‘langan mijoz to‘lovlari bor. Avval to‘lovlarni bekor qiling, keyin buyurtmani bekor qiling.',
+  'Allocatable order not found for this client and factory.':
+    'Bu mijoz va fabrika uchun taqsimlash mumkin bo‘lgan buyurtma topilmadi.',
+  'Delivery cost must be positive.':
+    'Yetkazish logistika summasi musbat bo‘lishi kerak.',
+  'Cannot reduce order total below already allocated payments. Reverse payments first or keep a higher total.':
+    'Buyurtma summasini allaqachon taqsimlangan to‘lovlardan pastga tushirib bo‘lmaydi. Avval to‘lovni bekor qiling yoki summani saqlang.',
+  'Order with status DELIVERED cannot be edited. Only pre-delivery orders can be changed.':
+    'Yetkazilgan buyurtmani tahrirlab bo‘lmaydi. Faqat yo‘lga chiqmagan buyurtmalar o‘zgartiriladi.',
+  'Order with status CLOSED cannot be edited. Only pre-delivery orders can be changed.':
+    'Yopilgan buyurtmani tahrirlab bo‘lmaydi.',
+  'Order with status CANCELLED cannot be edited. Only pre-delivery orders can be changed.':
+    'Bekor qilingan buyurtmani tahrirlab bo‘lmaydi.',
+  'Order with status DELIVERED cannot be cancelled. Return delivery first if already delivered.':
+    'Yetkazilgan buyurtmani bekor qilib bo‘lmaydi. Avval yetkazuvni qaytaring.',
+  'Order with status CLOSED cannot be cancelled. Return delivery first if already delivered.':
+    'Yopilgan buyurtmani bekor qilib bo‘lmaydi.',
+  'Order with status CANCELLED cannot be cancelled. Return delivery first if already delivered.':
+    'Buyurtma allaqachon bekor qilingan.',
   'Duplicate order allocation is not allowed.':
     'Bir xil buyurtmaga ikki marta bog‘lash mumkin emas.',
   'Client payment is already reversed.': 'Bu to‘lov allaqachon bekor qilingan.',

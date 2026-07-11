@@ -60,6 +60,14 @@ export interface CreateSalesOrderPayload {
   items: CreateSalesOrderItemPayload[];
 }
 
+export type UpdateSalesOrderPayload = CreateSalesOrderPayload;
+
+export interface DeliverSalesOrderPayload {
+  /** Factory logistics/courier cost — recorded as paid expense, not client payment. */
+  deliveryCost?: string | null;
+  deliveryCostNote?: string | null;
+}
+
 export interface ClientPayment {
   id: string;
   amount: string;
@@ -154,9 +162,21 @@ export const salesApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  deliverOrder: (id: string) =>
+  updateOrder: (id: string, payload: UpdateSalesOrderPayload) =>
+    apiClient<{ data: SalesOrder }>(`/sales/orders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  cancelOrder: (id: string) =>
+    apiClient<{ data: SalesOrder }>(`/sales/orders/${id}/cancel`, {
+      method: "POST",
+    }),
+  deliverOrder: (id: string, payload: DeliverSalesOrderPayload = {}) =>
     apiClient<{ data: SalesOrder }>(`/sales/orders/${id}/deliver`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     }),
   returnDelivery: (id: string) =>
     apiClient<{ data: SalesOrder }>(`/sales/orders/${id}/return-delivery`, {

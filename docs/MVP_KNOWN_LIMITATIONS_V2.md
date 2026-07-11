@@ -64,11 +64,13 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 
 ### Sales
 
-- No order edit/cancel after creation
+- Pre-delivery **edit** and **cancel** are supported (CONFIRMED / READY / …; not after DELIVERED)
+- Delivery does **not** require client payment (debt stays until paid)
+- Optional factory **logistics expense** on delivery → paid Expense under Transport
 - No partial delivery / partial return
 - No partial payment reverse / refund
 - No invoice/print
-- Delivery only when fully paid
+- Cancel blocked while non-reversed payment allocations exist
 
 ### Finance
 

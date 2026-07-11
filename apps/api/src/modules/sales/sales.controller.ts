@@ -8,7 +8,9 @@ import {
   ClientDto,
   CreateClientPaymentDto,
   CreateSalesOrderDto,
+  DeliverSalesOrderDto,
   ReverseClientPaymentDto,
+  UpdateSalesOrderDto,
 } from './sales.dto';
 import { SalesService } from './sales.service';
 import {
@@ -78,13 +80,33 @@ export class SalesController {
     return this.salesService.createOrder(context, dto);
   }
 
+  @Patch('orders/:id')
+  @RequirePermissions('sales.write')
+  updateOrder(
+    @CurrentContext() context: RequestContext,
+    @Param('id') id: string,
+    @Body() dto: UpdateSalesOrderDto,
+  ): Promise<{ data: SalesOrderResponse }> {
+    return this.salesService.updateOrder(context, id, dto);
+  }
+
+  @Post('orders/:id/cancel')
+  @RequirePermissions('sales.write')
+  cancelOrder(
+    @CurrentContext() context: RequestContext,
+    @Param('id') id: string,
+  ): Promise<{ data: SalesOrderResponse }> {
+    return this.salesService.cancelOrder(context, id);
+  }
+
   @Post('orders/:id/deliver')
   @RequirePermissions('sales.write')
   deliverOrder(
     @CurrentContext() context: RequestContext,
     @Param('id') id: string,
+    @Body() dto: DeliverSalesOrderDto,
   ): Promise<{ data: SalesOrderResponse }> {
-    return this.salesService.deliverOrder(context, id);
+    return this.salesService.deliverOrder(context, id, dto ?? {});
   }
 
   @Post('orders/:id/return-delivery')

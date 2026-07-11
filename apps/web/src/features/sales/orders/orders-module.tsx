@@ -15,7 +15,13 @@ import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { productApi } from "@/lib/api/product";
 import { queryKeys } from "@/lib/api/query-keys";
-import { salesApi, type CreateSalesOrderPayload, type SalesOrder } from "@/lib/api/sales";
+import {
+  salesApi,
+  type CreateSalesOrderPayload,
+  type DeliverSalesOrderPayload,
+  type SalesOrder,
+} from "@/lib/api/sales";
+import { DeliveryConfirmDrawer } from "./components/delivery-confirm-drawer";
 import { OrderDetailsDrawer } from "./components/order-details-drawer";
 import { OrderCreateDrawer } from "./components/order-create-drawer";
 import { OrdersTable } from "./components/orders-table";
@@ -35,7 +41,9 @@ export function OrdersModule() {
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [deliveryTarget, setDeliveryTarget] = useState<SalesOrder | null>(null);
   const [returnTarget, setReturnTarget] = useState<SalesOrder | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<SalesOrder | null>(null);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [editOrder, setEditOrder] = useState<SalesOrder | null>(null);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
     message: string;
@@ -45,16 +53,63 @@ export function OrdersModule() {
     mutationFn: salesApi.createOrder,
     onSuccess: () => invalidateOrderQueries(queryClient),
   });
-  const deliverOrder = useMutation({
-    mutationFn: salesApi.deliverOrder,
+  const updateOrder = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: CreateSalesOrderPayload;
+    }) => salesApi.updateOrder(id, payload),
     onSuccess: async (response) => {
       setSelectedOrder(response.data);
-      setDeliveryTarget(null);
+      setEditOrder(null);
+      await invalidateOrderQueries(queryClient);
+    },
+  });
+  const cancelOrder = useMutation({
+    mutationFn: salesApi.cancelOrder,
+    onSuccess: async (response) => {
+      setSelectedOrder(response.data);
+      setCancelTarget(null);
       setFeedback({
         tone: "success",
-        message: "Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.",
+        message: "Buyurtma bekor qilindi. Qarz hisobidan chiqarildi.",
       });
       await invalidateOrderQueries(queryClient);
+    },
+    onError: (error) => {
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Buyurtmani bekor qilishda xatolik yuz berdi.",
+      });
+    },
+  });
+  const deliverOrder = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: DeliverSalesOrderPayload;
+    }) => salesApi.deliverOrder(id, payload),
+    onSuccess: async (response, variables) => {
+      setSelectedOrder(response.data);
+      setDeliveryTarget(null);
+      const withLogistics =
+        variables.payload.deliveryCost != null &&
+        String(variables.payload.deliveryCost).trim() !== "";
+      setFeedback({
+        tone: "success",
+        message: withLogistics
+          ? "Buyurtma yetkazildi. Ombor kamaydi; logistika chiqimi moliya (Transport) da yozildi."
+          : "Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.",
+      });
+      await invalidateOrderQueries(queryClient);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.finance.expenses() });
     },
     onError: (error) => {
       setFeedback({
@@ -74,7 +129,7 @@ export function OrdersModule() {
       setFeedback({
         tone: "success",
         message:
-          "Delivery return qilindi. Stock qaytarildi, to‘lov holati o‘zgarmadi.",
+          "Yetkazuv qaytarildi. Stock qaytdi, mijoz to‘lovi o‘zgarmadi.",
       });
       await invalidateOrderQueries(queryClient);
     },
@@ -117,6 +172,10 @@ export function OrdersModule() {
     productsQuery.data?.data.flatMap((product) => product.variants) ?? [];
   const createError =
     createOrder.error instanceof Error ? createOrder.error.message : null;
+  const updateError =
+    updateOrder.error instanceof Error ? updateOrder.error.message : null;
+  const deliverError =
+    deliverOrder.error instanceof Error ? deliverOrder.error.message : null;
 
   return (
     <div className="space-y-8">
@@ -146,13 +205,14 @@ export function OrdersModule() {
 
       <PageSection
         title="Buyurtmalar"
-        description="Mijozlar buyurtma yaratmaydi; buyurtmalar sotuvchilar tomonidan kiritiladi."
+        description="Yaratilgan buyurtma — yozuv; mijozga chiqish «Yetkazildi qilish» bilan bo‘ladi. To‘lov alohida."
       >
         <div className="mb-4 flex justify-end">
           <Button
             onClick={() => {
               setFeedback(null);
               createOrder.reset();
+              setEditOrder(null);
               setIsCreateDrawerOpen(true);
             }}
           >
@@ -166,9 +226,20 @@ export function OrdersModule() {
         order={selectedOrder}
         isDelivering={deliverOrder.isPending}
         isReturning={returnDelivery.isPending}
+        isCancelling={cancelOrder.isPending}
         onDeliver={(order) => {
           setFeedback(null);
+          deliverOrder.reset();
           setDeliveryTarget(order);
+        }}
+        onEdit={(order) => {
+          setFeedback(null);
+          updateOrder.reset();
+          setEditOrder(order);
+        }}
+        onCancel={(order) => {
+          setFeedback(null);
+          setCancelTarget(order);
         }}
         onReturnDelivery={(order) => {
           setFeedback(null);
@@ -179,6 +250,7 @@ export function OrdersModule() {
             setSelectedOrder(null);
             setDeliveryTarget(null);
             setReturnTarget(null);
+            setCancelTarget(null);
           }
         }}
       />
@@ -196,22 +268,49 @@ export function OrdersModule() {
           await createOrder.mutateAsync(payload);
           setFeedback({
             tone: "success",
-            message: "Buyurtma yaratildi. Yakuniy summa tizim tomonidan saqlandi.",
+            message:
+              "Buyurtma yozuvi yaratildi. Bu hali mijozga yetkazilgani emas.",
           });
           setIsCreateDrawerOpen(false);
         }}
       />
 
-      <ConfirmDialog
-        open={Boolean(deliveryTarget)}
+      <OrderCreateDrawer
+        open={Boolean(editOrder)}
+        order={editOrder}
+        clients={clients}
+        variants={variants}
+        isSubmitting={updateOrder.isPending}
+        isOptionsLoading={clientsQuery.isPending || productsQuery.isPending}
+        errorMessage={updateError}
+        onOpenChange={(open) => {
+          if (!open) setEditOrder(null);
+        }}
+        onSubmit={async (payload: CreateSalesOrderPayload) => {
+          if (!editOrder) return;
+          setFeedback(null);
+          await updateOrder.mutateAsync({ id: editOrder.id, payload });
+          setFeedback({
+            tone: "success",
+            message: "Buyurtma yangilandi. Yakuniy summa tizim tomonidan saqlandi.",
+          });
+        }}
+      />
+
+      <DeliveryConfirmDrawer
+        order={deliveryTarget}
+        isSubmitting={deliverOrder.isPending}
+        errorMessage={deliverError}
         onOpenChange={(open) => {
           if (!open) setDeliveryTarget(null);
         }}
-        title="Buyurtmani yetkazildi qilish"
-        description="Bu amal buyurtma mahsulotlarini Finished Products zonasidan kamaytiradi va harakatlar tarixiga yozadi."
-        confirmLabel="Yetkazildi qilish"
-        onConfirm={() => {
-          if (deliveryTarget) deliverOrder.mutate(deliveryTarget.id);
+        onConfirm={async (payload) => {
+          if (!deliveryTarget) return;
+          setFeedback(null);
+          await deliverOrder.mutateAsync({
+            id: deliveryTarget.id,
+            payload,
+          });
         }}
       />
 
@@ -220,11 +319,25 @@ export function OrdersModule() {
         onOpenChange={(open) => {
           if (!open) setReturnTarget(null);
         }}
-        title="Delivery return qilish"
-        description="Bu amal buyurtma mahsulotlarini Finished Products zonasiga qaytaradi va RETURN harakatlar tarixiga yozadi. To‘lov avtomatik bekor qilinmaydi."
-        confirmLabel="Return qilish"
+        title="Yetkazuvni qaytarish"
+        description="Mahsulot Finished Products zonasiga qaytadi. Mijoz to‘lovi avtomatik bekor qilinmaydi."
+        confirmLabel="Qaytarish"
         onConfirm={() => {
           if (returnTarget) returnDelivery.mutate(returnTarget.id);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null);
+        }}
+        title="Buyurtmani bekor qilish"
+        description="Faqat yetkazilmagan buyurtma bekor qilinadi. Agar mijoz to‘lovi bog‘langan bo‘lsa, avval to‘lovni reverse qiling."
+        confirmLabel="Bekor qilish"
+        destructive
+        onConfirm={() => {
+          if (cancelTarget) cancelOrder.mutate(cancelTarget.id);
         }}
       />
     </div>

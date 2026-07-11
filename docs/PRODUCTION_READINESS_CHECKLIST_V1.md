@@ -174,7 +174,7 @@ Highlights already improved in product code:
 - Operator-facing Uzbek API errors
 - Frontend RBAC default-deny
 
-Still open (examples): Excel export, order edit/cancel, stage move correction, finance SoD, bulk payroll UI, pagination at scale, notification center.
+Still open (examples): Excel export, stage move correction, finance SoD, bulk payroll UI, pagination at scale, notification center. (Order edit/cancel + unpaid deliver + logistics expense: shipped 2026-07-11.)
 
 ---
 
