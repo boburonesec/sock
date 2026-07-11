@@ -55,7 +55,7 @@ Legend:
 | Manual backup before deploy/migrate | **OPS** | Documented in backup + deploy docs |
 | Off-server copy (S3/disk) | **OPS** | Not automated in repo |
 | Retention policy | **PARTIAL** | Documented guidance in `BACKUP_AND_RECOVERY_V1.md` |
-| Restore rehearsal once | **OPS** | Script: `pnpm restore:db` |
+| Restore rehearsal once | **PARTIAL** | Local rehearsal DONE 2026-07-11 (`docs/OPS_REHEARSAL_LOG_V1.md`); re-run on target server |
 | Named backup/restore owners | **OPS** | |
 | RTO/RPO written | **PARTIAL** | Template in backup doc (fill real numbers) |
 

@@ -29,3 +29,7 @@ pnpm-debug.log*
 
 # generated caches
 *.tsbuildinfo
+
+# database dumps (never commit)
+backups/
+*.dump
