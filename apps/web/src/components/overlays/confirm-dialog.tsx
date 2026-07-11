@@ -31,18 +31,19 @@ export function ConfirmDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4">
+    // Must sit above Drawer (z-[100]) so confirm actions remain clickable from drawers.
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4">
       <button
         type="button"
         aria-label="Dialog yopish"
-        className="absolute inset-0"
+        className="absolute inset-0 z-0"
         onClick={() => onOpenChange(false)}
       />
       <section
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="panel relative w-full max-w-md rounded-t-2xl p-5 shadow-2xl sm:rounded-xl sm:p-6"
+        className="panel relative z-10 w-full max-w-md rounded-t-2xl p-5 shadow-2xl sm:rounded-xl sm:p-6"
       >
         <h2 id="confirm-title" className="text-lg font-semibold">
           {title}

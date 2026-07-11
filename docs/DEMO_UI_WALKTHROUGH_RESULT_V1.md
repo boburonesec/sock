@@ -31,14 +31,28 @@ Open: `http://localhost:3000/login` (API `:3001`, web `:3000`)
 | Worker activities | 30+ | Auto from stage moves |
 | Material stock rows | 1+ | Material receipts |
 | Clients | 4 | Seller UI |
-| Sales orders | 5 | Seller UI |
+| Sales orders | 5 | All **DELIVERED** + **PAID** |
 | Suppliers | 3 | Accountant UI |
 | Payroll periods | 1 | Status CALCULATED, work amount 126000 |
-| Client payments | 0–pending | Form requires full allocation rows (see below) |
-| Expenses / advances | partial | Fixed category permission mid-run |
+| Client payments | 5 | Full allocation per order (7 500 000 so‘m total) |
+| Finished Products stock | 20 | After deliveries (Klassik Paypoq · Ko‘k) |
+| Client debt (Andijon Savdo) | 0 | totalOrders = totalPaid = 7 500 000 |
 
 Screenshots: `docs/demo-walkthrough/`  
-Scripts: `scripts/ui-demo-factory-walkthrough.mjs`, `scripts/ui-demo-factory-continue.mjs`
+Scripts:
+- `scripts/ui-demo-factory-walkthrough.mjs`
+- `scripts/ui-demo-factory-continue.mjs`
+- `scripts/ui-demo-payments-delivery.mjs` (payment allocation → stock correction → deliver)
+
+## Payments + delivery chain (UI)
+
+Closed via Playwright as real roles:
+
+1. **Seller** — 5× “To‘lov qayd qilish” with client + amount + method + order allocation = full order total.
+2. **Warehouse** — “Qoldiqni tuzatish” for ordered variant into **Finished Products** (delivery requires FP stock).
+3. **Seller** — order detail → “Yetkazildi qilish” → confirm dialog → stock deducted.
+
+Final: 5/5 orders `DELIVERED` / `PAID`, 5 payments, debt 0.
 
 ## Staff findings fixed during the run
 
@@ -48,13 +62,15 @@ Scripts: `scripts/ui-demo-factory-walkthrough.mjs`, `scripts/ui-demo-factory-con
 3. **Same for products/colors/seasons/stages** used by order/production UIs.
 4. **Accountant expense form** needed `GET /settings/expense-categories` without full settings access.  
    → Allowed with `finance.view` / `finance.write`.
+5. **Confirm dialog under drawer** — `ConfirmDialog` was `z-50` while `Drawer` is `z-[100]`, so “Yetkazildi qilish” confirm never received clicks from an open order drawer.  
+   → Confirm layer raised to `z-[200]` (`confirm-dialog.tsx`).
 
 ## Product limitations observed (not fully “2–3 months of history”)
 
 - Most production/sales timestamps are **“now”** — UI does not backdate stage moves/batches.
   True multi-month history still needs either date fields in forms or a controlled seed.
-- **Finished goods receipt** stays disabled until stock sits in packing/ombor stage (pipeline only partly advanced).
-- **Client payment form** requires full allocation lines (client + order + split = amount); simple amount-only path is not enough.
+- **Finished goods receipt** stays disabled until stock sits in packing/ombor stage; demo used **stock correction** into Finished Products so delivery rules could be exercised.
+- **Client payment form** requires full allocation lines (client + order + split = amount); simple amount-only path is not enough (by design).
 - Nested product drawer (detail + variant form) is easy to leave open and block the page for automation/humans.
 
 ## How to re-run
@@ -64,10 +80,11 @@ ALLOW_DEMO_RESET=true pnpm db:reset:empty
 # start API + web
 PLAYWRIGHT_PKG=/tmp/paypoq-pw node scripts/ui-demo-factory-walkthrough.mjs
 PLAYWRIGHT_PKG=/tmp/paypoq-pw node scripts/ui-demo-factory-continue.mjs
+PLAYWRIGHT_PKG=/tmp/paypoq-pw node scripts/ui-demo-payments-delivery.mjs
 ```
 
 ## Verdict
 
-The empty factory was bootstrapped **only via UI** into a realistic single-branch operation with full operator set, catalog, employees, production volume, clients/orders, suppliers, and a calculated payroll period.  
-RBAC/catalog permission gaps found in real operator paths were fixed in code.  
-Remaining gaps are known product UX constraints (backdating, payment allocation UI, packing→warehouse step), not bootstrap failures.
+The empty factory was bootstrapped **only via UI** into a realistic single-branch operation with full operator set, catalog, employees, production volume, clients/orders, suppliers, calculated payroll, **full payment allocation**, and **delivered orders**.  
+RBAC/catalog and overlay z-index gaps found in real operator paths were fixed in code.  
+Remaining gaps are known product UX constraints (backdating, packing→warehouse receipt path), not bootstrap failures.

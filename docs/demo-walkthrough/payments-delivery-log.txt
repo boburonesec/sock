@@ -1,0 +1,29 @@
+[11:27:40] Unpaid/open orders: 0
+[11:27:40] 1) Seller: pay each order fully (allocation = full order amount)
+[11:27:44]   after pay: SO-20260711-026FE5AF PAID DELIVERED
+[11:27:44]   after pay: SO-20260711-04B0FB6A PAID CONFIRMED
+[11:27:44]   after pay: SO-20260711-C056B3C9 PAID CONFIRMED
+[11:27:44]   after pay: SO-20260711-7B47B308 PAID CONFIRMED
+[11:27:44]   after pay: SO-20260711-610FCCC8 PAID CONFIRMED
+[11:27:44] 2) Warehouse: stock correction per ordered variant (Finished Products)
+[11:28:38]   correct stock Klassik Paypoq · Ko‘k → 460
+[11:28:41]   stock OK Klassik Paypoq · Ko‘k
+[11:28:41]   stock rows: 1
+[11:28:41]     qty=460 Klassik Paypoq / Finished Products
+[11:28:41] 3) Seller: deliver paid orders
+[11:28:45]   skip SO-20260711-026FE5AF pay=PAID status=DELIVERED
+[11:28:45]   deliver SO-20260711-04B0FB6A
+[11:28:47]   delivered SO-20260711-04B0FB6A: Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.
+[11:28:48]   deliver SO-20260711-C056B3C9
+[11:28:50]   delivered SO-20260711-C056B3C9: Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.
+[11:28:51]   deliver SO-20260711-7B47B308
+[11:28:53]   delivered SO-20260711-7B47B308: Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.
+[11:28:54]   deliver SO-20260711-610FCCC8
+[11:28:56]   delivered SO-20260711-610FCCC8: Buyurtma yetkazildi. Ombor stock tizim tomonidan kamaytirildi.
+[11:28:57] FINAL SO-20260711-026FE5AF status=DELIVERED pay=PAID
+[11:28:57] FINAL SO-20260711-04B0FB6A status=DELIVERED pay=PAID
+[11:28:57] FINAL SO-20260711-C056B3C9 status=DELIVERED pay=PAID
+[11:28:57] FINAL SO-20260711-7B47B308 status=DELIVERED pay=PAID
+[11:28:57] FINAL SO-20260711-610FCCC8 status=DELIVERED pay=PAID
+[11:28:57] Payments count: 5
+[11:29:02] DONE payments + delivery chain
