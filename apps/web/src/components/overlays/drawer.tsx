@@ -44,16 +44,17 @@ export function Drawer({
   return createPortal(
     <div
       className={cn(
-        "fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm",
+        "fixed inset-0 z-[100]",
         isSidePanel
           ? "p-0"
           : "flex items-end justify-center p-0 sm:items-center sm:overflow-y-auto sm:p-4 sm:py-6",
       )}
     >
+      {/* Separate layer so flex layout of the panel cannot sit under the backdrop hit-target. */}
       <button
         type="button"
         aria-label="Dialog yopish"
-        className="absolute inset-0"
+        className="absolute inset-0 z-0 bg-black/75 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
       <section
@@ -61,7 +62,7 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby="drawer-title"
         className={cn(
-          "relative flex w-full flex-col overflow-hidden border bg-card text-card-foreground shadow-2xl",
+          "relative z-10 flex w-full flex-col overflow-hidden border bg-card text-card-foreground shadow-2xl",
           isSidePanel
             ? cn(
                 // Full-width sheet on phones; side panel on larger screens

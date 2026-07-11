@@ -1,0 +1,27 @@
+[11:15:23] A) Owner: ensure variants + prices
+[11:15:30] B) Shift: stage moves + defects
+[11:15:34]   move #1
+[11:15:36]     workers checkboxes=8
+[11:15:37]   move #2
+[11:15:39]     workers checkboxes=8
+[11:15:40]   move #3
+[11:15:42]     workers checkboxes=8
+[11:15:43]   move #4
+[11:15:45]     workers checkboxes=8
+[11:15:46]   move #5
+[11:15:47]     workers checkboxes=8
+[11:15:49]   move #6
+[11:15:50]     workers checkboxes=8
+[11:15:52]   move #7
+[11:15:53]     workers checkboxes=8
+[11:15:55]   move #8
+[11:15:56]     workers checkboxes=8
+[11:15:58]   move #9
+[11:15:59]     workers checkboxes=8
+[11:16:01]   move #10
+[11:16:02]     workers checkboxes=8
+[11:16:04] C) Warehouse: material receipt + finished receipt
+[11:16:58]   finished receipt submit disabled (no packing stock) — skip
+[11:16:58] D) Seller: clients, orders, payments
+[11:17:18] E) Accountant: suppliers, finance, payroll
+[11:17:26] FAILED: No real option in select

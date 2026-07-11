@@ -1,0 +1,21 @@
+[11:04:19] Base URL http://localhost:3000
+[11:04:19] 1) Platform admin login
+[11:04:22] 2) Create korxona (SINGLE / oddiy, no branches)
+[11:04:24] 3) Open tenant + create Owner
+[11:04:27] 4) Owner login
+[11:04:29] 5) Create operators (Manager, Seller, Warehouse, Shift, Accountant)
+[11:04:31]   + operator Manager: manager@andijon-paypoq.local
+[11:04:31]   + operator Seller: seller@andijon-paypoq.local
+[11:04:32]   + operator Warehouse Operator: warehouse@andijon-paypoq.local
+[11:04:32]   + operator Shift Receiver: shift@andijon-paypoq.local
+[11:04:33]   + operator Accountant: accountant@andijon-paypoq.local
+[11:04:34] 6) Master data: colors, materials, seasons
+[11:05:05] 7) Verify stages exist
+[11:05:06] 8) Products + variants + prices
+[11:05:30] 9) Salary rates per stage
+[11:05:49] 10) Piece-rate employees (Xodimlar)
+[11:06:07] 11) Production: batches + stage moves (volume for mature WIP)
+[11:06:43] FAILED: locator.click: Timeout 20000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /Ko‘chirish|Move|Bosqich/i }).first()
+

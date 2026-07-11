@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity/auth/jwt-auth.guard';
 import { PermissionGuard } from '../identity/authorization/permission.guard';
+import { RequireAnyPermissions } from '../identity/authorization/require-any-permissions.decorator';
 import { RequirePermissions } from '../identity/authorization/require-permissions.decorator';
 import { CurrentContext } from '../identity/request-context/current-context.decorator';
 import { RequestContext } from '../identity/request-context/request-context.types';
@@ -14,32 +15,37 @@ import {
 } from './settings.types';
 
 @Controller('settings')
-@RequirePermissions('settings.view')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get('overview')
+  @RequirePermissions('settings.view')
   getOverview(@CurrentContext() context: RequestContext): Promise<SettingsOverviewResponse> {
     return this.settingsService.getOverview(context);
   }
 
   @Get('roles')
+  @RequirePermissions('settings.view')
   getRoles(@CurrentContext() context: RequestContext) {
     return this.settingsService.getRoles(context);
   }
 
   @Get('permissions')
+  @RequirePermissions('settings.view')
   getPermissions() {
     return this.settingsService.getPermissions();
   }
 
   @Get('expense-categories')
+  // Finance operators need categories for expense forms without full settings access.
+  @RequireAnyPermissions('settings.view', 'finance.view', 'finance.write')
   getExpenseCategories(@CurrentContext() context: RequestContext) {
     return this.settingsService.getExpenseCategories(context);
   }
 
   @Get('salary-rates')
+  @RequireAnyPermissions('settings.view', 'finance.view', 'production.view')
   getSalaryRates(
     @CurrentContext() context: RequestContext,
   ): Promise<CollectionResponse<SalaryRateResponse>> {

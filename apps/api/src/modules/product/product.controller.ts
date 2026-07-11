@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity/auth/jwt-auth.guard';
 import { PermissionGuard } from '../identity/authorization/permission.guard';
+import { RequireAnyPermissions } from '../identity/authorization/require-any-permissions.decorator';
 import { RequirePermissions } from '../identity/authorization/require-permissions.decorator';
 import { CurrentContext } from '../identity/request-context/current-context.decorator';
 import { RequestContext } from '../identity/request-context/request-context.types';
@@ -28,7 +29,7 @@ export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Get('colors')
-  @RequirePermissions('settings.view')
+  @RequireAnyPermissions('settings.view', 'warehouse.view', 'sales.view', 'production.view')
   getColors(
     @CurrentContext() context: RequestContext,
   ): Promise<CollectionResponse<MasterDataItemResponse>> {
@@ -64,7 +65,8 @@ export class ProductController {
   }
 
   @Get('materials')
-  @RequirePermissions('settings.view')
+  // Warehouse/Seller/Shift need read-only catalog for receipts and orders.
+  @RequireAnyPermissions('settings.view', 'warehouse.view', 'sales.view', 'production.view')
   getMaterials(
     @CurrentContext() context: RequestContext,
   ): Promise<CollectionResponse<MasterDataItemResponse>> {
@@ -100,7 +102,7 @@ export class ProductController {
   }
 
   @Get('seasons')
-  @RequirePermissions('settings.view')
+  @RequireAnyPermissions('settings.view', 'warehouse.view', 'sales.view', 'production.view')
   getSeasons(
     @CurrentContext() context: RequestContext,
   ): Promise<CollectionResponse<MasterDataItemResponse>> {
@@ -136,7 +138,7 @@ export class ProductController {
   }
 
   @Get('stages')
-  @RequirePermissions('settings.view')
+  @RequireAnyPermissions('settings.view', 'warehouse.view', 'sales.view', 'production.view')
   getStages(
     @CurrentContext() context: RequestContext,
   ): Promise<CollectionResponse<ProductionStageResponse>> {
@@ -172,7 +174,7 @@ export class ProductController {
   }
 
   @Get('products')
-  @RequirePermissions('settings.view')
+  @RequireAnyPermissions('settings.view', 'warehouse.view', 'sales.view', 'production.view')
   getProducts(
     @CurrentContext() context: RequestContext,
   ): Promise<CollectionResponse<ProductResponse>> {
