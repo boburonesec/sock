@@ -73,7 +73,10 @@ export function SalaryRatesPage() {
   });
 
   const salaryRates = salaryRatesQuery.data?.data ?? [];
-  const stages = stagesQuery.data?.data ?? [];
+  // Ombor — ishbay bosqich emas, stavka tanlovida ko‘rsatilmaydi.
+  const stages = (stagesQuery.data?.data ?? []).filter(
+    (stage) => stage.name !== "Ombor",
+  );
   const isLoading = salaryRatesQuery.isPending || stagesQuery.isPending;
   const firstError = salaryRatesQuery.error ?? stagesQuery.error;
 

@@ -346,18 +346,32 @@ export class SettingsService {
         );
       }
 
-      const salaryRate = await tx.salaryRate.create({
-        data: {
-          tenantId,
-          factoryId,
-          productionStageId: stage.id,
-          productVariantId: null,
-          amount,
-          effectiveFrom,
-          effectiveTo: null,
-        },
-        select: salaryRateSelect,
-      });
+      let salaryRate;
+      try {
+        salaryRate = await tx.salaryRate.create({
+          data: {
+            tenantId,
+            factoryId,
+            productionStageId: stage.id,
+            productVariantId: null,
+            amount,
+            effectiveFrom,
+            effectiveTo: null,
+          },
+          select: salaryRateSelect,
+        });
+      } catch (error) {
+        // Concurrent create: partial unique index SalaryRate_active_stage_unique.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Bu bosqich uchun faol stavka allaqachon bor. Avval eskisini arxivlang.',
+          );
+        }
+        throw error;
+      }
       const response = mapSalaryRateResponse(salaryRate);
 
       await this.auditService.createWithTransaction(tx, {

@@ -136,15 +136,12 @@ export function resolveRouteAccess(
   const rule = ROUTE_PERMISSION_RULES.find((entry) => entry.match(normalized));
 
   if (!rule) {
-    // Unknown / catch-all placeholder routes: require at least one operational permission.
-    if (!permissions.length) {
-      return {
-        allowed: false,
-        reason: "Bu sahifaga ruxsat berilmagan.",
-        requiredPermissions: [],
-      };
-    }
-    return { allowed: true };
+    // Default-deny: unknown routes (placeholders) must not open for any role.
+    return {
+      allowed: false,
+      reason: "Bu sahifa mavjud emas yoki sizga ochilmagan.",
+      requiredPermissions: [],
+    };
   }
 
   if (rule.ownerOnly && !roles.includes("Owner")) {

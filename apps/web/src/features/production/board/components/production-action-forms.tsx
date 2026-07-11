@@ -42,6 +42,14 @@ const moveStageSchema = z
     employeeIds: z
       .array(z.string())
       .min(1, "Kamida bitta ishchi tanlanishi shart."),
+    /** employeeId → dona; yig‘indi quantity ga teng bo‘lishi kerak. */
+    workerQuantities: z.record(
+      z.string(),
+      z.coerce
+        .number({ invalid_type_error: "Miqdor son bo‘lishi kerak." })
+        .int("Butun son bo‘lishi kerak.")
+        .positive("Kamida 1 dona."),
+    ),
     note: z
       .string()
       .trim()
@@ -51,7 +59,27 @@ const moveStageSchema = z
   .refine((values) => values.sourceStageId !== values.destinationStageId, {
     path: ["destinationStageId"],
     message: "Bosqichlar bir xil bo‘lishi mumkin emas.",
-  });
+  })
+  .refine((values) => values.quantity >= values.employeeIds.length, {
+    path: ["quantity"],
+    message:
+      "Miqdor tanlangan ishchilar sonidan kam bo‘lmasin (har biriga kamida 1 dona).",
+  })
+  .refine(
+    (values) => {
+      if (values.employeeIds.length === 0) return true;
+      const sum = values.employeeIds.reduce(
+        (acc, id) => acc + (Number(values.workerQuantities[id]) || 0),
+        0,
+      );
+      return sum === values.quantity;
+    },
+    {
+      path: ["workerQuantities"],
+      message:
+        "Ishchilar miqdorlari yig‘indisi umumiy miqdorga teng bo‘lishi kerak.",
+    },
+  );
 
 const workerActivitySchema = z.object({
   employeeId: z.string().min(1, "Ishchi tanlanishi kerak."),
@@ -261,6 +289,22 @@ function CreateBatchForm({
   );
 }
 
+function equalSplitQuantities(
+  total: number,
+  employeeIds: string[],
+): Record<string, number> {
+  if (employeeIds.length === 0 || total < 1) return {};
+  const base = Math.floor(total / employeeIds.length);
+  let remainder = total - base * employeeIds.length;
+  const next: Record<string, number> = {};
+  for (const id of employeeIds) {
+    const qty = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+    next[id] = Math.max(1, qty);
+  }
+  return next;
+}
+
 function MoveStageForm({
   productVariantOptions,
   stageOptions,
@@ -285,28 +329,39 @@ function MoveStageForm({
       productVariantId: "",
       quantity: 500,
       employeeIds: [],
+      workerQuantities: {},
       note: "",
     },
   });
 
   const sourceStageId = watch("sourceStageId");
+  const quantity = Number(watch("quantity")) || 0;
   const selectedEmployeeIds = watch("employeeIds") ?? [];
+  const workerQuantities = watch("workerQuantities") ?? {};
 
-  // Manba bosqichga biriktirilgan ishchilar birinchi; boshqalar ham tanlanishi mumkin.
-  const preferredEmployees = employeeOptions.filter(
+  // Faqat manba bosqichga biriktirilgan ishchilar (backend ham shu qoidani talab qiladi).
+  const stageEmployees = employeeOptions.filter(
     (employee) =>
-      !sourceStageId ||
-      !employee.stageIds?.length ||
+      sourceStageId &&
+      employee.stageIds?.length &&
       employee.stageIds.includes(sourceStageId),
   );
-  const otherEmployees = employeeOptions.filter(
-    (employee) => !preferredEmployees.some((item) => item.id === employee.id),
-  );
-  const orderedEmployees = [...preferredEmployees, ...otherEmployees];
 
   const submit = async (values: MoveStageValues) => {
     try {
-      await onMoveStage(values);
+      const workerShares = values.employeeIds.map((employeeId) => ({
+        employeeId,
+        quantity: Number(values.workerQuantities[employeeId]) || 0,
+      }));
+      await onMoveStage({
+        sourceStageId: values.sourceStageId,
+        destinationStageId: values.destinationStageId,
+        productVariantId: values.productVariantId,
+        quantity: values.quantity,
+        employeeIds: values.employeeIds,
+        workerShares,
+        note: values.note,
+      });
       reset();
       onSuccess(
         "Smena o‘tkazildi. Tanlangan ishchilarga faollik avtomatik yozildi.",
@@ -319,14 +374,52 @@ function MoveStageForm({
   const hasRequiredOptions =
     productVariantOptions.length > 0 &&
     stageOptions.length >= 2 &&
-    employeeOptions.length > 0;
+    (sourceStageId ? stageEmployees.length > 0 : employeeOptions.length > 0);
+
+  function applyEqualSplit(employeeIds: string[], total: number) {
+    setValue("workerQuantities", equalSplitQuantities(total, employeeIds), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }
 
   function toggleEmployee(employeeId: string) {
     const next = selectedEmployeeIds.includes(employeeId)
       ? selectedEmployeeIds.filter((id) => id !== employeeId)
       : [...selectedEmployeeIds, employeeId];
     setValue("employeeIds", next, { shouldValidate: true, shouldDirty: true });
+    applyEqualSplit(next, quantity > 0 ? quantity : 1);
   }
+
+  function onSourceStageChange(nextStageId: string) {
+    setValue("sourceStageId", nextStageId, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    // Bosqich o‘zgarsa — tanlovni tozalash (boshqa bosqich ishchilari yaroqsiz).
+    setValue("employeeIds", [], { shouldValidate: true });
+    setValue("workerQuantities", {}, { shouldValidate: true });
+  }
+
+  function onQuantityChange(raw: string) {
+    const nextQty = Number(raw);
+    setValue("quantity", Number.isFinite(nextQty) ? nextQty : (0 as number), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    if (
+      Number.isFinite(nextQty) &&
+      nextQty >= 1 &&
+      selectedEmployeeIds.length > 0
+    ) {
+      applyEqualSplit(selectedEmployeeIds, Math.floor(nextQty));
+    }
+  }
+
+  const shareSum = selectedEmployeeIds.reduce(
+    (acc, id) => acc + (Number(workerQuantities[id]) || 0),
+    0,
+  );
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(submit)}>
@@ -363,10 +456,10 @@ function MoveStageForm({
         >
           <Select
             id="sourceStageId"
-            defaultValue=""
+            value={sourceStageId}
             disabled={isMoveStagePending || stageOptions.length === 0}
             aria-invalid={Boolean(errors.sourceStageId)}
-            {...register("sourceStageId")}
+            onChange={(event) => onSourceStageChange(event.target.value)}
           >
             <option value="" disabled>
               Tanlang
@@ -424,51 +517,115 @@ function MoveStageForm({
           placeholder="Masalan: 500"
           disabled={isMoveStagePending}
           aria-invalid={Boolean(errors.quantity)}
-          {...register("quantity")}
+          value={Number.isFinite(quantity) && quantity > 0 ? quantity : ""}
+          onChange={(event) => onQuantityChange(event.target.value)}
         />
       </FormField>
 
       <div className="space-y-2">
         <p className="text-sm font-medium">
-          Kim ishladi? <span className="text-muted-foreground">(bitta yoki bir nechta)</span>
+          Kim ishladi?{" "}
+          <span className="text-muted-foreground">(shu bosqich ishchilari)</span>
         </p>
         <p className="text-xs text-muted-foreground">
-          Miqdor tanlangan ishchilar o‘rtasida teng bo‘linadi. Faollik «Qayerdan»
-          bosqichi bo‘yicha yoziladi.
+          Faqat «Qayerdan» bosqichiga biriktirilgan ishchilar. Har biriga dona
+          yozing (yig‘indi = umumiy miqdor). «Teng bo‘lish» tugmasi qulay
+          boshlang‘ich qiymat beradi.
         </p>
-        <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">
-          {orderedEmployees.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Faol ishchi yo‘q.</p>
+        {!sourceStageId ? (
+          <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            Avval «Qayerdan» bosqichini tanlang — ishchilar shu bosqich bo‘yicha
+            chiqadi.
+          </p>
+        ) : null}
+        <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-3">
+          {!sourceStageId ? (
+            <p className="text-sm text-muted-foreground">Bosqich tanlanmagan.</p>
+          ) : stageEmployees.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Bu bosqichga biriktirilgan faol ishchi yo‘q. Xodimlar bo‘limida
+              bosqich biriktiring.
+            </p>
           ) : (
-            orderedEmployees.map((employee) => {
+            stageEmployees.map((employee) => {
               const checked = selectedEmployeeIds.includes(employee.id);
-              const preferred =
-                sourceStageId && employee.stageIds?.includes(sourceStageId);
               return (
-                <label
+                <div
                   key={employee.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50"
+                  className="flex flex-wrap items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50"
                 >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={checked}
-                    disabled={isMoveStagePending}
-                    onChange={() => toggleEmployee(employee.id)}
-                  />
-                  <span className="text-sm">
-                    {employee.label}
-                    {preferred ? (
-                      <span className="ml-2 text-xs text-primary">shu bosqich</span>
-                    ) : null}
-                  </span>
-                </label>
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={checked}
+                      disabled={isMoveStagePending}
+                      onChange={() => toggleEmployee(employee.id)}
+                    />
+                    <span className="text-sm">{employee.label}</span>
+                  </label>
+                  {checked ? (
+                    <Input
+                      type="number"
+                      min="1"
+                      step="1"
+                      className="h-8 w-24"
+                      disabled={isMoveStagePending}
+                      value={workerQuantities[employee.id] ?? ""}
+                      aria-label={`${employee.label} miqdori`}
+                      onChange={(event) => {
+                        const next = {
+                          ...workerQuantities,
+                          [employee.id]: Number(event.target.value),
+                        };
+                        setValue("workerQuantities", next, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        });
+                      }}
+                    />
+                  ) : null}
+                </div>
               );
             })
           )}
         </div>
+        {selectedEmployeeIds.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              Yig‘indi:{" "}
+              <span
+                className={
+                  shareSum === quantity ? "text-emerald-400" : "text-amber-300"
+                }
+              >
+                {shareSum}
+              </span>{" "}
+              / {quantity || "—"} dona
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 px-3 text-xs"
+              disabled={isMoveStagePending}
+              onClick={() =>
+                applyEqualSplit(
+                  selectedEmployeeIds,
+                  quantity > 0 ? quantity : 1,
+                )
+              }
+            >
+              Teng bo‘lish
+            </Button>
+          </div>
+        ) : null}
         {errors.employeeIds?.message ? (
           <p className="text-sm text-rose-400">{errors.employeeIds.message}</p>
+        ) : null}
+        {errors.workerQuantities?.message ? (
+          <p className="text-sm text-rose-400">
+            {String(errors.workerQuantities.message)}
+          </p>
         ) : null}
       </div>
 

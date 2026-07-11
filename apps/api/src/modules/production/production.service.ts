@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EmployeeStatus, Prisma } from '@prisma/client';
+import { sanitizeOperatorText } from '../../common/sanitize-operator-text';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
@@ -319,6 +320,21 @@ export class ProductionService {
         );
       }
 
+      // Manba bosqichga biriktirilgan ishchilar bo‘lishi shart.
+      await this.assertEmployeesAssignedToStage(tx, {
+        tenantId,
+        factoryId,
+        productionStageId: sourceStage.id,
+        stageName: sourceStage.name,
+        employees,
+      });
+
+      const quantityByEmployeeId = this.resolveWorkerQuantities({
+        quantity: dto.quantity,
+        employees,
+        workerShares: dto.workerShares,
+      });
+
       // Manba bosqichda ishlangan: shu bosqich stavkasi bo‘yicha faollik.
       const salaryRate = await this.findActiveSalaryRate(tx, {
         tenantId,
@@ -334,6 +350,10 @@ export class ProductionService {
         );
       }
 
+      const note = dto.note
+        ? sanitizeOperatorText(dto.note, { maxLength: 500 })
+        : null;
+
       const stageMovement = await tx.stageMovement.create({
         data: {
           tenantId,
@@ -344,19 +364,15 @@ export class ProductionService {
           quantity: dto.quantity,
           recordedByUserId: context.userId,
           occurredAt: now,
-          note: dto.note ?? null,
+          note: note && note.length > 0 ? note : null,
         },
         select: stageMovementSelect,
       });
 
-      // Miqdor ishchilar o‘rtasida teng bo‘linadi (qoldiq birinchisiga).
-      const baseQty = Math.floor(dto.quantity / employees.length);
-      let remainder = dto.quantity - baseQty * employees.length;
       const activityIds: string[] = [];
 
       for (const employee of employees) {
-        const qty = baseQty + (remainder > 0 ? 1 : 0);
-        if (remainder > 0) remainder -= 1;
+        const qty = quantityByEmployeeId.get(employee.id) ?? 0;
         if (qty <= 0) continue;
 
         const workerActivity = await tx.workerActivity.create({
@@ -386,6 +402,10 @@ export class ProductionService {
         after: stageMovement,
         metadata: {
           employeeIds: employees.map((employee) => employee.id),
+          workerShares: employees.map((employee) => ({
+            employeeId: employee.id,
+            quantity: quantityByEmployeeId.get(employee.id) ?? 0,
+          })),
           workerActivityIds: activityIds,
           salaryRateId: salaryRate.id,
         },
@@ -488,6 +508,14 @@ export class ProductionService {
         throw new NotFoundException('Product variant not found.');
       }
 
+      await this.assertEmployeesAssignedToStage(tx, {
+        tenantId,
+        factoryId,
+        productionStageId: stage.id,
+        stageName: stage.name,
+        employees: [{ id: employee.id, name: employee.name }],
+      });
+
       const salaryRate = await this.findActiveSalaryRate(tx, {
         tenantId,
         factoryId,
@@ -501,6 +529,10 @@ export class ProductionService {
           'Active salary rate is required before worker activity can be recorded.',
         );
       }
+
+      const note = dto.note
+        ? sanitizeOperatorText(dto.note, { maxLength: 500 })
+        : undefined;
 
       const workerActivity = await tx.workerActivity.create({
         data: {
@@ -532,7 +564,7 @@ export class ProductionService {
           salaryRateScope: salaryRate.productVariantId
             ? 'PRODUCT_VARIANT'
             : 'STAGE',
-          ...(dto.note ? { note: dto.note } : {}),
+          ...(note ? { note } : {}),
         },
       });
 
@@ -600,6 +632,16 @@ export class ProductionService {
         throw new NotFoundException('Product variant not found.');
       }
 
+      const reason = sanitizeOperatorText(dto.reason, {
+        maxLength: 500,
+        minLength: 3,
+      });
+      if (reason.length < 3) {
+        throw new BadRequestException(
+          'Brak sababi kamida 3 ta belgidan iborat bo‘lishi kerak (HTML belgilar olib tashlanadi).',
+        );
+      }
+
       const defect = await tx.defect.create({
         data: {
           tenantId,
@@ -608,7 +650,7 @@ export class ProductionService {
           productionStageId: stage?.id ?? null,
           productVariantId: productVariant?.id ?? null,
           quantity: dto.quantity,
-          reason: dto.reason,
+          reason,
           reportedByUserId: context.userId,
           detectedAt: now,
         },
@@ -992,6 +1034,175 @@ export class ProductionService {
 
   private getTashkentDayStart(dateKey: string): Date {
     return new Date(`${dateKey}T00:00:00${OPERATIONS_TIME_ZONE_OFFSET}`);
+  }
+
+  /**
+   * Active workers + stage assignments for production forms (production.view).
+   */
+  async getLookupEmployees(context: RequestContext) {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        tenantId,
+        factoryId,
+        status: EmployeeStatus.ACTIVE,
+        deletedAt: null,
+      },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        stageAssignments: {
+          select: {
+            productionStage: {
+              select: { id: true, name: true, sortOrder: true },
+            },
+          },
+          orderBy: { productionStage: { sortOrder: 'asc' } },
+        },
+      },
+    });
+
+    return {
+      data: employees.map((employee) => ({
+        id: employee.id,
+        name: employee.name,
+        status: employee.status,
+        stages: employee.stageAssignments.map((assignment) => ({
+          id: assignment.productionStage.id,
+          name: assignment.productionStage.name,
+          sortOrder: assignment.productionStage.sortOrder,
+        })),
+      })),
+    };
+  }
+
+  /**
+   * Active product variants for production forms (production.view).
+   */
+  async getLookupProductVariants(context: RequestContext) {
+    const tenantId = context.tenantId;
+    requireActiveFactoryId(context);
+
+    const variants = await this.prisma.productVariant.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        product: { deletedAt: null },
+      },
+      orderBy: [{ product: { name: 'asc' } }, { createdAt: 'asc' }],
+      select: productVariantSelect,
+    });
+
+    return {
+      data: variants.map((variant) => ({
+        id: variant.id,
+        product: variant.product,
+        color: variant.color,
+        material: variant.material,
+        season: variant.season,
+        label: `${variant.product.name} · ${variant.color.name} · ${variant.material.name} · ${variant.season.name}`,
+      })),
+    };
+  }
+
+  /**
+   * Ishchi manba bosqichga biriktirilgan bo‘lishi shart (payroll aniqlik).
+   */
+  private async assertEmployeesAssignedToStage(
+    tx: Prisma.TransactionClient,
+    input: {
+      tenantId: string;
+      factoryId: string;
+      productionStageId: string;
+      stageName: string;
+      employees: Array<{ id: string; name: string }>;
+    },
+  ): Promise<void> {
+    const employeeIds = input.employees.map((employee) => employee.id);
+    const assignments = await tx.employeeStageAssignment.findMany({
+      where: {
+        tenantId: input.tenantId,
+        factoryId: input.factoryId,
+        productionStageId: input.productionStageId,
+        employeeId: { in: employeeIds },
+      },
+      select: { employeeId: true },
+    });
+    const assigned = new Set(assignments.map((row) => row.employeeId));
+    const missing = input.employees.filter((employee) => !assigned.has(employee.id));
+
+    if (missing.length > 0) {
+      const names = missing.map((employee) => employee.name).join(', ');
+      throw new BadRequestException(
+        `«${input.stageName}» bosqichiga biriktirilmagan ishchi(lar): ${names}. Avval Xodimlar bo‘limida bosqich biriktiring.`,
+      );
+    }
+  }
+
+  /**
+   * workerShares yuborilsa — alohida miqdorlar (yig‘indi = quantity).
+   * Aks holda teng bo‘lish (qoldiq birinchi ishchilarga).
+   */
+  private resolveWorkerQuantities(input: {
+    quantity: number;
+    employees: Array<{ id: string; name: string }>;
+    workerShares?: Array<{ employeeId: string; quantity: number }>;
+  }): Map<string, number> {
+    const employeeIds = new Set(input.employees.map((employee) => employee.id));
+    const result = new Map<string, number>();
+
+    if (input.workerShares && input.workerShares.length > 0) {
+      let sum = 0;
+      for (const share of input.workerShares) {
+        const employeeId = share.employeeId.trim();
+        if (!employeeIds.has(employeeId)) {
+          throw new BadRequestException(
+            'workerShares ichidagi ishchi employeeIds da bo‘lishi shart.',
+          );
+        }
+        if (!Number.isInteger(share.quantity) || share.quantity < 1) {
+          throw new BadRequestException(
+            'Har bir ishchi miqdori butun va kamida 1 bo‘lishi kerak.',
+          );
+        }
+        const previous = result.get(employeeId) ?? 0;
+        result.set(employeeId, previous + share.quantity);
+        sum += share.quantity;
+      }
+
+      if (result.size !== employeeIds.size) {
+        throw new BadRequestException(
+          'Tanlangan har bir ishchi uchun miqdor yozilishi shart.',
+        );
+      }
+
+      if (sum !== input.quantity) {
+        throw new BadRequestException(
+          `Ishchilar miqdorlari yig‘indisi (${sum}) umumiy miqdorga (${input.quantity}) teng bo‘lishi kerak.`,
+        );
+      }
+
+      return result;
+    }
+
+    if (input.quantity < input.employees.length) {
+      throw new BadRequestException(
+        `Miqdor (${input.quantity}) ishchilar sonidan (${input.employees.length}) kam bo‘lmasligi kerak — har bir ishchiga kamida 1 dona yoziladi.`,
+      );
+    }
+
+    const baseQty = Math.floor(input.quantity / input.employees.length);
+    let remainder = input.quantity - baseQty * input.employees.length;
+    for (const employee of input.employees) {
+      const qty = baseQty + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder -= 1;
+      result.set(employee.id, qty);
+    }
+
+    return result;
   }
 
   private async findActiveSalaryRate(

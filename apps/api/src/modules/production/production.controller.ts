@@ -100,4 +100,18 @@ export class ProductionController {
   ): Promise<ProductionOperationsSummaryResponse> {
     return this.productionService.getOperationsSummary(context);
   }
+
+  /**
+   * Shift Receiver has production.view but not employees.view/settings.view.
+   * Board forms need these limited lookups without opening full modules.
+   */
+  @Get('lookups/employees')
+  getLookupEmployees(@CurrentContext() context: RequestContext) {
+    return this.productionService.getLookupEmployees(context);
+  }
+
+  @Get('lookups/product-variants')
+  getLookupProductVariants(@CurrentContext() context: RequestContext) {
+    return this.productionService.getLookupProductVariants(context);
+  }
 }

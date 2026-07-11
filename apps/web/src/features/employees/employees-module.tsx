@@ -111,7 +111,9 @@ export function EmployeesModule() {
         open={Boolean(formState)}
         mode={formState?.mode ?? "create"}
         employee={formState?.employee ?? null}
-        stageOptions={stagesQuery.data?.data ?? []}
+        stageOptions={(stagesQuery.data?.data ?? []).filter(
+          (stage) => stage.name !== "Ombor",
+        )}
         isSubmitting={createEmployee.isPending || updateEmployee.isPending}
         errorMessage={formError}
         onOpenChange={(open) => {

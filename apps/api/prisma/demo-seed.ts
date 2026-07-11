@@ -205,37 +205,26 @@ async function main(): Promise<void> {
 
   // --- Salary rates ---
   await prisma.salaryRate.deleteMany({ where: { tenantId, factoryId: factory.id } });
+  // Stage-only rates for all piece-rate stages (Ombor excluded).
+  const stageRateAmounts: Array<[string, string]> = [
+    ['Averlog', '120'],
+    ['Dazmol', '80'],
+    ['Sifat', '60'],
+    ['Kiydirish', '70'],
+    ['Par Dazmol', '75'],
+    ['Parlash', '65'],
+    ['Bezak', '55'],
+    ['Etiketka', '45'],
+    ['Qadoqlash', '50'],
+  ];
   await prisma.salaryRate.createMany({
-    data: [
-      {
-        tenantId,
-        factoryId: factory.id,
-        productionStageId: requireStage(stageByName, 'Averlog').id,
-        amount: new Prisma.Decimal('120'),
-        effectiveFrom: previousMonth,
-      },
-      {
-        tenantId,
-        factoryId: factory.id,
-        productionStageId: requireStage(stageByName, 'Dazmol').id,
-        amount: new Prisma.Decimal('80'),
-        effectiveFrom: previousMonth,
-      },
-      {
-        tenantId,
-        factoryId: factory.id,
-        productionStageId: requireStage(stageByName, 'Sifat').id,
-        amount: new Prisma.Decimal('60'),
-        effectiveFrom: previousMonth,
-      },
-      {
-        tenantId,
-        factoryId: factory.id,
-        productionStageId: requireStage(stageByName, 'Qadoqlash').id,
-        amount: new Prisma.Decimal('50'),
-        effectiveFrom: previousMonth,
-      },
-    ],
+    data: stageRateAmounts.map(([stageName, amount]) => ({
+      tenantId,
+      factoryId: factory.id,
+      productionStageId: requireStage(stageByName, stageName).id,
+      amount: new Prisma.Decimal(amount),
+      effectiveFrom: previousMonth,
+    })),
   });
 
   // --- Stage inventory (current WIP) ---

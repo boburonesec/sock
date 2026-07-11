@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -7,6 +7,7 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 
 function trimString(value: unknown): unknown {
@@ -41,6 +42,19 @@ export class CreateProductionBatchDto {
   note?: string;
 }
 
+/** Optional per-worker quantity override (must sum to movement quantity). */
+export class WorkerShareDto {
+  @Transform(({ value }) => trimString(value))
+  @IsString({ message: 'Ishchi identifikatori noto‘g‘ri.' })
+  @MinLength(1, { message: 'Ishchi identifikatori bo‘sh bo‘lmasin.' })
+  employeeId!: string;
+
+  @Transform(({ value }) => Number(value))
+  @IsInt({ message: 'Ishchi miqdori butun son bo‘lishi kerak.' })
+  @Min(1, { message: 'Har bir ishchiga kamida 1 dona.' })
+  quantity!: number;
+}
+
 export class CreateStageMovementDto {
   @Transform(({ value }) => trimString(value))
   @IsString()
@@ -64,12 +78,31 @@ export class CreateStageMovementDto {
 
   /**
    * Manba bosqichda ishlagan ishchi(lar).
-   * Faollik avtomatik yoziladi (miqdor teng bo‘linadi).
+   * workerShares bo‘lmasa miqdor teng bo‘linadi.
    */
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value
+          .map((item) => (typeof item === 'string' ? item.trim() : item))
+          .filter((item) => typeof item === 'string' && item.length > 0)
+      : value,
+  )
+  @IsArray({ message: 'Ishchilar ro‘yxati yuborilishi kerak.' })
+  @ArrayMinSize(1, { message: 'Kamida bitta ishchi tanlanishi shart.' })
+  @IsString({ each: true, message: 'Ishchi identifikatori noto‘g‘ri.' })
+  @MinLength(1, { each: true, message: 'Ishchi identifikatori bo‘sh bo‘lmasin.' })
   employeeIds!: string[];
+
+  /**
+   * Ixtiyoriy: har bir ishchiga alohida dona.
+   * Yuborilsa, yig‘indi movement quantity ga teng bo‘lishi shart.
+   */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkerShareDto)
+  @ArrayMinSize(1)
+  workerShares?: WorkerShareDto[];
 
   @Transform(({ value }) => normalizeOptionalString(value))
   @IsOptional()

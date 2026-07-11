@@ -39,14 +39,15 @@ export function ApiErrorBanner() {
     >
       <div className="mx-auto flex max-w-6xl items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <p className="font-semibold">Ruxsat rad etildi (403)</p>
-          <p className="text-rose-100/90">{detail.message}</p>
-          {detail.path ? (
-            <p className="truncate font-mono text-xs text-rose-200/80">
-              {detail.method ? `${detail.method} ` : ""}
-              {detail.path}
-            </p>
-          ) : null}
+          <p className="font-semibold">Bu amal uchun ruxsatingiz yo‘q</p>
+          <p className="text-rose-100/90">
+            {detail.message ||
+              "Rolingiz bu ma’lumotni ko‘rish yoki o‘zgartirishga ruxsat bermaydi."}
+          </p>
+          <p className="text-xs text-rose-200/80">
+            Kerak bo‘lsa korxona egasidan ruxsat so‘rang yoki ruxsat berilgan
+            bo‘limga o‘ting.
+          </p>
           <Link href={homePath} className="inline-block text-xs font-semibold underline">
             Ruxsat berilgan sahifaga o‘tish
           </Link>

@@ -196,7 +196,10 @@ export class AuthService {
 
     this.authRateLimiter.reset(rateLimitKey);
 
-    const context = await this.buildRequestContext(existingSession.userId);
+    // Refresh is a session renewal — self-heal role matrix here (not on every JWT).
+    const context = await this.buildRequestContext(existingSession.userId, undefined, {
+      ensureDefaultRoles: true,
+    });
 
     return {
       accessToken: this.signAccessToken(existingSession.userId, existingSession.tenantId),
@@ -222,7 +225,10 @@ export class AuthService {
     });
   }
 
-  async getContextFromAccessToken(accessToken: string, requestedFactoryId?: string): Promise<RequestContext> {
+  async getContextFromAccessToken(
+    accessToken: string,
+    requestedFactoryId?: string,
+  ): Promise<RequestContext> {
     const payload = this.verifyAccessToken(accessToken);
 
     return this.buildRequestContext(payload.sub, requestedFactoryId);
@@ -420,7 +426,10 @@ export class AuthService {
     userAgent?: string,
     ipAddress?: string,
   ): Promise<AuthSessionResult> {
-    const context = await this.buildRequestContext(userId, requestedFactoryId);
+    // Role matrix sync only on login/refresh session creation — not every API call.
+    const context = await this.buildRequestContext(userId, requestedFactoryId, {
+      ensureDefaultRoles: true,
+    });
     const refreshToken = this.createOpaqueRefreshToken();
 
     await this.prisma.refreshSession.create({
@@ -442,7 +451,11 @@ export class AuthService {
     };
   }
 
-  private async buildRequestContext(userId: string, requestedFactoryId?: string): Promise<RequestContext> {
+  private async buildRequestContext(
+    userId: string,
+    requestedFactoryId?: string,
+    options?: { ensureDefaultRoles?: boolean },
+  ): Promise<RequestContext> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -502,28 +515,32 @@ export class AuthService {
 
     await this.assertTenantCanAuthenticate(user.tenant);
 
-    // Keep default role permissions current for existing tenants (e.g. Seller + warehouse.view).
-    await this.ensureDefaultRolePermissions(user.tenantId);
+    if (options?.ensureDefaultRoles) {
+      // Self-heal role matrix only when creating a session (login/refresh).
+      await this.ensureDefaultRolePermissions(user.tenantId);
+    }
 
-    const refreshedRoles = await this.prisma.userRole.findMany({
-      where: {
-        userId: user.id,
-        tenantId: user.tenantId,
-        role: { deletedAt: null },
-      },
-      select: {
-        role: {
+    const roleRows = options?.ensureDefaultRoles
+      ? await this.prisma.userRole.findMany({
+          where: {
+            userId: user.id,
+            tenantId: user.tenantId,
+            role: { deletedAt: null },
+          },
           select: {
-            name: true,
-            permissions: {
+            role: {
               select: {
-                permission: { select: { key: true } },
+                name: true,
+                permissions: {
+                  select: {
+                    permission: { select: { key: true } },
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        })
+      : user.roles;
 
     const accessibleFactoryIds = user.factoryAccesses.map((access) => access.factoryId);
     const activeFactoryId = requestedFactoryId ?? accessibleFactoryIds[0] ?? null;
@@ -532,10 +549,10 @@ export class AuthService {
       throw new ForbiddenException('Factory access is not allowed.');
     }
 
-    const roles = refreshedRoles.map((userRole) => userRole.role.name);
+    const roles = roleRows.map((userRole) => userRole.role.name);
     const permissions = Array.from(
       new Set(
-        refreshedRoles.flatMap((userRole) =>
+        roleRows.flatMap((userRole) =>
           userRole.role.permissions.map((rolePermission) => rolePermission.permission.key),
         ),
       ),

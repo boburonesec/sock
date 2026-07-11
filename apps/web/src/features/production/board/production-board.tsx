@@ -22,8 +22,6 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { PageSection } from "@/components/layout/page-section";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { employeesApi } from "@/lib/api/employees";
-import { productApi } from "@/lib/api/product";
 import {
   productionApi,
   type CreateDefectPayload,
@@ -37,6 +35,7 @@ import {
   type FinishedProductReceiptPayload,
 } from "@/lib/api/warehouse";
 import { formatNumber } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
 import { ProductBreakdown } from "./components/product-breakdown";
 import { ProductionActionDrawer } from "./components/production-action-drawer";
 import type {
@@ -50,19 +49,32 @@ import { useProductionBoardData } from "./use-production-board-data";
 
 export function ProductionBoard() {
   const queryClient = useQueryClient();
+  const permissions = useAuthStore((state) => state.permissions);
+  const canReceiveFinished = permissions.includes("warehouse.write");
+  const canViewWarehouseZones = permissions.includes("warehouse.view");
   const { summary, inventory, movements, error, isError, isPending, refetch } =
     useProductionBoardData();
+
+  const openAction = (action: ProductionAction) => {
+    if (action === "receive-finished" && !canReceiveFinished) {
+      return;
+    }
+    setActiveAction(action);
+  };
+  // Production-scoped lookups (Shift Receiver has production.view, not settings/employees).
   const productsQuery = useQuery({
-    queryKey: queryKeys.product.products(),
-    queryFn: productApi.getProducts,
+    queryKey: ["production", "lookups", "product-variants"],
+    queryFn: productionApi.getLookupProductVariants,
   });
   const employeesQuery = useQuery({
-    queryKey: queryKeys.employees.list(),
-    queryFn: employeesApi.getEmployees,
+    queryKey: ["production", "lookups", "employees"],
+    queryFn: productionApi.getLookupEmployees,
   });
+  // Warehouse zones need warehouse.view — Shift Receiver must not trigger 403.
   const warehouseZonesQuery = useQuery({
     queryKey: queryKeys.warehouse.zones(),
     queryFn: warehouseApi.getZones,
+    enabled: canViewWarehouseZones && canReceiveFinished,
   });
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<ProductionAction | null>(null);
@@ -187,12 +199,10 @@ export function ProductionBoard() {
   };
 
   const productVariantOptions: ProductVariantOption[] =
-    productsQuery.data?.data.flatMap((product) =>
-      product.variants.map((variant) => ({
-        id: variant.id,
-        label: `${variant.product.name} · ${variant.color.name} · ${variant.material.name} · ${variant.season.name}`,
-      })),
-    ) ?? [];
+    productsQuery.data?.data.map((variant) => ({
+      id: variant.id,
+      label: variant.label,
+    })) ?? [];
   const omborProductVariantOptions: ProductVariantOption[] = inventory
     .filter((item) => item.stage.name === "Ombor" && item.quantity > 0)
     .map((item) => ({
@@ -313,7 +323,10 @@ export function ProductionBoard() {
             )}
           </div>
           <div className="order-1 xl:order-2 xl:sticky xl:top-20 xl:self-start">
-            <QuickActionsPanel onActionSelect={setActiveAction} />
+            <QuickActionsPanel
+              onActionSelect={openAction}
+              canReceiveFinished={canReceiveFinished}
+            />
           </div>
         </div>
       </PageSection>
@@ -372,10 +385,12 @@ export function ProductionBoard() {
         description="Asosiy kiritish amallari tizim ma’lumotlariga ulangan"
       >
         <p className="text-sm text-muted-foreground">
-          Omborga qabul qilish Ombor bosqichidagi tayyor mahsulotni ombor
-          qoldig‘iga o‘tkazadi. Ishchi faolligi ish haqini shu zahoti
-          hisoblamaydi, brak esa avtomatik jarima yoki qoldiq tuzatishi
+          Smena o‘tkazishda tanlangan ishchilarga faollik avtomatik yoziladi
+          (miqdor teng bo‘linadi). Brak avtomatik jarima yoki qoldiq tuzatishi
           yaratmaydi.
+          {canReceiveFinished
+            ? " Omborga qabul qilish — Ombor bosqichidagi tayyor mahsulotni jismoniy ombor qoldig‘iga o‘tkazadi."
+            : " Jismoniy omborga qabul qilish ombor operatori yoki menejer rolida ochiladi."}
         </p>
       </InfoCard>
 

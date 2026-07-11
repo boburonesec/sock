@@ -680,6 +680,8 @@ model SalaryRate {
 
   @@index([tenantId, factoryId, productionStageId, effectiveFrom])
   @@index([tenantId, productVariantId, effectiveFrom])
+  // Partial unique for active stage-only rates is in SQL migration:
+  // SalaryRate_active_stage_unique (deletedAt/effectiveTo/productVariantId null).
 }
 
 model ExpenseCategory {

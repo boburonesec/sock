@@ -32,17 +32,9 @@ export function PermissionGate({ children }: { children: React.ReactNode }) {
       </p>
       <h1 className="text-2xl font-bold">Bu sahifaga kira olmaysiz</h1>
       <p className="text-sm text-muted-foreground">{decision.reason}</p>
-      {decision.requiredPermissions.length > 0 ? (
-        <p className="text-xs text-muted-foreground">
-          Kerakli ruxsat:{" "}
-          <span className="font-mono text-foreground/80">
-            {decision.requiredPermissions.join(", ")}
-          </span>
-        </p>
-      ) : null}
       <p className="text-sm text-muted-foreground">
-        URL ni qo‘lda yozsangiz ham, ruxsatsiz sahifa ochilmaydi va ma’lumot
-        so‘rovlari yuborilmaydi.
+        Bu bo‘lim sizning rolingiz uchun ochilmagan. Kerak bo‘lsa, korxona
+        egasidan ruxsat so‘rang. URL yozib kirish ham ishlamaydi.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link href={homePath}>

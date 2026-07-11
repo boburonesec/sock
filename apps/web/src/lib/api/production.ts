@@ -108,6 +108,11 @@ export interface CreateStageMovementPayload {
   quantity: number;
   /** Manba bosqichda ishlagan ishchilar — faollik avtomatik yoziladi. */
   employeeIds: string[];
+  /**
+   * Ixtiyoriy: har ishchiga alohida dona (yig‘indi = quantity).
+   * Yo‘q bo‘lsa backend teng bo‘ladi.
+   */
+  workerShares?: Array<{ employeeId: string; quantity: number }>;
   note?: string;
 }
 
@@ -146,6 +151,22 @@ export interface ProductionBatchCreation {
   stageMovement: StageMovement;
 }
 
+export interface ProductionLookupEmployee {
+  id: string;
+  name: string;
+  status: string;
+  stages: Array<{ id: string; name: string; sortOrder: number }>;
+}
+
+export interface ProductionLookupVariant {
+  id: string;
+  label: string;
+  product: { id: string; name: string; code: string | null };
+  color: { id: string; name: string; code: string | null };
+  material: { id: string; name: string; code: string | null };
+  season: { id: string; name: string; code: string | null };
+}
+
 export const productionApi = {
   getStageInventory: () =>
     apiClient<ApiCollection<StageInventory>>("/production/stage-inventory"),
@@ -157,6 +178,14 @@ export const productionApi = {
   getOperationsSummary: () =>
     apiClient<{ data: ProductionOperationsSummary }>(
       "/production/operations-summary",
+    ),
+  getLookupEmployees: () =>
+    apiClient<ApiCollection<ProductionLookupEmployee>>(
+      "/production/lookups/employees",
+    ),
+  getLookupProductVariants: () =>
+    apiClient<ApiCollection<ProductionLookupVariant>>(
+      "/production/lookups/product-variants",
     ),
   createBatch: (payload: CreateProductionBatchPayload) =>
     apiClient<{ data: ProductionBatchCreation }>("/production/batches", {

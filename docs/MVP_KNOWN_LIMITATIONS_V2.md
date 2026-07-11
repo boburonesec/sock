@@ -40,6 +40,8 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 - Defects do not auto-create penalties
 - No automatic material consumption from production
 - No IoT
+- Stage move requires workers assigned to the source stage (Xodimlar)
+- Per-worker quantities supported; equal split is the default helper only
 
 ### Warehouse
 

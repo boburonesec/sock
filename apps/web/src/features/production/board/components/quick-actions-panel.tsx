@@ -7,37 +7,49 @@ const actions: {
   label: string;
   action: ProductionAction;
   icon: typeof Plus;
-  status: string;
+  /** warehouse.write required — physical ombor qabul */
+  requiresWarehouseWrite?: boolean;
 }[] = [
-  { label: "Partiya yaratish", action: "create-batch", icon: Plus, status: "ma’lumot" },
+  { label: "Partiya yaratish", action: "create-batch", icon: Plus },
   {
     label: "Smena o‘tkazish (+ ishchilar)",
     action: "move-stage",
     icon: ArrowRightLeft,
-    status: "ma’lumot",
   },
   {
     label: "Brak qayd qilish",
     action: "register-defect",
     icon: AlertTriangle,
-    status: "ma’lumot",
   },
   {
     label: "Omborga qabul qilish",
     action: "receive-finished",
     icon: PackageCheck,
-    status: "ma’lumot",
+    requiresWarehouseWrite: true,
   },
 ];
-interface QuickActionsPanelProps { onActionSelect: (action: ProductionAction) => void; }
-export function QuickActionsPanel({ onActionSelect }: QuickActionsPanelProps) {
+
+interface QuickActionsPanelProps {
+  onActionSelect: (action: ProductionAction) => void;
+  /** If false, hide physical warehouse receipt (Shift Receiver has no warehouse.write). */
+  canReceiveFinished?: boolean;
+}
+
+export function QuickActionsPanel({
+  onActionSelect,
+  canReceiveFinished = false,
+}: QuickActionsPanelProps) {
+  const visibleActions = actions.filter(
+    (item) => !item.requiresWarehouseWrite || canReceiveFinished,
+  );
+
   return (
     <InfoCard
       title="Tezkor amallar"
       description="Ishlab chiqarishdagi asosiy kiritish amallari"
     >
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-        {actions.map(({ label, action, icon: Icon }) => (
+        {visibleActions.map(({ label, action, icon: Icon }) => (
           <Button
             key={action}
             type="button"
