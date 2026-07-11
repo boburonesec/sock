@@ -70,6 +70,23 @@ async function readResponseBody(response: Response): Promise<unknown> {
   }
 }
 
+const STATUS_FALLBACK_UZ: Record<number, string> = {
+  400: "Kiritilgan ma’lumotlar noto‘g‘ri. Iltimos, maydonlarni tekshiring.",
+  401: "Sessiya tugagan yoki kirish talab qilinadi. Qayta kiring.",
+  403: "Bu amal uchun ruxsatingiz yo‘q.",
+  404: "So‘ralgan ma’lumot topilmadi.",
+  409: "Bu amal hozir bajarilmaydi (ziddiyat). Holatni tekshirib qayta urinib ko‘ring.",
+  422: "Ma’lumotlar qayta ishlanmadi. Kiritishlarni tekshiring.",
+  429: "Juda ko‘p urinish. Biroz kutib qayta urinib ko‘ring.",
+  500: "Serverda xatolik yuz berdi. Keyinroq urinib ko‘ring.",
+  502: "Server vaqtincha ishlamayapti. Keyinroq urinib ko‘ring.",
+  503: "Xizmat vaqtincha mavjud emas. Keyinroq urinib ko‘ring.",
+};
+
+/**
+ * Prefer API `message` (backend already normalizes to Uzbek).
+ * Never show raw English status text to operators.
+ */
 export function extractApiErrorMessage(
   status: number,
   statusText: string,
@@ -77,30 +94,39 @@ export function extractApiErrorMessage(
 ): string {
   if (body && typeof body === "object") {
     const record = body as Record<string, unknown>;
+
+    // Multi-field validation from filter: messages[]
+    if (
+      Array.isArray(record.messages) &&
+      record.messages.every((item) => typeof item === "string")
+    ) {
+      const joined = (record.messages as string[])
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .join(" · ");
+      if (joined) return joined;
+    }
+
     const message = record.message;
 
     if (typeof message === "string" && message.trim()) {
-      return message;
+      return message.trim();
     }
 
     if (Array.isArray(message) && message.every((item) => typeof item === "string")) {
-      return message.join(", ");
+      const joined = message.map((item) => item.trim()).filter(Boolean).join(" · ");
+      if (joined) return joined;
     }
   }
 
   if (typeof body === "string" && body.trim()) {
-    return body;
+    return body.trim();
   }
 
-  if (status === 403) {
-    return "Bu amal uchun ruxsatingiz yo‘q.";
-  }
-
-  if (status === 401) {
-    return "Sessiya tugagan. Qayta kiring.";
-  }
-
-  return `API request failed with ${status} ${statusText}`;
+  return (
+    STATUS_FALLBACK_UZ[status] ??
+    `Amal bajarilmadi (${status}). Keyinroq urinib ko‘ring.`
+  );
 }
 
 function broadcastForbidden(detail: ApiForbiddenDetail): void {

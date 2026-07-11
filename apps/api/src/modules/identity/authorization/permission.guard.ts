@@ -31,7 +31,7 @@ export class PermissionGuard implements CanActivate {
 
     if (!requestContext) {
       throw new ForbiddenException(
-        'Request context is required for permission checks.',
+        'So‘rov konteksti topilmadi. Qayta kiring.',
       );
     }
 
@@ -41,7 +41,7 @@ export class PermissionGuard implements CanActivate {
     );
 
     if (!hasAllRequiredPermissions) {
-      throw new ForbiddenException('Insufficient permissions.');
+      throw new ForbiddenException('Bu amal uchun ruxsatingiz yo‘q.');
     }
 
     return true;

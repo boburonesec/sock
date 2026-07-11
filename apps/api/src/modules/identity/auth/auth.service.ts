@@ -546,7 +546,7 @@ export class AuthService {
     const activeFactoryId = requestedFactoryId ?? accessibleFactoryIds[0] ?? null;
 
     if (requestedFactoryId && !accessibleFactoryIds.includes(requestedFactoryId)) {
-      throw new ForbiddenException('Factory access is not allowed.');
+      throw new ForbiddenException('Bu fabrikaga ruxsatingiz yo‘q.');
     }
 
     const roles = roleRows.map((userRole) => userRole.role.name);

@@ -12,13 +12,13 @@ export class JwtAuthGuard implements CanActivate {
     const authorization = request.header('authorization');
 
     if (!authorization?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing access token.');
+      throw new UnauthorizedException('Kirish tokeni yo‘q. Qayta kiring.');
     }
 
     const accessToken = authorization.slice('Bearer '.length).trim();
 
     if (!accessToken) {
-      throw new UnauthorizedException('Missing access token.');
+      throw new UnauthorizedException('Kirish tokeni yo‘q. Qayta kiring.');
     }
 
     const factoryId = request.header('x-factory-id')?.trim() || undefined;
