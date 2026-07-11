@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { getDefaultHomePath } from "@/lib/access-control";
 import { navigationItems } from "@/lib/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -17,6 +18,7 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
   const pathname = usePathname();
   const roles = useAuthStore((state) => state.roles);
   const permissions = useAuthStore((state) => state.permissions);
+  const homePath = getDefaultHomePath(permissions);
   const visibleNavigationItems = navigationItems.filter((item) => {
     if (item.ownerOnly && !roles.includes("Owner")) {
       return false;
@@ -56,7 +58,7 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
       >
         <div className="mb-6 flex items-center justify-between gap-2 px-2">
           <Link
-            href="/dashboard/executive"
+            href={homePath}
             className="flex min-w-0 items-center gap-3"
             onClick={onClose}
           >

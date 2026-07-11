@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { getDefaultHomePath } from "@/lib/access-control";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function LoginPage() {
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoadingSession = useAuthStore((state) => state.isLoadingSession);
   const hasLoadedSession = useAuthStore((state) => state.hasLoadedSession);
+  const permissions = useAuthStore((state) => state.permissions);
 
   useEffect(() => {
     if (!hasLoadedSession) {
@@ -26,9 +28,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/dashboard/executive");
+      router.replace(getDefaultHomePath(permissions));
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, permissions, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,7 +38,8 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.replace("/dashboard/executive");
+      const nextPermissions = useAuthStore.getState().permissions;
+      router.replace(getDefaultHomePath(nextPermissions));
     } catch {
       setError("Email/parol noto‘g‘ri yoki tenant vaqtincha bloklangan.");
     }

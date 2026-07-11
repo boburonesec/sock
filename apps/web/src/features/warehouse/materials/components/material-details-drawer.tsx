@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/overlays/drawer";
 import { InfoCard } from "@/components/cards/info-card";
 import type { MaterialStock } from "@/lib/api/warehouse";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface MaterialDetailsDrawerProps {
   material: MaterialStock | null;
@@ -22,6 +23,10 @@ export function MaterialDetailsDrawer({
   onReceive,
   onOpenChange,
 }: MaterialDetailsDrawerProps) {
+  const canManageThresholds = useAuthStore((state) =>
+    state.permissions.includes("settings.view"),
+  );
+
   if (!material) return null;
 
   return (
@@ -37,12 +42,14 @@ export function MaterialDetailsDrawer({
           {onReceive ? (
             <Button onClick={onReceive}>Material qabul qilish</Button>
           ) : null}
-          <Link
-            href="/settings/thresholds"
-            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
-          >
-            Minimal limit sozlash
-          </Link>
+          {canManageThresholds ? (
+            <Link
+              href="/settings/thresholds"
+              className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+            >
+              Minimal limit sozlash
+            </Link>
+          ) : null}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

@@ -4,14 +4,24 @@ export class ApiError extends Error {
     public readonly statusText: string,
     public readonly body: unknown,
   ) {
-    super(`API request failed with ${status} ${statusText}`);
+    super(extractApiErrorMessage(status, statusText, body));
     this.name = "ApiError";
   }
+}
+
+export const API_FORBIDDEN_EVENT = "paypoq:api-forbidden";
+
+export interface ApiForbiddenDetail {
+  message: string;
+  path?: string;
+  method?: string;
 }
 
 interface ApiClientOptions extends RequestInit {
   skipAuth?: boolean;
   skipAuthRefresh?: boolean;
+  /** When true, 403 does not broadcast global banner (caller handles it). */
+  silentForbidden?: boolean;
 }
 
 let accessToken: string | null = null;
@@ -60,11 +70,51 @@ async function readResponseBody(response: Response): Promise<unknown> {
   }
 }
 
+export function extractApiErrorMessage(
+  status: number,
+  statusText: string,
+  body: unknown,
+): string {
+  if (body && typeof body === "object") {
+    const record = body as Record<string, unknown>;
+    const message = record.message;
+
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+
+    if (Array.isArray(message) && message.every((item) => typeof item === "string")) {
+      return message.join(", ");
+    }
+  }
+
+  if (typeof body === "string" && body.trim()) {
+    return body;
+  }
+
+  if (status === 403) {
+    return "Bu amal uchun ruxsatingiz yo‘q.";
+  }
+
+  if (status === 401) {
+    return "Sessiya tugagan. Qayta kiring.";
+  }
+
+  return `API request failed with ${status} ${statusText}`;
+}
+
+function broadcastForbidden(detail: ApiForbiddenDetail): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(API_FORBIDDEN_EVENT, { detail }));
+}
+
 export async function apiClient<T>(
   path: string,
   options: ApiClientOptions = {},
 ): Promise<T> {
-  const { skipAuth, skipAuthRefresh, headers, ...requestOptions } = options;
+  const { skipAuth, skipAuthRefresh, silentForbidden, headers, ...requestOptions } =
+    options;
+  const method = (requestOptions.method ?? "GET").toUpperCase();
   const response = await fetch(buildApiUrl(path), {
     ...requestOptions,
     credentials: "include",
@@ -81,11 +131,15 @@ export async function apiClient<T>(
         headers: buildHeaders(headers, skipAuth),
       });
 
-      return parseApiResponse<T>(retryResponse);
+      return parseApiResponse<T>(retryResponse, {
+        path,
+        method,
+        silentForbidden,
+      });
     }
   }
 
-  return parseApiResponse<T>(response);
+  return parseApiResponse<T>(response, { path, method, silentForbidden });
 }
 
 function buildHeaders(headers: HeadersInit | undefined, skipAuth?: boolean): HeadersInit {
@@ -103,11 +157,24 @@ function buildHeaders(headers: HeadersInit | undefined, skipAuth?: boolean): Hea
   return nextHeaders;
 }
 
-async function parseApiResponse<T>(response: Response): Promise<T> {
+async function parseApiResponse<T>(
+  response: Response,
+  meta: { path: string; method: string; silentForbidden?: boolean },
+): Promise<T> {
   const body = await readResponseBody(response);
 
   if (!response.ok) {
-    throw new ApiError(response.status, response.statusText, body);
+    const error = new ApiError(response.status, response.statusText, body);
+
+    if (response.status === 403 && !meta.silentForbidden) {
+      broadcastForbidden({
+        message: error.message,
+        path: meta.path,
+        method: meta.method,
+      });
+    }
+
+    throw error;
   }
 
   return body as T;
