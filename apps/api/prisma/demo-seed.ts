@@ -4,6 +4,9 @@
  * Prerequisites: baseline `prisma/seed.ts` (tenant, factory, catalog master data, users).
  * Run via: `pnpm demo:prepare` (reset + baseline + this file).
  *
+ * FORBIDDEN in production (NODE_ENV=production). Demo passwords must never land
+ * on a live factory database.
+ *
  * Scenarios covered:
  * - Catalog prices, salary rates, employees
  * - Production WIP + activities across last month and current month
@@ -20,6 +23,25 @@ const prisma = new PrismaClient();
 
 const DEMO_TENANT_ID = 'seed-demo-paypoq-factory';
 
+function assertDemoSeedAllowed(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'demo-seed is forbidden when NODE_ENV=production. Use empty/platform seed only for live factories.',
+    );
+  }
+
+  // Explicit opt-in outside pure development (e.g. CI sets NODE_ENV=test).
+  if (
+    process.env.NODE_ENV &&
+    process.env.NODE_ENV !== 'development' &&
+    process.env.ALLOW_DEMO_SEED !== 'true'
+  ) {
+    throw new Error(
+      'demo-seed requires ALLOW_DEMO_SEED=true when NODE_ENV is not development.',
+    );
+  }
+}
+
 function startOfMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
@@ -35,6 +57,8 @@ function daysAgo(days: number): Date {
 }
 
 async function main(): Promise<void> {
+  assertDemoSeedAllowed();
+
   const tenant = await prisma.tenant.findUnique({
     where: { id: DEMO_TENANT_ID },
   });

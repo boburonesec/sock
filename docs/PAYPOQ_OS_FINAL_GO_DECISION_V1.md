@@ -1,7 +1,8 @@
 # Paypoq OS Final GO Decision v1
 
-Date: 2026-07-02  
-Decision source: final production audit (historical audit doc removed; this verdict remains active)
+Date: 2026-07-11  
+Decision source: final production audit + ongoing hardening  
+Checklist: `PRODUCTION_READINESS_CHECKLIST_V1.md`
 
 ## Verdict Summary
 
@@ -51,23 +52,31 @@ Paypoq OS is close enough for small factory production, but only after the
 production checklist is completed.
 
 The verdict remains `GO WITH LIMITATIONS` because the following are not yet
-proven in this final audit:
+proven on a **target production server** (code may already exist):
 
 - production server restore rehearsal
-- production server `deploy:smoke`
-- installed monitoring
+- production server `pnpm deploy:smoke`
+- installed monitoring + named alert channel
 - assigned backup/off-server copy ownership
-- auth rate limiting
 - public Factory TV protection if internet-exposed
 - mobile live-device session smoke
+- reverse proxy TLS installed from `configs/nginx.paypoq.example.conf` (or equivalent)
+
+**Code already in tree (do not treat as missing):**
+
+- Auth login/refresh rate limiting (in-process)
+- Helmet (API) + security headers/CSP (Web)
+- Production secret strength validation (min length + placeholder denylist)
+- Demo/baseline seed refused when `NODE_ENV=production`
+- Refresh cookies: HttpOnly, Secure, SameSite in production
+- Access token kept in memory on web (not localStorage)
 
 The verdict becomes `GO` for a small factory after:
 
-1. `TD-001` through `TD-007` in the tech debt register are resolved or
-   explicitly mitigated.
+1. All **P0 OPS** rows in `PRODUCTION_READINESS_CHECKLIST_V1.md` are named and done.
 2. The first production backup is restored into a clean database.
 3. The production deployment passes `pnpm deploy:smoke`.
-4. The operator signs off on backup, monitoring, and rollback ownership.
+4. The operator signs off on backup, monitoring, rollback, and known limitations.
 
 The verdict becomes `NO-GO` if:
 

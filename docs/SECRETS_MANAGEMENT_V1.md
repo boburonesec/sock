@@ -8,6 +8,7 @@ This document covers operational handling for:
 - `PLATFORM_JWT_ACCESS_SECRET`
 - `TELEGRAM_LINK_TOKEN_SECRET`
 - `BOT_INTERNAL_API_KEY`
+- `FACTORY_TV_ACCESS_TOKEN` (also mirrored as `NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN` for the browser TV page — treat as display secret, not equivalent to JWT)
 - `TELEGRAM_BOT_TOKEN`
 - PostgreSQL credentials
 

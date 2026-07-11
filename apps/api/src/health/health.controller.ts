@@ -61,7 +61,25 @@ export class HealthController {
 
   private hasSecret(configPath: string): boolean {
     const value = this.configService.get<string>(configPath);
+    if (typeof value !== 'string') {
+      return false;
+    }
 
-    return typeof value === 'string' && value.length >= 16;
+    const isProduction =
+      this.configService.get<string>('app.nodeEnv') === 'production';
+    const minLength = isProduction ? 32 : 16;
+    if (value.length < minLength) {
+      return false;
+    }
+
+    // Fail readiness if a known placeholder leaked into production config.
+    if (
+      isProduction &&
+      /(change-?me|local-development|local-ci|replace-with)/i.test(value)
+    ) {
+      return false;
+    }
+
+    return true;
   }
 }

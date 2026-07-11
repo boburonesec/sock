@@ -1,0 +1,11 @@
+# Paypoq OS — example crontab for daily database backup
+# Install on the DB/API host after reviewing BACKUP_AND_RECOVERY_V1.md
+#
+# 1. Copy script path and env for DATABASE_URL
+# 2. Off-server copy is still operator responsibility (rsync/S3 after dump)
+#
+# Daily 02:15 local time full dump:
+15 2 * * * cd /opt/paypoq-os && /usr/bin/pnpm backup:db >> /var/log/paypoq-backup.log 2>&1
+#
+# Optional: weekly offsite copy reminder (replace with real rsync/s3 sync)
+# 30 3 * * 0 /opt/paypoq-os/scripts/offsite-backup-copy.sh >> /var/log/paypoq-backup-offsite.log 2>&1

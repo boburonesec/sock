@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { validationExceptionFactory } from './common/pipes/validation-exception.factory';
@@ -9,9 +10,31 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('app.corsOrigin', 'http://localhost:3000');
+  const isProduction = configService.get<string>('app.nodeEnv') === 'production';
+
+  // Security headers (API is JSON — CSP not required here; web owns page CSP).
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      // API may be called cross-origin from the web app.
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+
+  // Trust reverse proxy (Nginx/Caddy) so request.ip and Secure cookies work.
+  if (isProduction) {
+    const expressApp = app.getHttpAdapter().getInstance() as {
+      set?: (key: string, value: unknown) => void;
+    };
+    expressApp.set?.('trust proxy', 1);
+  }
 
   app.enableCors({
-    origin: corsOrigin.split(',').map((origin) => origin.trim()),
+    origin: corsOrigin
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     credentials: true,
   });
 

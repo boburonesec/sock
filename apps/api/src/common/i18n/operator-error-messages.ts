@@ -327,6 +327,20 @@ export function translateOperatorMessage(
     return translateValidationConstraint(validationLike[1], validationLike[2]);
   }
 
+  // Dynamic rate-limit messages
+  const loginRate = trimmed.match(
+    /^Too many login attempts\. Try again in (\d+) seconds\.?$/i,
+  );
+  if (loginRate) {
+    return `Juda ko‘p login urinishi. ${loginRate[1]} soniyadan keyin qayta urinib ko‘ring.`;
+  }
+  const refreshRate = trimmed.match(
+    /^Too many refresh attempts\. Try again in (\d+) seconds\.?$/i,
+  );
+  if (refreshRate) {
+    return `Juda ko‘p sessiya yangilash. ${refreshRate[1]} soniyadan keyin qayta urinib ko‘ring.`;
+  }
+
   if (!looksLikeEnglish(trimmed)) {
     return trimmed;
   }

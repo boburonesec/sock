@@ -3,6 +3,17 @@ import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
+/**
+ * Baseline seed creates demo tenant users with a known password.
+ * Never run against production. Production bootstrap uses platform-admin
+ * tenant provisioning (empty-seed / platform APIs), not this file.
+ */
+if (process.env.NODE_ENV === 'production') {
+  throw new Error(
+    'prisma/seed.ts (demo baseline) is forbidden when NODE_ENV=production.',
+  );
+}
+
 const DEMO_TENANT_ID = 'seed-demo-paypoq-factory';
 const DEMO_PASSWORD = 'ChangeMe123!';
 const PLATFORM_ADMIN_EMAIL = 'platform@paypoq.local';

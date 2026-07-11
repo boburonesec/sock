@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -52,6 +53,8 @@ type TenantAuthAuditUser = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -99,6 +102,10 @@ export class AuthService {
     const user = users[0];
     const credential = user?.credential;
     if (users.length !== 1 || !user || !credential) {
+      // Do not reveal whether the email exists. No tenant for audit row — ops log only.
+      this.logger.warn(
+        `Blocked login (unknown/ambiguous email) ip=${ipAddress ?? 'n/a'} email=${normalizedEmail}`,
+      );
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
