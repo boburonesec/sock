@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { InfoCard } from "@/components/cards/info-card";
 import { Drawer } from "@/components/overlays/drawer";
@@ -63,8 +64,18 @@ export function ClientDetailsDrawer({
           >
             {isArchiving ? "Arxivlanmoqda..." : "Arxivlash"}
           </Button>
-          <Button disabled>Buyurtma yaratish · Tez orada</Button>
-          <Button disabled variant="outline">To‘lov qayd qilish · Tez orada</Button>
+          <Link
+            href="/sales/orders"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Buyurtmalar
+          </Link>
+          <Link
+            href="/sales/payments"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            To‘lovlar
+          </Link>
         </div>
 
         <TelegramLinkCodeCard

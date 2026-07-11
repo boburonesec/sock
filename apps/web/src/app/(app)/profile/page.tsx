@@ -1,16 +1,20 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { entityStatusLabel, formatRoleName, labelStatus } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.currentUser);
   const roles = useAuthStore((state) => state.roles);
   const permissions = useAuthStore((state) => state.permissions);
   const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
   const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const setActiveFactory = useAuthStore((state) => state.setActiveFactory);
   const logout = useAuthStore((state) => state.logout);
 
   async function handleLogout() {
@@ -50,11 +54,15 @@ export default function ProfilePage() {
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="panel p-5">
           <p className="text-xs uppercase text-muted-foreground">Holat</p>
-          <p className="mt-2 font-semibold">{currentUser?.status ?? "Noma’lum"}</p>
+          <p className="mt-2 font-semibold">
+            {labelStatus(entityStatusLabel, currentUser?.status)}
+          </p>
         </div>
         <div className="panel p-5">
           <p className="text-xs uppercase text-muted-foreground">Rollar</p>
-          <p className="mt-2 font-semibold">{roles.length ? roles.join(", ") : "Rol yo‘q"}</p>
+          <p className="mt-2 font-semibold">
+            {roles.length ? roles.map(formatRoleName).join(", ") : "Rol yo‘q"}
+          </p>
         </div>
         <div className="panel p-5">
           <p className="text-xs uppercase text-muted-foreground">Ruxsatlar</p>
@@ -66,17 +74,25 @@ export default function ProfilePage() {
         <h2 className="font-semibold">Korxonaga kirish ruxsatlari</h2>
         <div className="mt-4 grid gap-3">
           {accessibleFactories.map((factory) => (
-            <div
+            <button
               key={factory.id}
-              className="flex items-center justify-between gap-3 rounded-lg border p-3"
+              type="button"
+              className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:border-primary/40"
+              onClick={async () => {
+                if (factory.id === activeFactoryId) return;
+                setActiveFactory(factory.id);
+                await queryClient.invalidateQueries();
+              }}
             >
               <span className="font-medium">{factory.name}</span>
               {factory.id === activeFactoryId ? (
                 <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs text-primary">
                   Tanlangan
                 </span>
-              ) : null}
-            </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">Tanlash</span>
+              )}
+            </button>
           ))}
           {accessibleFactories.length === 0 ? (
             <p className="text-sm text-muted-foreground">Korxonaga kirish ruxsati topilmadi.</p>

@@ -29,7 +29,19 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
-export function AdvancesTable({ advances }: { advances: Advance[] }) {
+export function AdvancesTable({
+  advances,
+  busyId,
+  onApprove,
+  onReject,
+  onPay,
+}: {
+  advances: Advance[];
+  busyId?: string | null;
+  onApprove?: (advance: Advance) => void;
+  onReject?: (advance: Advance) => void;
+  onPay?: (advance: Advance) => void;
+}) {
   return (
     <DataTable label="Avans so‘rovlari">
       <DataTableHead>
@@ -46,36 +58,65 @@ export function AdvancesTable({ advances }: { advances: Advance[] }) {
       </DataTableHead>
       <tbody>
         {advances.length > 0 ? (
-          advances.map((advance) => (
-            <DataTableRow key={advance.id}>
-              <DataTableCell className="font-semibold">
-                {advance.employee.name}
-              </DataTableCell>
-              <DataTableCell>{advance.amount} so‘m</DataTableCell>
-              <DataTableCell>{advance.reason}</DataTableCell>
-              <DataTableCell>
-                <StatusBadge tone={advanceStatusTone[advance.status] ?? "neutral"}>
-                  {labelStatus(advanceStatusLabel, advance.status)}
-                </StatusBadge>
-              </DataTableCell>
-              <DataTableCell>{formatDate(advance.requestedAt)}</DataTableCell>
-              <DataTableCell>{advance.approvedBy?.name ?? "—"}</DataTableCell>
-              <DataTableCell>{formatDate(advance.paidAt)}</DataTableCell>
-              <DataTableCell>
-                <div className="flex gap-2">
-                  <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Tasdiqlash (tez orada)
-                  </Button>
-                  <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Rad etish (tez orada)
-                  </Button>
-                  <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    To‘lash · Keyingi
-                  </Button>
-                </div>
-              </DataTableCell>
-            </DataTableRow>
-          ))
+          advances.map((advance) => {
+            const busy = busyId === advance.id;
+            return (
+              <DataTableRow key={advance.id}>
+                <DataTableCell className="font-semibold">
+                  {advance.employee.name}
+                </DataTableCell>
+                <DataTableCell>{advance.amount} so‘m</DataTableCell>
+                <DataTableCell>{advance.reason}</DataTableCell>
+                <DataTableCell>
+                  <StatusBadge tone={advanceStatusTone[advance.status] ?? "neutral"}>
+                    {labelStatus(advanceStatusLabel, advance.status)}
+                  </StatusBadge>
+                </DataTableCell>
+                <DataTableCell>{formatDate(advance.requestedAt)}</DataTableCell>
+                <DataTableCell>{advance.approvedBy?.name ?? "—"}</DataTableCell>
+                <DataTableCell>{formatDate(advance.paidAt)}</DataTableCell>
+                <DataTableCell>
+                  <div className="flex flex-wrap gap-2">
+                    {advance.status === "REQUESTED" ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onApprove?.(advance)}
+                        >
+                          Tasdiqlash
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onReject?.(advance)}
+                        >
+                          Rad etish
+                        </Button>
+                      </>
+                    ) : null}
+                    {advance.status === "APPROVED" ? (
+                      <Button
+                        type="button"
+                        className="h-8 px-2 text-xs"
+                        disabled={busy}
+                        onClick={() => onPay?.(advance)}
+                      >
+                        To‘lash
+                      </Button>
+                    ) : null}
+                    {advance.status !== "REQUESTED" && advance.status !== "APPROVED" ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : null}
+                  </div>
+                </DataTableCell>
+              </DataTableRow>
+            );
+          })
         ) : (
           <EmptyTableState
             colSpan={8}

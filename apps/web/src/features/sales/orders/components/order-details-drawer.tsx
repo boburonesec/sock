@@ -81,9 +81,6 @@ export function OrderDetailsDrawer({
           >
             {isReturning ? "Qaytarilmoqda..." : "Yetkazuvni qaytarish"}
           </Button>
-          <Button disabled variant="outline">Tahrirlash · Tez orada</Button>
-          <Button disabled variant="outline">Tasdiqlash · Tez orada</Button>
-          <Button disabled variant="outline">Bekor qilish · Tez orada</Button>
         </div>
         {!isDeliverable ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">

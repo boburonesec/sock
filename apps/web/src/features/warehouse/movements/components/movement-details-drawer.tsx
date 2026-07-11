@@ -1,7 +1,13 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Drawer } from "@/components/overlays/drawer";
 import { InfoCard } from "@/components/cards/info-card";
 import type { StockMovement } from "@/lib/api/warehouse";
+import {
+  formatWarehouseZoneName,
+  labelStatus,
+  stockItemTypeLabel,
+  stockMovementTypeLabel,
+} from "@/lib/status-labels";
 
 interface MovementDetailsDrawerProps {
   movement: StockMovement | null;
@@ -33,29 +39,30 @@ export function MovementDetailsDrawer({
     <Drawer
       open={Boolean(movement)}
       onOpenChange={onOpenChange}
-      title={movement.movementType}
+      title={labelStatus(stockMovementTypeLabel, movement.movementType)}
       description={formatDate(movement.occurredAt)}
       className="max-w-3xl"
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled variant="outline">
-            Qoldiqni tuzatish · Tez orada
-          </Button>
-          <Button disabled variant="outline">
-            Transfer qilish · Tez orada
-          </Button>
+          <Link
+            href="/warehouse"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            Qoldiqni tuzatish
+          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <InfoCard title="Item">
+          <InfoCard title="Nomi">
             <p className="font-semibold">{itemName(movement)}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {movement.itemType} · {movement.quantity} {movement.unit}
+              {labelStatus(stockItemTypeLabel, movement.itemType)} · {movement.quantity}{" "}
+              {movement.unit}
             </p>
           </InfoCard>
           <InfoCard title="Zona va mas’ul">
-            <p className="font-semibold">{movement.zone.name}</p>
+            <p className="font-semibold">{formatWarehouseZoneName(movement.zone.name)}</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {movement.recordedBy.name}
             </p>

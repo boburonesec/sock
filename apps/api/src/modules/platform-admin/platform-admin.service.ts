@@ -10,6 +10,12 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlatformAdminContext } from '../identity/platform-auth/platform-auth.types';
 import {
+  DEFAULT_EXPENSE_CATEGORIES,
+  DEFAULT_PRODUCTION_STAGES,
+  DEFAULT_WAREHOUSE_NAME,
+  DEFAULT_WAREHOUSE_ZONES,
+} from '../../common/factory-defaults';
+import {
   CreatePlatformFactoryDto,
   CreatePlatformOwnerUserDto,
   CreatePlatformTenantDto,
@@ -17,28 +23,7 @@ import {
   UpdatePlatformTenantUserPasswordDto,
 } from './platform-admin.dto';
 
-const DEFAULT_WAREHOUSE_NAME = 'Main Warehouse';
 const DEFAULT_FACTORY_NAME = 'Asosiy filial';
-const DEFAULT_WAREHOUSE_ZONES = [
-  'Tayyor mahsulot',
-  'Xom ashyo',
-  'Qadoqlash',
-  'Etiketka',
-  'Brak',
-] as const;
-
-const DEFAULT_PRODUCTION_STAGES = [
-  'Averlog',
-  'Dazmol',
-  'Sifat',
-  'Kiydirish',
-  'Par Dazmol',
-  'Parlash',
-  'Bezak',
-  'Etiketka',
-  'Qadoqlash',
-  'Ombor',
-] as const;
 
 const PERMISSION_DEFINITIONS = [
   'dashboard.view',
@@ -166,6 +151,7 @@ export class PlatformAdminService {
       });
 
       await this.ensureDefaultRolesAndPermissions(tx, created.id);
+      await this.ensureDefaultExpenseCategories(tx, created.id);
       await this.createFactoryWithDefaults(tx, {
         tenantId: created.id,
         name: DEFAULT_FACTORY_NAME,
@@ -796,6 +782,29 @@ export class PlatformAdminService {
           update: {},
         });
       }
+    }
+  }
+
+  private async ensureDefaultExpenseCategories(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+  ): Promise<void> {
+    for (const name of DEFAULT_EXPENSE_CATEGORIES) {
+      await tx.expenseCategory.upsert({
+        where: {
+          tenantId_name: {
+            tenantId,
+            name,
+          },
+        },
+        create: {
+          tenantId,
+          name,
+        },
+        update: {
+          deletedAt: null,
+        },
+      });
     }
   }
 

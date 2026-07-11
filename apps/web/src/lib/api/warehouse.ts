@@ -126,6 +126,20 @@ export interface StockCorrection {
   stockMovement: StockMovement;
 }
 
+export interface LowStockThreshold {
+  id: string;
+  quantity: string;
+  warehouse: NamedReference;
+  material: NamedReference;
+  updatedAt: ApiDateTime;
+}
+
+export interface UpsertLowStockThresholdPayload {
+  warehouseId: string;
+  materialId: string;
+  quantity: string;
+}
+
 export const warehouseApi = {
   getStock: () => apiClient<ApiCollection<ProductStock>>("/warehouse/stock"),
   getMaterialStock: () =>
@@ -135,6 +149,14 @@ export const warehouseApi = {
   getZones: () => apiClient<ApiCollection<WarehouseZone>>("/warehouse/zones"),
   getStockSummary: () =>
     apiClient<{ data: WarehouseStockSummary }>("/warehouse/stock-summary"),
+  getLowStockThresholds: () =>
+    apiClient<ApiCollection<LowStockThreshold>>("/warehouse/low-stock-thresholds"),
+  upsertLowStockThreshold: (payload: UpsertLowStockThresholdPayload) =>
+    apiClient<{ data: LowStockThreshold }>("/warehouse/low-stock-thresholds", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
   createFinishedProductReceipt: (payload: FinishedProductReceiptPayload) =>
     apiClient<{ data: FinishedProductReceipt }>(
       "/warehouse/finished-product-receipts",

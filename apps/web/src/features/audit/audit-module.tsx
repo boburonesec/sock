@@ -14,6 +14,7 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { auditApi } from "@/lib/api/audit";
 import { queryKeys } from "@/lib/api/query-keys";
+import { formatAuditAction } from "@/lib/status-labels";
 
 function formatWhen(value: string): string {
   return new Intl.DateTimeFormat("uz-UZ", {
@@ -23,7 +24,7 @@ function formatWhen(value: string): string {
 }
 
 function formatAction(action: string): string {
-  return action.replaceAll("_", " ");
+  return formatAuditAction(action);
 }
 
 export function AuditModule() {

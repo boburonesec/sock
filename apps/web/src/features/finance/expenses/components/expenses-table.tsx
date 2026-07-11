@@ -17,8 +17,6 @@ const expenseStatusTone: Record<string, StatusTone> = {
   REJECTED: "danger",
   PAID: "success",
   CANCELLED: "neutral",
-  DRAFT: "neutral",
-  PENDING: "warning",
 };
 
 function formatDate(value: string): string {
@@ -28,7 +26,21 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
-export function ExpensesTable({ expenses }: { expenses: Expense[] }) {
+export function ExpensesTable({
+  expenses,
+  busyId,
+  onApprove,
+  onReject,
+  onPay,
+  onCancel,
+}: {
+  expenses: Expense[];
+  busyId?: string | null;
+  onApprove?: (expense: Expense) => void;
+  onReject?: (expense: Expense) => void;
+  onPay?: (expense: Expense) => void;
+  onCancel?: (expense: Expense) => void;
+}) {
   return (
     <DataTable label="Xarajat so‘rovlari">
       <DataTableHead>
@@ -46,39 +58,88 @@ export function ExpensesTable({ expenses }: { expenses: Expense[] }) {
       </DataTableHead>
       <tbody>
         {expenses.length > 0 ? (
-          expenses.map((expense) => (
-            <DataTableRow key={expense.id}>
-              <DataTableCell className="font-semibold">
-                {expense.category.name}
-              </DataTableCell>
-              <DataTableCell>{expense.amount} so‘m</DataTableCell>
-              <DataTableCell>{expense.reason}</DataTableCell>
-              <DataTableCell>{expense.requestedBy?.name ?? "—"}</DataTableCell>
-              <DataTableCell>
-                <StatusBadge tone={expenseStatusTone[expense.status] ?? "neutral"}>
-                  {labelStatus(expenseStatusLabel, expense.status)}
-                </StatusBadge>
-              </DataTableCell>
-              <DataTableCell>{formatDate(expense.requestedAt)}</DataTableCell>
-              <DataTableCell>{expense.approvedBy?.name ?? "—"}</DataTableCell>
-              <DataTableCell>
-                {expense.paidAt ? formatDate(expense.paidAt) : "—"}
-              </DataTableCell>
-              <DataTableCell>
-                <div className="flex gap-2">
-                  <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Tasdiqlash (tez orada)
-                  </Button>
-                  <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Rad etish (tez orada)
-                  </Button>
-                  <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    To‘lash · Keyingi
-                  </Button>
-                </div>
-              </DataTableCell>
-            </DataTableRow>
-          ))
+          expenses.map((expense) => {
+            const busy = busyId === expense.id;
+            return (
+              <DataTableRow key={expense.id}>
+                <DataTableCell className="font-semibold">
+                  {expense.category.name}
+                </DataTableCell>
+                <DataTableCell>{expense.amount} so‘m</DataTableCell>
+                <DataTableCell>{expense.reason}</DataTableCell>
+                <DataTableCell>{expense.requestedBy?.name ?? "—"}</DataTableCell>
+                <DataTableCell>
+                  <StatusBadge tone={expenseStatusTone[expense.status] ?? "neutral"}>
+                    {labelStatus(expenseStatusLabel, expense.status)}
+                  </StatusBadge>
+                </DataTableCell>
+                <DataTableCell>{formatDate(expense.requestedAt)}</DataTableCell>
+                <DataTableCell>{expense.approvedBy?.name ?? "—"}</DataTableCell>
+                <DataTableCell>
+                  {expense.paidAt ? formatDate(expense.paidAt) : "—"}
+                </DataTableCell>
+                <DataTableCell>
+                  <div className="flex flex-wrap gap-2">
+                    {expense.status === "REQUESTED" ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onApprove?.(expense)}
+                        >
+                          Tasdiqlash
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onReject?.(expense)}
+                        >
+                          Rad etish
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onCancel?.(expense)}
+                        >
+                          Bekor
+                        </Button>
+                      </>
+                    ) : null}
+                    {expense.status === "APPROVED" ? (
+                      <>
+                        <Button
+                          type="button"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onPay?.(expense)}
+                        >
+                          To‘lash
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          disabled={busy}
+                          onClick={() => onCancel?.(expense)}
+                        >
+                          Bekor
+                        </Button>
+                      </>
+                    ) : null}
+                    {expense.status !== "REQUESTED" && expense.status !== "APPROVED" ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : null}
+                  </div>
+                </DataTableCell>
+              </DataTableRow>
+            );
+          })
         ) : (
           <EmptyTableState
             colSpan={9}

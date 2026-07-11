@@ -108,12 +108,9 @@ export function ZonesModule() {
       </PageSection>
 
       <PageSection
-        title="Main Warehouse zonalari"
-        description="MVP bitta ombor bilan ishlaydi, data model kelajakda ko‘p omborni qo‘llab-quvvatlaydi."
+        title="Asosiy ombor zonalari"
+        description="Har bir filial bitta asosiy ombor bilan ishlaydi."
       >
-        <div className="mb-4 flex justify-end">
-          <Button disabled>Zona qo‘shish · Tez orada</Button>
-        </div>
         <ZonesOverview zones={zoneSummaries} onSelect={setSelectedZone} />
       </PageSection>
 

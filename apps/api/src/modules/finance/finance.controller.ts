@@ -6,6 +6,7 @@ import { CurrentContext } from '../identity/request-context/current-context.deco
 import { RequestContext } from '../identity/request-context/request-context.types';
 import {
   CreateEmployeeAdjustmentDto,
+  CreateExpenseDto,
   CreatePayrollPeriodDto,
   PayPayrollPeriodDto,
 } from './finance.dto';
@@ -32,6 +33,51 @@ export class FinanceController {
     return this.financeService.getExpenses(context);
   }
 
+  @Post('expenses')
+  @RequirePermissions('finance.write')
+  createExpense(
+    @CurrentContext() context: RequestContext,
+    @Body() dto: CreateExpenseDto,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.financeService.createExpense(context, dto);
+  }
+
+  @Post('expenses/:id/approve')
+  @RequirePermissions('finance.write')
+  approveExpense(
+    @CurrentContext() context: RequestContext,
+    @Param('id') expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.financeService.approveExpense(context, expenseId);
+  }
+
+  @Post('expenses/:id/reject')
+  @RequirePermissions('finance.write')
+  rejectExpense(
+    @CurrentContext() context: RequestContext,
+    @Param('id') expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.financeService.rejectExpense(context, expenseId);
+  }
+
+  @Post('expenses/:id/pay')
+  @RequirePermissions('finance.write')
+  payExpense(
+    @CurrentContext() context: RequestContext,
+    @Param('id') expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.financeService.payExpense(context, expenseId);
+  }
+
+  @Post('expenses/:id/cancel')
+  @RequirePermissions('finance.write')
+  cancelExpense(
+    @CurrentContext() context: RequestContext,
+    @Param('id') expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.financeService.cancelExpense(context, expenseId);
+  }
+
   @Get('summary')
   getSummary(@CurrentContext() context: RequestContext): Promise<FinanceSummaryResponse> {
     return this.financeService.getSummary(context);
@@ -49,6 +95,33 @@ export class FinanceController {
     @Body() dto: CreateEmployeeAdjustmentDto,
   ): Promise<SingleResponse<AdvanceResponse>> {
     return this.financeService.createAdvance(context, dto);
+  }
+
+  @Post('advances/:id/approve')
+  @RequirePermissions('finance.write')
+  approveAdvance(
+    @CurrentContext() context: RequestContext,
+    @Param('id') advanceId: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    return this.financeService.approveAdvance(context, advanceId);
+  }
+
+  @Post('advances/:id/reject')
+  @RequirePermissions('finance.write')
+  rejectAdvance(
+    @CurrentContext() context: RequestContext,
+    @Param('id') advanceId: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    return this.financeService.rejectAdvance(context, advanceId);
+  }
+
+  @Post('advances/:id/pay')
+  @RequirePermissions('finance.write')
+  payAdvance(
+    @CurrentContext() context: RequestContext,
+    @Param('id') advanceId: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    return this.financeService.payAdvance(context, advanceId);
   }
 
   @Get('bonuses')

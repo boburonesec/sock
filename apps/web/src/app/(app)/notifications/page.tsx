@@ -10,7 +10,7 @@ export default function NotificationsPage() {
       />
       <EmptyState
         title="Hozircha bildirishnoma yo‘q"
-        description="Bildirishnoma markazi ulangan. Hozircha yuborilgan xabarlar yo‘q yoki hali yozuvlar yaratilmagan. Keyinchalik past ombor, muddat va avans tasdiqlari shu yerda chiqadi."
+        description="Avtomatik bildirishnoma markazi keyingi bosqichda. Past qoldiq va avans holatini hozir Ombor / Moliya bo‘limlaridan kuzating."
       />
     </>
   );

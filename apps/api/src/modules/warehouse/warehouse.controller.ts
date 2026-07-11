@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity/auth/jwt-auth.guard';
 import { PermissionGuard } from '../identity/authorization/permission.guard';
 import { RequirePermissions } from '../identity/authorization/require-permissions.decorator';
@@ -8,11 +8,13 @@ import {
   CreateFinishedProductReceiptDto,
   CreateMaterialReceiptDto,
   CreateStockCorrectionDto,
+  UpsertLowStockThresholdDto,
 } from './warehouse.dto';
 import { WarehouseService } from './warehouse.service';
 import {
   CollectionResponse,
   FinishedProductReceiptResponse,
+  LowStockThresholdResponse,
   MaterialReceiptResponse,
   MaterialStockResponse,
   ProductStockResponse,
@@ -80,5 +82,21 @@ export class WarehouseController {
   @Get('stock-summary')
   getStockSummary(@CurrentContext() context: RequestContext): Promise<WarehouseStockSummaryResponse> {
     return this.warehouseService.getStockSummary(context);
+  }
+
+  @Get('low-stock-thresholds')
+  getLowStockThresholds(
+    @CurrentContext() context: RequestContext,
+  ): Promise<CollectionResponse<LowStockThresholdResponse>> {
+    return this.warehouseService.getLowStockThresholds(context);
+  }
+
+  @Put('low-stock-thresholds')
+  @RequirePermissions('warehouse.write')
+  upsertLowStockThreshold(
+    @CurrentContext() context: RequestContext,
+    @Body() dto: UpsertLowStockThresholdDto,
+  ): Promise<{ data: LowStockThresholdResponse }> {
+    return this.warehouseService.upsertLowStockThreshold(context, dto);
   }
 }

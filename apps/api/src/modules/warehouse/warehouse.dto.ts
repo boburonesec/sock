@@ -112,3 +112,22 @@ export class CreateStockCorrectionDto {
   @MinLength(1)
   reason!: string;
 }
+
+export class UpsertLowStockThresholdDto {
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(1)
+  warehouseId!: string;
+
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(1)
+  materialId!: string;
+
+  @Transform(({ value }) => trimString(value))
+  @IsNumberString(
+    {},
+    { message: 'quantity must be a non-negative decimal string.' },
+  )
+  quantity!: string;
+}

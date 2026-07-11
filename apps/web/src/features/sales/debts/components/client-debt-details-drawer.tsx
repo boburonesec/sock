@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { InfoCard } from "@/components/cards/info-card";
 import { Drawer } from "@/components/overlays/drawer";
-import { Button } from "@/components/ui/button";
 import type { ClientDebt } from "@/lib/api/sales";
 
 interface ClientDebtDetailsDrawerProps {
@@ -26,13 +26,24 @@ export function ClientDebtDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled>To‘lov qayd qilish · Tez orada</Button>
-          <Button disabled variant="outline">
-            Mijozga o‘tish · Tez orada
-          </Button>
-          <Button disabled variant="outline">
-            Buyurtmalarni ko‘rish · Tez orada
-          </Button>
+          <Link
+            href="/sales/payments"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            To‘lov qayd qilish
+          </Link>
+          <Link
+            href="/sales/clients"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            Mijozlar
+          </Link>
+          <Link
+            href="/sales/orders"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            Buyurtmalar
+          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

@@ -7,19 +7,19 @@ import {
   ReportsOverviewResponse,
 } from './reports.types';
 
+/**
+ * Reports overview links operators to real operational screens.
+ * Full generated report files / export are intentionally out of scope.
+ */
 @Injectable()
 export class ReportsService {
   async getOverview(context: RequestContext): Promise<ReportsOverviewResponse> {
-    // Resolve the authenticated context so this endpoint follows the same
-    // tenant/factory boundary pattern as other read APIs, even though V1
-    // returns metadata only.
     requireActiveFactoryId(context);
 
     return {
       data: {
         categoryCards: this.getCategoryCards(),
         quickReports: this.getQuickReports(),
-        // Real generated report metadata does not exist yet. Do not fake files.
         recentReports: [],
       },
     };
@@ -29,48 +29,48 @@ export class ReportsService {
     return [
       {
         id: 'production',
-        name: 'Ishlab chiqarish hisobotlari',
+        name: 'Ishlab chiqarish',
         description: 'Bosqichlar, stage inventory, faollik va nuqsonlar',
-        reportCount: '6 ta hisobot',
+        reportCount: 'Operatsion ko‘rinish',
         lastUpdatedAt: null,
         status: 'AVAILABLE',
-        href: '/reports/production',
+        href: '/production',
       },
       {
         id: 'employees',
-        name: 'Xodimlar hisobotlari',
-        description: 'Faollik, payroll snapshotlari va adjustmentlar',
-        reportCount: '5 ta hisobot',
+        name: 'Xodimlar',
+        description: 'Ishbay ishchilar, bonus va jarimalar',
+        reportCount: 'Operatsion ko‘rinish',
         lastUpdatedAt: null,
         status: 'AVAILABLE',
-        href: '/reports/employees',
+        href: '/employees',
       },
       {
         id: 'sales',
-        name: 'Sotuv hisobotlari',
-        description: 'Buyurtmalar, to‘lovlar va client qarzlari',
-        reportCount: '6 ta hisobot',
+        name: 'Sotuvlar',
+        description: 'Buyurtmalar, to‘lovlar va mijoz qarzlari',
+        reportCount: 'Operatsion ko‘rinish',
         lastUpdatedAt: null,
         status: 'AVAILABLE',
-        href: '/reports/sales',
+        href: '/sales/debts',
       },
       {
         id: 'finance',
-        name: 'Moliya hisobotlari',
-        description: 'Xarajatlar, supplier debt, avans va payroll',
-        reportCount: '5 ta hisobot',
+        name: 'Moliya',
+        description: 'Xarajatlar, avans, supplier qarz va ish haqi',
+        reportCount: 'Operatsion ko‘rinish',
         lastUpdatedAt: null,
         status: 'AVAILABLE',
-        href: '/reports/finance',
+        href: '/finance',
       },
       {
         id: 'warehouse',
-        name: 'Ombor hisobotlari',
-        description: 'Qoldiq, harakatlar va low stock materiallar',
-        reportCount: '4 ta hisobot',
+        name: 'Ombor',
+        description: 'Qoldiq, harakatlar va past qoldiq materiallar',
+        reportCount: 'Operatsion ko‘rinish',
         lastUpdatedAt: null,
         status: 'AVAILABLE',
-        href: '/reports/warehouse',
+        href: '/warehouse',
       },
     ];
   }
@@ -80,38 +80,38 @@ export class ReportsService {
       {
         id: 'today-production',
         label: 'Bugungi ishlab chiqarish',
-        description: 'Bosqichlar bo‘yicha umumiy ko‘rinish',
-        href: '/reports/production',
+        description: 'Bosqichlar va operatsiyalar paneli',
+        href: '/dashboard/operations',
       },
       {
         id: 'client-debts',
-        label: 'Client qarzlari',
-        description: 'Qarzdor clientlar ro‘yxati',
-        href: '/reports/sales',
+        label: 'Mijoz qarzlari',
+        description: 'Qarzdor mijozlar ro‘yxati',
+        href: '/sales/debts',
       },
       {
         id: 'supplier-debts',
-        label: 'Supplier qarzlari',
+        label: 'Yetkazib beruvchi qarzlari',
         description: 'Supplier debt holati',
-        href: '/reports/finance',
+        href: '/finance/suppliers',
       },
       {
         id: 'employee-activity',
         label: 'Xodimlar faolligi',
-        description: 'Ishchi activity yozuvlari',
-        href: '/reports/employees',
+        description: 'Ishbay ishchilar va hisoblar',
+        href: '/employees',
       },
       {
-        id: 'low-stock-materials',
-        label: 'Low stock materiallar',
-        description: 'Threshold’dan past materiallar',
-        href: '/reports/warehouse',
+        id: 'low-stock',
+        label: 'Past qoldiq materiallar',
+        description: 'Ombor limitalari bo‘yicha',
+        href: '/warehouse',
       },
       {
         id: 'monthly-payroll',
-        label: 'Oylik payroll',
-        description: 'Payroll davri xulosasi',
-        href: '/reports/finance',
+        label: 'Oylik ish haqi',
+        description: 'Payroll davrlari',
+        href: '/finance/payroll',
       },
     ];
   }

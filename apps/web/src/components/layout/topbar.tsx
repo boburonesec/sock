@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Bell, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ function formatRole(role: string): string {
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [accountOpen, setAccountOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", password: "" });
   const [passwordStatus, setPasswordStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
@@ -40,6 +42,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const roles = useAuthStore((state) => state.roles);
   const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
   const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const setActiveFactory = useAuthStore((state) => state.setActiveFactory);
   const logout = useAuthStore((state) => state.logout);
   const initials = currentUser?.name
     .split(" ")
@@ -92,6 +95,23 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        {accessibleFactories.length > 1 ? (
+          <select
+            className="hidden h-10 max-w-[10rem] rounded-lg border bg-background px-2 text-xs sm:block md:max-w-[14rem] md:text-sm"
+            aria-label="Filial tanlash"
+            value={activeFactoryId ?? ""}
+            onChange={async (event) => {
+              setActiveFactory(event.target.value);
+              await queryClient.invalidateQueries();
+            }}
+          >
+            {accessibleFactories.map((factory) => (
+              <option key={factory.id} value={factory.id}>
+                {factory.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <button
           type="button"
           className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted"
@@ -104,6 +124,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           type="button"
           className="hidden h-11 w-11 place-items-center rounded-lg hover:bg-muted sm:grid"
           aria-label="Bildirishnomalar"
+          onClick={() => router.push("/notifications")}
         >
           <Bell size={18} />
         </button>
@@ -156,12 +177,23 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                   <p className="text-xs text-muted-foreground">Filiallar</p>
                   <div className="mt-2 space-y-2">
                     {accessibleFactories.map((factory) => (
-                      <div key={factory.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                      <button
+                        key={factory.id}
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:border-primary/40"
+                        onClick={async () => {
+                          if (factory.id === activeFactoryId) return;
+                          setActiveFactory(factory.id);
+                          await queryClient.invalidateQueries();
+                        }}
+                      >
                         <span>{factory.name}</span>
                         {factory.id === activeFactoryId ? (
                           <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">Tanlangan</span>
-                        ) : null}
-                      </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Tanlash</span>
+                        )}
+                      </button>
                     ))}
                     {accessibleFactories.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Filial biriktirilmagan.</p>

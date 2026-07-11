@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { InfoCard } from "@/components/cards/info-card";
 import {
   DataTable,
@@ -50,10 +51,18 @@ export function PaymentDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button disabled>Mijozga o‘tish · Tez orada</Button>
-          <Button disabled variant="outline">
-            Buyurtmaga o‘tish · Tez orada
-          </Button>
+          <Link
+            href="/sales/clients"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            Mijozlar
+          </Link>
+          <Link
+            href="/sales/orders"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            Buyurtmalar
+          </Link>
           <Button
             type="button"
             variant="outline"

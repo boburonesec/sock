@@ -18,6 +18,7 @@ import { RequestContext } from '../identity/request-context/request-context.type
 import { requireActiveFactoryId } from '../identity/request-context/request-context.utils';
 import {
   CreateEmployeeAdjustmentDto,
+  CreateExpenseDto,
   CreatePayrollPeriodDto,
   PayPayrollPeriodDto,
 } from './finance.dto';
@@ -210,9 +211,218 @@ export class FinanceService {
       context,
       dto,
       EmployeeAdjustmentType.ADVANCE,
-      EmployeeAdjustmentStatus.PAID,
+      EmployeeAdjustmentStatus.REQUESTED,
       'ADVANCE_CREATED',
     );
+  }
+
+  async approveAdvance(
+    context: RequestContext,
+    advanceId: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    return this.transitionAdvance(
+      context,
+      advanceId,
+      EmployeeAdjustmentStatus.REQUESTED,
+      EmployeeAdjustmentStatus.APPROVED,
+      'ADVANCE_APPROVED',
+    );
+  }
+
+  async rejectAdvance(
+    context: RequestContext,
+    advanceId: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    return this.transitionAdvance(
+      context,
+      advanceId,
+      EmployeeAdjustmentStatus.REQUESTED,
+      EmployeeAdjustmentStatus.REJECTED,
+      'ADVANCE_REJECTED',
+    );
+  }
+
+  async payAdvance(
+    context: RequestContext,
+    advanceId: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    return this.transitionAdvance(
+      context,
+      advanceId,
+      EmployeeAdjustmentStatus.APPROVED,
+      EmployeeAdjustmentStatus.PAID,
+      'ADVANCE_PAID',
+    );
+  }
+
+  async createExpense(
+    context: RequestContext,
+    dto: CreateExpenseDto,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const amount = this.parsePositiveDecimal(dto.amount, 'Expense amount');
+    const reason = dto.reason.trim();
+
+    if (!reason) {
+      throw new BadRequestException('Reason is required.');
+    }
+
+    const expense = await this.prisma.$transaction(async (tx) => {
+      const category = await tx.expenseCategory.findFirst({
+        where: {
+          id: dto.categoryId,
+          tenantId,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      });
+
+      if (!category) {
+        throw new NotFoundException('Expense category not found.');
+      }
+
+      const now = new Date();
+      const created = await tx.expense.create({
+        data: {
+          tenantId,
+          factoryId,
+          categoryId: category.id,
+          amount,
+          reason,
+          status: ExpenseStatus.REQUESTED,
+          requestedByUserId: context.userId,
+          requestedAt: now,
+        },
+        select: expenseSelect,
+      });
+      const response = this.mapExpense(created);
+
+      await tx.expenseApproval.create({
+        data: {
+          tenantId,
+          expenseId: created.id,
+          action: 'REQUESTED',
+          actorUserId: context.userId,
+        },
+      });
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: 'EXPENSE_CREATED',
+        entityType: 'Expense',
+        entityId: created.id,
+        after: response,
+      });
+
+      return response;
+    });
+
+    return { data: expense };
+  }
+
+  async approveExpense(
+    context: RequestContext,
+    expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.transitionExpense(
+      context,
+      expenseId,
+      ExpenseStatus.REQUESTED,
+      ExpenseStatus.APPROVED,
+      'EXPENSE_APPROVED',
+    );
+  }
+
+  async rejectExpense(
+    context: RequestContext,
+    expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.transitionExpense(
+      context,
+      expenseId,
+      ExpenseStatus.REQUESTED,
+      ExpenseStatus.REJECTED,
+      'EXPENSE_REJECTED',
+    );
+  }
+
+  async payExpense(
+    context: RequestContext,
+    expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    return this.transitionExpense(
+      context,
+      expenseId,
+      ExpenseStatus.APPROVED,
+      ExpenseStatus.PAID,
+      'EXPENSE_PAID',
+    );
+  }
+
+  async cancelExpense(
+    context: RequestContext,
+    expenseId: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+
+    const expense = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.expense.findFirst({
+        where: { id: expenseId, tenantId, factoryId },
+        select: expenseSelect,
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Expense not found.');
+      }
+
+      if (
+        existing.status !== ExpenseStatus.REQUESTED &&
+        existing.status !== ExpenseStatus.APPROVED
+      ) {
+        throw new ConflictException(
+          `Expense with status ${existing.status} cannot be cancelled.`,
+        );
+      }
+
+      const now = new Date();
+      const updated = await tx.expense.update({
+        where: { id: existing.id },
+        data: {
+          status: ExpenseStatus.CANCELLED,
+          cancelledAt: now,
+        },
+        select: expenseSelect,
+      });
+      const response = this.mapExpense(updated);
+
+      await tx.expenseApproval.create({
+        data: {
+          tenantId,
+          expenseId: existing.id,
+          action: 'CANCELLED',
+          actorUserId: context.userId,
+        },
+      });
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: 'EXPENSE_CANCELLED',
+        entityType: 'Expense',
+        entityId: existing.id,
+        before: this.mapExpense(existing),
+        after: response,
+      });
+
+      return response;
+    });
+
+    return { data: expense };
   }
 
   async createBonus(
@@ -322,6 +532,12 @@ export class FinanceService {
       }
 
       const now = new Date();
+      const isApproved =
+        status === EmployeeAdjustmentStatus.APPROVED ||
+        status === EmployeeAdjustmentStatus.PAID ||
+        status === EmployeeAdjustmentStatus.APPLIED;
+      const isPaid = status === EmployeeAdjustmentStatus.PAID;
+
       const createdAdjustment = await tx.employeeAdjustment.create({
         data: {
           tenantId,
@@ -332,12 +548,11 @@ export class FinanceService {
           reason,
           status,
           requestedByUserId: context.userId,
-          approvedByUserId: context.userId,
-          paidByUserId:
-            type === EmployeeAdjustmentType.ADVANCE ? context.userId : null,
+          approvedByUserId: isApproved ? context.userId : null,
+          paidByUserId: isPaid ? context.userId : null,
           requestedAt: now,
-          approvedAt: now,
-          paidAt: type === EmployeeAdjustmentType.ADVANCE ? now : null,
+          approvedAt: isApproved ? now : null,
+          paidAt: isPaid ? now : null,
         },
         select: adjustmentSelect,
       });
@@ -1031,6 +1246,163 @@ export class FinanceService {
     }));
   }
 
+  private async transitionAdvance(
+    context: RequestContext,
+    advanceId: string,
+    fromStatus: EmployeeAdjustmentStatus,
+    toStatus: EmployeeAdjustmentStatus,
+    auditAction: string,
+  ): Promise<SingleResponse<AdvanceResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+
+    const advance = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.employeeAdjustment.findFirst({
+        where: {
+          id: advanceId,
+          tenantId,
+          factoryId,
+          type: EmployeeAdjustmentType.ADVANCE,
+        },
+        select: adjustmentSelect,
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Advance not found.');
+      }
+
+      if (existing.status !== fromStatus) {
+        throw new ConflictException(
+          `Advance with status ${existing.status} cannot transition to ${toStatus}.`,
+        );
+      }
+
+      const now = new Date();
+      const data: Prisma.EmployeeAdjustmentUncheckedUpdateInput = {
+        status: toStatus,
+      };
+
+      if (toStatus === EmployeeAdjustmentStatus.APPROVED) {
+        data.approvedAt = now;
+        data.approvedByUserId = context.userId;
+      }
+
+      if (toStatus === EmployeeAdjustmentStatus.REJECTED) {
+        data.cancelledAt = now;
+      }
+
+      if (toStatus === EmployeeAdjustmentStatus.PAID) {
+        data.paidAt = now;
+        data.paidByUserId = context.userId;
+      }
+
+      const updated = await tx.employeeAdjustment.update({
+        where: { id: existing.id },
+        data,
+        select: adjustmentSelect,
+      });
+      const response = this.mapAdjustment(updated);
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: auditAction,
+        entityType: 'EmployeeAdjustment',
+        entityId: existing.id,
+        before: this.mapAdjustment(existing),
+        after: response,
+      });
+
+      return response;
+    });
+
+    return { data: advance };
+  }
+
+  private async transitionExpense(
+    context: RequestContext,
+    expenseId: string,
+    fromStatus: ExpenseStatus,
+    toStatus: ExpenseStatus,
+    auditAction: string,
+  ): Promise<SingleResponse<ExpenseResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+
+    const expense = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.expense.findFirst({
+        where: { id: expenseId, tenantId, factoryId },
+        select: expenseSelect,
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Expense not found.');
+      }
+
+      if (existing.status !== fromStatus) {
+        throw new ConflictException(
+          `Expense with status ${existing.status} cannot transition to ${toStatus}.`,
+        );
+      }
+
+      const now = new Date();
+      const data: Prisma.ExpenseUncheckedUpdateInput = {
+        status: toStatus,
+      };
+
+      if (toStatus === ExpenseStatus.APPROVED) {
+        data.approvedAt = now;
+        data.approvedByUserId = context.userId;
+      }
+
+      if (toStatus === ExpenseStatus.PAID) {
+        data.paidAt = now;
+        data.paidByUserId = context.userId;
+      }
+
+      const updated = await tx.expense.update({
+        where: { id: existing.id },
+        data,
+        select: expenseSelect,
+      });
+      const response = this.mapExpense(updated);
+
+      await tx.expenseApproval.create({
+        data: {
+          tenantId,
+          expenseId: existing.id,
+          action: toStatus,
+          actorUserId: context.userId,
+        },
+      });
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: auditAction,
+        entityType: 'Expense',
+        entityId: existing.id,
+        before: this.mapExpense(existing),
+        after: response,
+      });
+
+      return response;
+    });
+
+    return { data: expense };
+  }
+
+  private mapExpense(
+    expense: Prisma.ExpenseGetPayload<{ select: typeof expenseSelect }>,
+  ): ExpenseResponse {
+    return {
+      ...expense,
+      amount: expense.amount.toString(),
+    };
+  }
+
   private mapAdjustment(
     adjustment: Prisma.EmployeeAdjustmentGetPayload<{ select: typeof adjustmentSelect }>,
   ): AdvanceResponse {
@@ -1141,6 +1513,23 @@ export class FinanceService {
     );
   }
 }
+
+const expenseSelect = {
+  id: true,
+  amount: true,
+  reason: true,
+  status: true,
+  requestedAt: true,
+  approvedAt: true,
+  paidAt: true,
+  cancelledAt: true,
+  createdAt: true,
+  updatedAt: true,
+  category: { select: { id: true, name: true } },
+  requestedBy: { select: { id: true, name: true } },
+  approvedBy: { select: { id: true, name: true } },
+  paidBy: { select: { id: true, name: true } },
+} satisfies Prisma.ExpenseSelect;
 
 const adjustmentSelect = {
   id: true,

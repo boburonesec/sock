@@ -134,9 +134,41 @@ export interface FinanceSummary {
   payrollPeriods: PayrollPeriod[];
 }
 
+export interface CreateExpensePayload {
+  categoryId: string;
+  amount: string;
+  reason: string;
+}
+
 export const financeApi = {
   getSummary: () => apiClient<{ data: FinanceSummary }>("/finance/summary"),
   getExpenses: () => apiClient<ApiCollection<Expense>>("/finance/expenses"),
+  createExpense: (payload: CreateExpensePayload) =>
+    apiClient<{ data: Expense }>("/finance/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  approveExpense: (expenseId: string) =>
+    apiClient<{ data: Expense }>(
+      `/finance/expenses/${encodeURIComponent(expenseId)}/approve`,
+      { method: "POST" },
+    ),
+  rejectExpense: (expenseId: string) =>
+    apiClient<{ data: Expense }>(
+      `/finance/expenses/${encodeURIComponent(expenseId)}/reject`,
+      { method: "POST" },
+    ),
+  payExpense: (expenseId: string) =>
+    apiClient<{ data: Expense }>(
+      `/finance/expenses/${encodeURIComponent(expenseId)}/pay`,
+      { method: "POST" },
+    ),
+  cancelExpense: (expenseId: string) =>
+    apiClient<{ data: Expense }>(
+      `/finance/expenses/${encodeURIComponent(expenseId)}/cancel`,
+      { method: "POST" },
+    ),
   getAdvances: () => apiClient<ApiCollection<Advance>>("/finance/advances"),
   getBonuses: () => apiClient<ApiCollection<Advance>>("/finance/bonuses"),
   getPenalties: () => apiClient<ApiCollection<Advance>>("/finance/penalties"),
@@ -180,6 +212,21 @@ export const financeApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  approveAdvance: (advanceId: string) =>
+    apiClient<{ data: Advance }>(
+      `/finance/advances/${encodeURIComponent(advanceId)}/approve`,
+      { method: "POST" },
+    ),
+  rejectAdvance: (advanceId: string) =>
+    apiClient<{ data: Advance }>(
+      `/finance/advances/${encodeURIComponent(advanceId)}/reject`,
+      { method: "POST" },
+    ),
+  payAdvance: (advanceId: string) =>
+    apiClient<{ data: Advance }>(
+      `/finance/advances/${encodeURIComponent(advanceId)}/pay`,
+      { method: "POST" },
+    ),
   createBonus: (payload: CreateEmployeeAdjustmentPayload) =>
     apiClient<{ data: Advance }>("/finance/bonuses", {
       method: "POST",

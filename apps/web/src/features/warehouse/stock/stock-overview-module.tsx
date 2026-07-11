@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { KpiCard } from "@/components/cards/kpi-card";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -168,8 +169,12 @@ export function StockOverviewModule() {
         description="Mahsulot variantlari va zonalar bo‘yicha joriy qoldiq."
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
-          <Button disabled variant="outline">Qoldiq ko‘rish · Tez orada</Button>
-          <Button disabled variant="outline">Harakatlar tarixi · Tez orada</Button>
+          <Link
+            href="/warehouse/movements"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-medium hover:bg-muted"
+          >
+            Harakatlar tarixi
+          </Link>
           <Button
             type="button"
             variant="outline"
@@ -189,7 +194,12 @@ export function StockOverviewModule() {
         description="Material va zona bo‘yicha joriy qoldiq."
       >
         <div className="mb-4 flex justify-end">
-          <Button disabled>Material qabul qilish · Tez orada</Button>
+          <Link
+            href="/warehouse/materials"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Material qabul qilish
+          </Link>
         </div>
         <MaterialStockTable stock={materialStock} />
       </PageSection>

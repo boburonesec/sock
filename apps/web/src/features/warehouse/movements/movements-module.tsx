@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { KpiCard } from "@/components/cards/kpi-card";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -48,7 +49,7 @@ export function MovementsModule() {
           <KpiCard
             label="Ombor harakatlari"
             value={`${movements.length} ta`}
-            description="ma’lumot qaytargan movement yozuvlari"
+            description="so‘nggi ombor harakatlari"
             accent="primary"
           />
         </div>
@@ -56,18 +57,21 @@ export function MovementsModule() {
 
       <PageSection
         title="Ombor harakatlari"
-        description="Har bir correction sabab bilan audit qilinadi."
+        description="Har bir tuzatish sabab bilan audit qilinadi."
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
-          <Button disabled variant="outline">
-            Qoldiqni tuzatish · Tez orada
-          </Button>
-          <Button disabled variant="outline">
-            Material qabul qilish · Tez orada
-          </Button>
-          <Button disabled variant="outline">
-            Transfer qilish · Tez orada
-          </Button>
+          <Link
+            href="/warehouse"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-medium hover:bg-muted"
+          >
+            Qoldiqni tuzatish
+          </Link>
+          <Link
+            href="/warehouse/materials"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-medium hover:bg-muted"
+          >
+            Material qabul qilish
+          </Link>
         </div>
         <MovementsTable movements={movements} onSelect={setSelectedMovement} />
       </PageSection>

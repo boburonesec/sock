@@ -70,15 +70,10 @@ export function ReportsOverviewModule() {
         title="So‘nggi hisobotlar"
         description="Real generated report metadata mavjud bo‘lmaguncha bo‘sh ko‘rsatiladi."
       >
-        <div className="mb-4 flex flex-wrap justify-end gap-2">
-          <Button disabled variant="outline">
-            Excel export · Tez orada
-          </Button>
-          <Button disabled variant="outline">
-            PDF export · Tez orada
-          </Button>
-          <Button disabled>Hisobot yaratish · Tez orada</Button>
-        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Excel/PDF export keyingi bosqichda. Yuqoridagi tezkor havolalar haqiqiy
+          operatsion ekranlarga olib boradi.
+        </p>
         <RecentReportsTable reports={overview.recentReports} />
       </PageSection>
     </div>

@@ -66,6 +66,14 @@ export interface WarehouseZoneResponse {
 
 export type WarehouseZoneSummaryStatus = 'NORMAL' | 'ATTENTION';
 
+export interface LowStockThresholdResponse {
+  id: string;
+  quantity: string;
+  warehouse: NamedReferenceResponse;
+  material: NamedReferenceResponse;
+  updatedAt: Date;
+}
+
 export interface WarehouseStockSummaryResponse {
   data: {
     kpis: {

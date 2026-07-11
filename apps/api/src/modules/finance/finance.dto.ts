@@ -47,3 +47,28 @@ export class CreateEmployeeAdjustmentDto {
   @MinLength(3)
   reason!: string;
 }
+
+export class CreateExpenseDto {
+  @IsString()
+  @IsNotEmpty()
+  categoryId!: string;
+
+  @IsNumberString()
+  amount!: string;
+
+  @IsString()
+  @MinLength(3)
+  reason!: string;
+}
+
+export class ExpenseActionDto {
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+export class AdjustmentActionDto {
+  @IsOptional()
+  @IsString()
+  note?: string;
+}

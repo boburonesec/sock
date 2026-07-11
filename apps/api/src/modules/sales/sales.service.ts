@@ -12,6 +12,7 @@ import {
   StockMovementType,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { FINISHED_PRODUCTS_ZONE_NAMES } from '../../common/factory-defaults';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
@@ -550,7 +551,7 @@ export class SalesService {
       const finishedProductsZone = await tx.warehouseZone.findFirst({
         where: {
           tenantId,
-          name: 'Finished Products',
+          name: { in: [...FINISHED_PRODUCTS_ZONE_NAMES] },
           warehouse: { tenantId, factoryId, deletedAt: null },
           deletedAt: null,
         },
@@ -729,7 +730,7 @@ export class SalesService {
       const finishedProductsZone = await tx.warehouseZone.findFirst({
         where: {
           tenantId,
-          name: 'Finished Products',
+          name: { in: [...FINISHED_PRODUCTS_ZONE_NAMES] },
           warehouse: { tenantId, factoryId, deletedAt: null },
           deletedAt: null,
         },

@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   DataTable,
   DataTableCell,
@@ -15,6 +16,8 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { productApi } from "@/lib/api/product";
 import { settingsApi } from "@/lib/api/settings";
 import { warehouseApi } from "@/lib/api/warehouse";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -244,22 +247,173 @@ export function SettingsExpenseCategoriesPage() {
 }
 
 export function SettingsThresholdsPage() {
+  const queryClient = useQueryClient();
+  const thresholdsQuery = useQuery({
+    queryKey: queryKeys.warehouse.lowStockThresholds(),
+    queryFn: warehouseApi.getLowStockThresholds,
+  });
+  const materialsQuery = useQuery({
+    queryKey: queryKeys.product.materials(),
+    queryFn: productApi.getMaterials,
+  });
+  const zonesQuery = useQuery({
+    queryKey: queryKeys.warehouse.zones(),
+    queryFn: warehouseApi.getZones,
+  });
+  const [form, setForm] = useState({ warehouseId: "", materialId: "", quantity: "" });
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const warehouses = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const zone of zonesQuery.data?.data ?? []) {
+      map.set(zone.warehouse.id, zone.warehouse.name);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [zonesQuery.data]);
+
+  const upsertMutation = useMutation({
+    mutationFn: () =>
+      warehouseApi.upsertLowStockThreshold({
+        warehouseId: form.warehouseId,
+        materialId: form.materialId,
+        quantity: form.quantity,
+      }),
+    onSuccess: async () => {
+      setFeedback("Limit saqlandi.");
+      setForm((current) => ({ ...current, quantity: "" }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.warehouse.lowStockThresholds() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.warehouse.stockSummary() }),
+      ]);
+    },
+    onError: (error) => {
+      setFeedback(error instanceof Error ? error.message : "Limit saqlanmadi.");
+    },
+  });
+
+  if (thresholdsQuery.isPending || materialsQuery.isPending || zonesQuery.isPending) {
+    return <LoadingState label="Limitlar yuklanmoqda..." />;
+  }
+
+  if (thresholdsQuery.isError) {
+    return (
+      <ErrorState
+        title="Limitlar yuklanmadi"
+        description={
+          thresholdsQuery.error instanceof Error
+            ? thresholdsQuery.error.message
+            : "Xatolik yuz berdi."
+        }
+        action={
+          <Button type="button" variant="outline" onClick={() => thresholdsQuery.refetch()}>
+            Qayta urinish
+          </Button>
+        }
+      />
+    );
+  }
+
+  const thresholds = thresholdsQuery.data?.data ?? [];
+  const materials = materialsQuery.data?.data ?? [];
+
   return (
     <>
       <PageHeader
         title="Limitlar"
-        description="Kam qoldiq va boshqa operatsion chegaralar"
+        description="Material uchun minimal qoldiq — past qoldiq KPI shu qiymatga asoslanadi"
       />
-      <div className="panel space-y-3 p-5 text-sm text-muted-foreground">
-        <p>
-          Kam qoldiq (low stock) chegarasi material yozuvlari bilan bog‘liq.
-          Hozirgi MVP da alohida “limit sozlash” formasi hali to‘liq ochilmagan;
-          ombor materiallar sahifasida past qoldiq holati ko‘rsatiladi.
-        </p>
-        <Link href="/warehouse/materials" className="font-semibold text-primary hover:underline">
-          Materiallar omboriga o‘tish →
-        </Link>
-      </div>
+
+      <section className="panel mb-6 space-y-4 p-5">
+        <h2 className="font-semibold">Limit qo‘yish / yangilash</h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="space-y-1 text-sm">
+            <span className="text-muted-foreground">Ombor</span>
+            <select
+              className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
+              value={form.warehouseId}
+              onChange={(event) => setForm({ ...form, warehouseId: event.target.value })}
+            >
+              <option value="">Tanlang</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-muted-foreground">Material</span>
+            <select
+              className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm"
+              value={form.materialId}
+              onChange={(event) => setForm({ ...form, materialId: event.target.value })}
+            >
+              <option value="">Tanlang</option>
+              {materials.map((material) => (
+                <option key={material.id} value={material.id}>
+                  {material.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-muted-foreground">Minimal miqdor</span>
+            <Input
+              inputMode="decimal"
+              placeholder="Masalan: 10"
+              value={form.quantity}
+              onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            disabled={
+              !form.warehouseId ||
+              !form.materialId ||
+              !form.quantity.trim() ||
+              upsertMutation.isPending
+            }
+            onClick={() => upsertMutation.mutate()}
+          >
+            {upsertMutation.isPending ? "Saqlanmoqda..." : "Saqlash"}
+          </Button>
+          <Link href="/warehouse" className="text-sm font-semibold text-primary hover:underline">
+            Ombor past qoldiqlariga o‘tish →
+          </Link>
+        </div>
+        {feedback ? <p className="text-sm text-muted-foreground">{feedback}</p> : null}
+      </section>
+
+      <DataTable label="Past qoldiq limitalari">
+        <DataTableHead>
+          <DataTableRow>
+            <DataTableHeader>Material</DataTableHeader>
+            <DataTableHeader>Ombor</DataTableHeader>
+            <DataTableHeader>Minimal miqdor</DataTableHeader>
+            <DataTableHeader>Yangilangan</DataTableHeader>
+          </DataTableRow>
+        </DataTableHead>
+        <tbody>
+          {thresholds.length > 0 ? (
+            thresholds.map((threshold) => (
+              <DataTableRow key={threshold.id}>
+                <DataTableCell className="font-semibold">{threshold.material.name}</DataTableCell>
+                <DataTableCell>{threshold.warehouse.name}</DataTableCell>
+                <DataTableCell>{threshold.quantity}</DataTableCell>
+                <DataTableCell>{formatDateShort(threshold.updatedAt)}</DataTableCell>
+              </DataTableRow>
+            ))
+          ) : (
+            <EmptyTableState
+              colSpan={4}
+              title="Limitlar yo‘q"
+              description="Material uchun minimal qoldiq qo‘ying — ombor KPI shu limitalarga tayanadi."
+            />
+          )}
+        </tbody>
+      </DataTable>
     </>
   );
 }

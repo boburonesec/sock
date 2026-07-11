@@ -24,6 +24,7 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   loadMe: () => Promise<boolean>;
+  setActiveFactory: (factoryId: string) => void;
   clearSession: () => void;
 }
 
@@ -109,6 +110,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
     return refreshPromise;
+  },
+  setActiveFactory: (factoryId) => {
+    const accessible = get().accessibleFactories;
+    if (!accessible.some((factory) => factory.id === factoryId)) {
+      return;
+    }
+    setApiActiveFactoryId(factoryId);
+    set({ activeFactoryId: factoryId });
   },
   loadMe: async () => {
     if (!get().accessToken) {

@@ -67,20 +67,13 @@ export function ZoneDetailsDrawer({
       className="max-w-4xl"
     >
       <div className="space-y-6">
-        <div className="flex flex-wrap gap-2">
-          <Button disabled>Transfer qilish · Tez orada</Button>
-          <Button disabled variant="outline">
-            Qoldiq ko‘rish · Tez orada
-          </Button>
-        </div>
-
         <div className="grid gap-4 sm:grid-cols-3">
           <InfoCard title="Zona">
             <p className="text-xl font-bold">{zoneInfo?.name ?? zone.zoneName}</p>
           </InfoCard>
-          <InfoCard title="Stock recordlar">
+          <InfoCard title="Qoldiq yozuvlari">
             <p className="text-xl font-bold">
-              Product {zone.productRecordCount} · Material {zone.materialRecordCount}
+              Mahsulot {zone.productRecordCount} · Material {zone.materialRecordCount}
             </p>
           </InfoCard>
           <InfoCard title="Mahsulot miqdori">

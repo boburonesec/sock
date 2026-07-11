@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/overlays/drawer";
 import { InfoCard } from "@/components/cards/info-card";
@@ -34,9 +35,12 @@ export function MaterialDetailsDrawer({
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
           <Button onClick={onReceive}>Material qabul qilish</Button>
-          <Button disabled variant="outline">
-            Minimal limit sozlash · Tez orada
-          </Button>
+          <Link
+            href="/settings/thresholds"
+            className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
+          >
+            Minimal limit sozlash
+          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

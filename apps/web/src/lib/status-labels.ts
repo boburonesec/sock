@@ -54,6 +54,7 @@ export const advanceStatusLabel: Record<string, string> = {
 
 /** Expenses */
 export const expenseStatusLabel: Record<string, string> = {
+  REQUESTED: "So‘ralgan",
   DRAFT: "Qoralama",
   PENDING: "Kutilmoqda",
   APPROVED: "Tasdiqlangan",
@@ -61,6 +62,63 @@ export const expenseStatusLabel: Record<string, string> = {
   PAID: "To‘langan",
   CANCELLED: "Bekor qilingan",
 };
+
+/** Warehouse stock movement types */
+export const stockMovementTypeLabel: Record<string, string> = {
+  RECEIPT: "Kirim",
+  ISSUE: "Chiqim",
+  PRODUCTION_RECEIPT: "Ishlab chiqarish kirimi",
+  TRANSFER: "Transfer",
+  RETURN: "Qaytarish",
+  CORRECTION: "Tuzatish",
+};
+
+export const stockItemTypeLabel: Record<string, string> = {
+  PRODUCT: "Mahsulot",
+  MATERIAL: "Material",
+};
+
+/** Warehouse zone canonical names → operator-facing Uzbek */
+export const warehouseZoneNameLabel: Record<string, string> = {
+  "Finished Products": "Tayyor mahsulot",
+  "Raw Materials": "Xom ashyo",
+  Packaging: "Qadoqlash",
+  Labels: "Etiketka",
+  Defects: "Brak",
+  "Main Warehouse": "Asosiy ombor",
+  "Asosiy ombor": "Asosiy ombor",
+};
+
+export function formatWarehouseZoneName(name: string): string {
+  return warehouseZoneNameLabel[name] ?? name;
+}
+
+/** Common audit action labels */
+export const auditActionLabel: Record<string, string> = {
+  EXPENSE_CREATED: "Xarajat yaratildi",
+  EXPENSE_APPROVED: "Xarajat tasdiqlandi",
+  EXPENSE_REJECTED: "Xarajat rad etildi",
+  EXPENSE_PAID: "Xarajat to‘landi",
+  EXPENSE_CANCELLED: "Xarajat bekor qilindi",
+  ADVANCE_CREATED: "Avans so‘rovi",
+  ADVANCE_APPROVED: "Avans tasdiqlandi",
+  ADVANCE_REJECTED: "Avans rad etildi",
+  ADVANCE_PAID: "Avans to‘landi",
+  BONUS_CREATED: "Bonus yaratildi",
+  PENALTY_CREATED: "Jarima yaratildi",
+  LOW_STOCK_THRESHOLD_UPSERTED: "Past qoldiq limiti",
+  STOCK_CORRECTED: "Qoldiq tuzatildi",
+  CLIENT_PAYMENT_REVERSED: "Mijoz to‘lovi bekor",
+  EMPLOYEE_INACTIVATED: "Xodim nofaol",
+  SALES_ORDER_CREATED: "Buyurtma yaratildi",
+  ORDER_CREATED: "Buyurtma yaratildi",
+  PAYROLL_PERIOD_CREATED: "Ish haqi davri",
+  PAYROLL_PERIOD_CLOSED: "Ish haqi yopildi",
+};
+
+export function formatAuditAction(action: string): string {
+  return auditActionLabel[action] ?? action.replaceAll("_", " ");
+}
 
 /** Payroll period */
 export const payrollPeriodStatusLabel: Record<string, string> = {

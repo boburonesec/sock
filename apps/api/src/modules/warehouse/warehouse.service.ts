@@ -17,10 +17,12 @@ import {
   CreateFinishedProductReceiptDto,
   CreateMaterialReceiptDto,
   CreateStockCorrectionDto,
+  UpsertLowStockThresholdDto,
 } from './warehouse.dto';
 import {
   CollectionResponse,
   FinishedProductReceiptResponse,
+  LowStockThresholdResponse,
   MaterialReceiptResponse,
   MaterialStockResponse,
   ProductStockResponse,
@@ -31,9 +33,12 @@ import {
   WarehouseZoneResponse,
 } from './warehouse.types';
 
+import {
+  FINISHED_PRODUCTS_ZONE_NAMES,
+  RAW_MATERIALS_ZONE_NAMES,
+} from '../../common/factory-defaults';
+
 const RECENT_MOVEMENT_LIMIT = 50;
-const FINISHED_PRODUCTS_ZONE_NAME = 'Finished Products';
-const RAW_MATERIALS_ZONE_NAME = 'Raw Materials';
 const PRODUCTION_WAREHOUSE_STAGE_NAME = 'Ombor';
 
 @Injectable()
@@ -732,6 +737,125 @@ export class WarehouseService {
     };
   }
 
+  async getLowStockThresholds(
+    context: RequestContext,
+  ): Promise<CollectionResponse<LowStockThresholdResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const thresholds = await this.prisma.lowStockThreshold.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        warehouse: { tenantId, factoryId, deletedAt: null },
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        quantity: true,
+        updatedAt: true,
+        warehouse: { select: { id: true, name: true } },
+        material: { select: { id: true, name: true } },
+      },
+    });
+
+    return {
+      data: thresholds.map((row) => ({
+        id: row.id,
+        quantity: row.quantity.toString(),
+        updatedAt: row.updatedAt,
+        warehouse: row.warehouse,
+        material: row.material,
+      })),
+    };
+  }
+
+  async upsertLowStockThreshold(
+    context: RequestContext,
+    dto: UpsertLowStockThresholdDto,
+  ): Promise<{ data: LowStockThresholdResponse }> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const quantity = new Prisma.Decimal(dto.quantity);
+
+    if (!quantity.isFinite() || quantity.lt(0)) {
+      throw new BadRequestException('Threshold quantity must be zero or positive.');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const warehouse = await tx.warehouse.findFirst({
+        where: {
+          id: dto.warehouseId,
+          tenantId,
+          factoryId,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      });
+
+      if (!warehouse) {
+        throw new NotFoundException('Warehouse not found.');
+      }
+
+      const material = await tx.material.findFirst({
+        where: { id: dto.materialId, tenantId, deletedAt: null },
+        select: { id: true, name: true },
+      });
+
+      if (!material) {
+        throw new NotFoundException('Material not found.');
+      }
+
+      const threshold = await tx.lowStockThreshold.upsert({
+        where: {
+          tenantId_warehouseId_materialId: {
+            tenantId,
+            warehouseId: warehouse.id,
+            materialId: material.id,
+          },
+        },
+        create: {
+          tenantId,
+          warehouseId: warehouse.id,
+          materialId: material.id,
+          quantity,
+        },
+        update: {
+          quantity,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          quantity: true,
+          updatedAt: true,
+          warehouse: { select: { id: true, name: true } },
+          material: { select: { id: true, name: true } },
+        },
+      });
+
+      const response: LowStockThresholdResponse = {
+        id: threshold.id,
+        quantity: threshold.quantity.toString(),
+        updatedAt: threshold.updatedAt,
+        warehouse: threshold.warehouse,
+        material: threshold.material,
+      };
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: 'LOW_STOCK_THRESHOLD_UPSERTED',
+        entityType: 'LowStockThreshold',
+        entityId: threshold.id,
+        after: response,
+      });
+
+      return response;
+    });
+
+    return { data: result };
+  }
+
   async getZones(context: RequestContext): Promise<CollectionResponse<WarehouseZoneResponse>> {
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
@@ -880,7 +1004,9 @@ export class WarehouseService {
       ),
     );
     const finishedProductQuantity = zones
-      .filter((zone) => zone.name === 'Finished Products')
+      .filter((zone) =>
+        (FINISHED_PRODUCTS_ZONE_NAMES as readonly string[]).includes(zone.name),
+      )
       .reduce(
         (total, zone) =>
           total + zone.stocks.reduce((zoneTotal, stock) => zoneTotal + stock.quantity, 0),
@@ -956,7 +1082,7 @@ export class WarehouseService {
     return tx.warehouseZone.findFirst({
       where: {
         tenantId: input.tenantId,
-        name: FINISHED_PRODUCTS_ZONE_NAME,
+        name: { in: [...FINISHED_PRODUCTS_ZONE_NAMES] },
         deletedAt: null,
         warehouse: {
           factoryId: input.factoryId,
@@ -994,7 +1120,7 @@ export class WarehouseService {
     return tx.warehouseZone.findFirst({
       where: {
         tenantId: input.tenantId,
-        name: RAW_MATERIALS_ZONE_NAME,
+        name: { in: [...RAW_MATERIALS_ZONE_NAMES] },
         deletedAt: null,
         warehouse: {
           factoryId: input.factoryId,

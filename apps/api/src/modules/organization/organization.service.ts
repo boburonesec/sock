@@ -11,34 +11,17 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import {
+  DEFAULT_PRODUCTION_STAGES,
+  DEFAULT_WAREHOUSE_NAME,
+  DEFAULT_WAREHOUSE_ZONES,
+} from '../../common/factory-defaults';
+import {
   CreateOrganizationFactoryDto,
   CreateOrganizationManagerDto,
   CreateOrganizationUserDto,
   UpdateOrganizationUserFactoryAccessDto,
   UpdateOrganizationUserPasswordDto,
 } from './organization.dto';
-
-const DEFAULT_WAREHOUSE_NAME = 'Main Warehouse';
-const DEFAULT_WAREHOUSE_ZONES = [
-  'Finished Products',
-  'Raw Materials',
-  'Packaging',
-  'Labels',
-  'Defects',
-] as const;
-
-const DEFAULT_PRODUCTION_STAGES = [
-  'Averlog',
-  'Dazmol',
-  'Sifat',
-  'Kiydirish',
-  'Par Dazmol',
-  'Parlash',
-  'Bezak',
-  'Etiketka',
-  'Qadoqlash',
-  'Ombor',
-] as const;
 
 const ORGANIZATION_USER_ROLES = [
   'Manager',

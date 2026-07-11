@@ -33,6 +33,7 @@ export const queryKeys = {
     movements: () => ["warehouse", "movements"] as const,
     zones: () => ["warehouse", "zones"] as const,
     stockSummary: () => ["warehouse", "stock-summary"] as const,
+    lowStockThresholds: () => ["warehouse", "low-stock-thresholds"] as const,
   },
   sales: {
     all: ["sales"] as const,
