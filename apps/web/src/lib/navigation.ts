@@ -18,7 +18,7 @@ export const navigationItems: NavigationItem[] = [
   { href: "/dashboard/executive", title: "Boshqaruv paneli", description: "Umumiy biznes ko‘rinishi", icon: LayoutDashboard, section: "monitoring", requiredPermissions: ["dashboard.view"] },
   { href: "/dashboard/operations", title: "Operatsiyalar", description: "Korxona operatsiyalari", icon: Factory, section: "monitoring", requiredPermissions: ["dashboard.view"] },
   { href: "/reports", title: "Hisobotlar", description: "Hisobotlar moduli", icon: BarChart3, section: "monitoring", requiredPermissions: ["reports.view"] },
-  { href: "/audit", title: "Audit log", description: "Tizim amallari tarixi", icon: History, section: "monitoring", requiredPermissions: ["audit.view"] },
+  { href: "/audit", title: "Audit jurnali", description: "Tizim amallari tarixi", icon: History, section: "monitoring", requiredPermissions: ["audit.view"] },
   { href: "/production", title: "Ishlab chiqarish", description: "Ishlab chiqarish moduli", icon: Boxes, section: "work", requiredPermissions: ["production.view"] },
   { href: "/warehouse", title: "Ombor", description: "Ombor moduli", icon: Package, section: "work", requiredPermissions: ["warehouse.view"] },
   { href: "/sales", title: "Sotuvlar", description: "Sotuvlar moduli", icon: ClipboardList, section: "work", requiredPermissions: ["sales.view"] },
@@ -76,7 +76,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/settings/roles": { title: "Rollar", description: "Sozlamalar" },
   "/settings/permissions": { title: "Ruxsatlar", description: "Sozlamalar" },
   "/notifications": { title: "Bildirishnomalar", description: "Tizim bildirishnomalari" },
-  "/audit": { title: "Audit log", description: "Tizim amallari tarixi" },
+  "/audit": { title: "Audit jurnali", description: "Tizim amallari tarixi" },
 };
 
 export function getPageDefinition(pathname: string): PageDefinition {

@@ -3,12 +3,14 @@ import { InfoCard } from "@/components/cards/info-card";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { WarehouseStockSummary } from "@/lib/api/warehouse";
+import { labelStatus, zoneStatusLabel } from "@/lib/status-labels";
 
 type ZoneSummary = WarehouseStockSummary["zoneSummaries"][number];
 
 const statusTone: Record<string, StatusTone> = {
   NORMAL: "success",
   ATTENTION: "warning",
+  HIGH: "danger",
 };
 
 export function ZonesOverview({
@@ -48,12 +50,12 @@ export function ZonesOverview({
                   {zone.productQuantity} dona
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Product: {zone.productRecordCount} · Material:{" "}
+                  Mahsulot yozuvlari: {zone.productRecordCount} · Material:{" "}
                   {zone.materialRecordCount}
                 </p>
                 <div className="mt-3">
                   <StatusBadge tone={statusTone[zone.status] ?? "neutral"}>
-                    {zone.status}
+                    {labelStatus(zoneStatusLabel, zone.status)}
                   </StatusBadge>
                 </div>
               </div>

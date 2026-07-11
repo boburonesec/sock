@@ -8,6 +8,7 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { PayrollPeriod } from "@/lib/api/finance";
+import { labelStatus, payrollPeriodStatusLabel } from "@/lib/status-labels";
 
 const statusTone: Record<string, StatusTone> = {
   DRAFT: "neutral",
@@ -49,7 +50,7 @@ export function PayrollPeriodsTable({
               </DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTone[period.status] ?? "neutral"}>
-                  {period.status}
+                  {labelStatus(payrollPeriodStatusLabel, period.status)}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{period.totalFinalAmount} so‘m</DataTableCell>

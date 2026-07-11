@@ -138,6 +138,8 @@ export const financeApi = {
   getSummary: () => apiClient<{ data: FinanceSummary }>("/finance/summary"),
   getExpenses: () => apiClient<ApiCollection<Expense>>("/finance/expenses"),
   getAdvances: () => apiClient<ApiCollection<Advance>>("/finance/advances"),
+  getBonuses: () => apiClient<ApiCollection<Advance>>("/finance/bonuses"),
+  getPenalties: () => apiClient<ApiCollection<Advance>>("/finance/penalties"),
   getPayrollPeriods: () =>
     apiClient<ApiCollection<PayrollPeriod>>("/finance/payroll-periods"),
   createPayrollPeriod: (payload: CreatePayrollPeriodPayload) =>

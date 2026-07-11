@@ -54,7 +54,14 @@ export function ClientDebtDetailsDrawer({
 
         <InfoCard title="Mijoz ma’lumoti">
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>Holat: {debt.client.status}</p>
+            <p>
+              Holat:{" "}
+              {debt.client.status === "ACTIVE"
+                ? "Faol"
+                : debt.client.status === "INACTIVE" || debt.client.status === "ARCHIVED"
+                  ? "Nofaol"
+                  : debt.client.status}
+            </p>
             <p>Telefon: {debt.client.phone ?? "Kiritilmagan"}</p>
             <p>Manzil: {debt.client.address ?? "Kiritilmagan"}</p>
             <p>Izoh: {debt.client.notes ?? "Izoh yo‘q"}</p>

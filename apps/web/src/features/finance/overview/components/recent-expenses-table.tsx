@@ -8,6 +8,7 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Expense } from "@/lib/api/finance";
+import { expenseStatusLabel, labelStatus } from "@/lib/status-labels";
 
 const statusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -15,6 +16,8 @@ const statusTone: Record<string, StatusTone> = {
   REJECTED: "danger",
   PAID: "success",
   CANCELLED: "neutral",
+  DRAFT: "neutral",
+  PENDING: "warning",
 };
 
 function formatDate(value: string): string {
@@ -44,7 +47,7 @@ export function RecentExpensesTable({ expenses }: { expenses: Expense[] }) {
               <DataTableCell>{expense.amount} so‘m</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTone[expense.status] ?? "neutral"}>
-                  {expense.status}
+                  {labelStatus(expenseStatusLabel, expense.status)}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{formatDate(expense.requestedAt)}</DataTableCell>

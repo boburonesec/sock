@@ -12,7 +12,7 @@ import { RecentSettingsChangesTable } from "./components/recent-settings-changes
 import { SettingsCategoryCards } from "./components/settings-category-cards";
 import { useSettingsOverview } from "./use-settings-overview";
 
-const ownerOnlyCategoryIds = new Set(["roles", "permissions"]);
+const ownerOnlyCategoryIds = new Set(["roles"]);
 
 const settingsHubItems = [
   {
@@ -133,7 +133,7 @@ export function SettingsOverviewModule() {
     (category) => isOwner || !ownerOnlyCategoryIds.has(category.id),
   );
   const visibleConfigurationHealth = overview.configurationHealth.filter(
-    (item) => isOwner || item.id !== "permissions",
+    (item) => isOwner || (item.id !== "permissions" && item.id !== "roles"),
   );
 
   return (
@@ -157,7 +157,7 @@ export function SettingsOverviewModule() {
                   {title}
                   {ownerOnly ? (
                     <span className="rounded-md border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      Owner
+                      Faqat egasi
                     </span>
                   ) : null}
                 </span>

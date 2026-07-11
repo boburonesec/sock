@@ -57,7 +57,13 @@ export function ZoneDetailsDrawer({
       open={Boolean(zone)}
       onOpenChange={onOpenChange}
       title={zone.zoneName}
-      description={`${zone.warehouseName} · ${zone.status}`}
+      description={`${zone.warehouseName} · ${
+        zone.status === "NORMAL"
+          ? "Me’yorda"
+          : zone.status === "ATTENTION"
+            ? "Kuzatuvda"
+            : zone.status
+      }`}
       className="max-w-4xl"
     >
       <div className="space-y-6">

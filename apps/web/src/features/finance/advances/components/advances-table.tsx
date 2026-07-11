@@ -9,6 +9,7 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Advance } from "@/lib/api/finance";
+import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
 
 const advanceStatusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -54,7 +55,7 @@ export function AdvancesTable({ advances }: { advances: Advance[] }) {
               <DataTableCell>{advance.reason}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={advanceStatusTone[advance.status] ?? "neutral"}>
-                  {advance.status}
+                  {labelStatus(advanceStatusLabel, advance.status)}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{formatDate(advance.requestedAt)}</DataTableCell>
@@ -63,10 +64,10 @@ export function AdvancesTable({ advances }: { advances: Advance[] }) {
               <DataTableCell>
                 <div className="flex gap-2">
                   <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Tasdiqlash · Keyingi
+                    Tasdiqlash (tez orada)
                   </Button>
                   <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Rad etish · Keyingi
+                    Rad etish (tez orada)
                   </Button>
                   <Button disabled variant="outline" className="h-8 px-2 text-xs">
                     To‘lash · Keyingi

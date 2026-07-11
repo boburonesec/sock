@@ -9,6 +9,7 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Expense } from "@/lib/api/finance";
+import { expenseStatusLabel, labelStatus } from "@/lib/status-labels";
 
 const expenseStatusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -16,6 +17,8 @@ const expenseStatusTone: Record<string, StatusTone> = {
   REJECTED: "danger",
   PAID: "success",
   CANCELLED: "neutral",
+  DRAFT: "neutral",
+  PENDING: "warning",
 };
 
 function formatDate(value: string): string {
@@ -53,7 +56,7 @@ export function ExpensesTable({ expenses }: { expenses: Expense[] }) {
               <DataTableCell>{expense.requestedBy?.name ?? "—"}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={expenseStatusTone[expense.status] ?? "neutral"}>
-                  {expense.status}
+                  {labelStatus(expenseStatusLabel, expense.status)}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{formatDate(expense.requestedAt)}</DataTableCell>
@@ -64,10 +67,10 @@ export function ExpensesTable({ expenses }: { expenses: Expense[] }) {
               <DataTableCell>
                 <div className="flex gap-2">
                   <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Tasdiqlash · Keyingi
+                    Tasdiqlash (tez orada)
                   </Button>
                   <Button disabled variant="outline" className="h-8 px-2 text-xs">
-                    Rad etish · Keyingi
+                    Rad etish (tez orada)
                   </Button>
                   <Button disabled variant="outline" className="h-8 px-2 text-xs">
                     To‘lash · Keyingi

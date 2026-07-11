@@ -109,7 +109,14 @@ export function SupplierDetailsDrawer({
 
         <InfoCard title="Yetkazib beruvchi ma’lumoti">
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>Holat: {debt.supplier.status}</p>
+            <p>
+              Holat:{" "}
+              {debt.supplier.status === "ACTIVE"
+                ? "Faol"
+                : debt.supplier.status === "INACTIVE" || debt.supplier.status === "ARCHIVED"
+                  ? "Nofaol"
+                  : debt.supplier.status}
+            </p>
             <p>Telefon: {debt.supplier.phone ?? "Kiritilmagan"}</p>
             <p>Izoh: {debt.supplier.notes ?? "Izoh yo‘q"}</p>
           </div>

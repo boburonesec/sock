@@ -52,8 +52,38 @@ export interface SalaryRatePayload {
   effectiveTo?: string | null;
 }
 
+export interface SettingsRole {
+  id: string;
+  name: string;
+  permissionCount: string;
+  permissions: Array<{ id: string; key: string; name: string }>;
+  createdAt: ApiDateTime;
+  updatedAt: ApiDateTime;
+}
+
+export interface SettingsPermission {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  createdAt: ApiDateTime;
+  updatedAt: ApiDateTime;
+}
+
+export interface SettingsExpenseCategory {
+  id: string;
+  name: string;
+  createdAt: ApiDateTime;
+  updatedAt: ApiDateTime;
+}
+
 export const settingsApi = {
   getOverview: () => apiClient<{ data: SettingsOverview }>("/settings/overview"),
+  getRoles: () => apiClient<ApiCollection<SettingsRole>>("/settings/roles"),
+  getPermissions: () =>
+    apiClient<ApiCollection<SettingsPermission>>("/settings/permissions"),
+  getExpenseCategories: () =>
+    apiClient<ApiCollection<SettingsExpenseCategory>>("/settings/expense-categories"),
   getSalaryRates: () =>
     apiClient<ApiCollection<SalaryRate>>("/settings/salary-rates"),
   createSalaryRate: (payload: SalaryRatePayload) =>

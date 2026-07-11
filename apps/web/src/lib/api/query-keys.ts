@@ -54,9 +54,15 @@ export const queryKeys = {
     summary: () => ["finance", "summary"] as const,
     expenses: () => ["finance", "expenses"] as const,
     advances: () => ["finance", "advances"] as const,
+    bonuses: () => ["finance", "bonuses"] as const,
+    penalties: () => ["finance", "penalties"] as const,
     payrollPeriods: () => ["finance", "payroll-periods"] as const,
     payrollPeriodItems: (payrollPeriodId: string) =>
       ["finance", "payroll-periods", payrollPeriodId, "items"] as const,
+  },
+  audit: {
+    all: ["audit"] as const,
+    logs: () => ["audit", "logs"] as const,
   },
   employees: {
     all: ["employees"] as const,
@@ -66,6 +72,9 @@ export const queryKeys = {
     all: ["settings"] as const,
     overview: () => ["settings", "overview"] as const,
     salaryRates: () => ["settings", "salary-rates"] as const,
+    roles: () => ["settings", "roles"] as const,
+    permissions: () => ["settings", "permissions"] as const,
+    expenseCategories: () => ["settings", "expense-categories"] as const,
   },
   reports: {
     all: ["reports"] as const,

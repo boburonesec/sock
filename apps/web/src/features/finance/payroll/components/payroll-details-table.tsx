@@ -8,12 +8,16 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { PayrollItem } from "@/lib/api/finance";
+import { labelStatus, payrollItemStatusLabel } from "@/lib/status-labels";
 
 const statusTone: Record<string, StatusTone> = {
   CALCULATED: "info",
   PARTIALLY_PAID: "warning",
   PAID: "success",
   CARRIED_FORWARD: "neutral",
+  DRAFT: "neutral",
+  UNPAID: "warning",
+  CLOSED: "success",
 };
 
 export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
@@ -50,7 +54,7 @@ export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
               <DataTableCell>{detail.remainingAmount} so‘m</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTone[detail.status] ?? "neutral"}>
-                  {detail.status}
+                  {labelStatus(payrollItemStatusLabel, detail.status)}
                 </StatusBadge>
               </DataTableCell>
             </DataTableRow>

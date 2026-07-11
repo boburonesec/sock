@@ -24,7 +24,7 @@ function formatTenantStatus(status: string): string {
     ACTIVE: "Faol",
     SUSPENDED: "To‘xtatilgan",
     CANCELLED: "Bekor qilingan",
-    PENDING: "Tayyorlanmoqda",
+    PENDING: "Kutilmoqda",
   };
 
   return labels[status] ?? status;

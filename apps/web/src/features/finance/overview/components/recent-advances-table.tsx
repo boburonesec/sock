@@ -8,6 +8,7 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Advance } from "@/lib/api/finance";
+import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
 
 const statusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -45,7 +46,7 @@ export function RecentAdvancesTable({ advances }: { advances: Advance[] }) {
               <DataTableCell>{advance.amount} so‘m</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTone[advance.status] ?? "neutral"}>
-                  {advance.status}
+                  {labelStatus(advanceStatusLabel, advance.status)}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{formatDate(advance.requestedAt)}</DataTableCell>

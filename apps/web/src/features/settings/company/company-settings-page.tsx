@@ -70,6 +70,7 @@ function formatStatus(status: string): string {
 
 function formatRole(role: string): string {
   const labels: Record<string, string> = {
+    Owner: "Korxona egasi",
     Manager: "Menejer",
     Accountant: "Buxgalter",
     Seller: "Sotuvchi",

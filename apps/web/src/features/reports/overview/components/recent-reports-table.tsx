@@ -40,7 +40,15 @@ export function RecentReportsTable({ reports }: { reports: RecentReport[] }) {
               <DataTableCell>{dateFormatter.format(new Date(report.updatedAt))}</DataTableCell>
               <DataTableCell>{report.owner ?? "Tizim"}</DataTableCell>
               <DataTableCell>
-                <StatusBadge tone="info">{report.status}</StatusBadge>
+                <StatusBadge tone="info">
+                  {report.status === "READY"
+                    ? "Tayyor"
+                    : report.status === "DRAFT"
+                      ? "Qoralama"
+                      : report.status === "PENDING"
+                        ? "Kutilmoqda"
+                        : report.status}
+                </StatusBadge>
               </DataTableCell>
             </DataTableRow>
           ))

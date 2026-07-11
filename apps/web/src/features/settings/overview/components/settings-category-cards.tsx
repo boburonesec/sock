@@ -4,6 +4,7 @@ import { InfoCard } from "@/components/cards/info-card";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { SettingsOverview, SettingsOverviewStatus } from "@/lib/api/settings";
+import { formatDateShort } from "@/lib/format";
 
 type SettingsCategory = SettingsOverview["categoryCards"][number];
 
@@ -17,12 +18,6 @@ const statusLabel: Record<SettingsOverviewStatus, string> = {
   NEEDS_ATTENTION: "E’tibor kerak",
 };
 
-const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
 export function SettingsCategoryCards({
   categories,
 }: {
@@ -32,7 +27,7 @@ export function SettingsCategoryCards({
     return (
       <EmptyState
         title="Sozlama kategoriyalari yo‘q"
-        description="Tizim categoryCards bo‘sh ro‘yxat qaytardi."
+        description="Hozircha master-data kategoriyalari topilmadi."
       />
     );
   }
@@ -50,19 +45,25 @@ export function SettingsCategoryCards({
           }
         >
           <p className="text-sm text-muted-foreground">{category.description}</p>
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="font-semibold">{category.count}</span>
-            <span className="text-muted-foreground">
-              {category.updatedAt
-                ? dateFormatter.format(new Date(category.updatedAt))
-                : "Hali yangilanmagan"}
-            </span>
+          <div className="mt-4 flex items-end justify-between gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Soni</p>
+              <p className="font-semibold">{category.count}</p>
+            </div>
+            {category.updatedAt ? (
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Oxirgi o‘zgarish</p>
+                <p className="text-muted-foreground">{formatDateShort(category.updatedAt)}</p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Hali o‘zgartirilmagan</p>
+            )}
           </div>
           <Link
             href={category.href}
             className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
           >
-            Ko‘rish <ArrowRight size={15} />
+            Ro‘yxatni ochish <ArrowRight size={15} />
           </Link>
         </InfoCard>
       ))}

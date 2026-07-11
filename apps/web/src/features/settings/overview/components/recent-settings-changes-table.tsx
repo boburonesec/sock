@@ -44,7 +44,15 @@ export function RecentSettingsChangesTable({
               <DataTableCell>{change.changedBy ?? "Tizim"}</DataTableCell>
               <DataTableCell>{dateFormatter.format(new Date(change.date))}</DataTableCell>
               <DataTableCell>
-                <StatusBadge tone="info">{change.status}</StatusBadge>
+                <StatusBadge tone="info">
+                  {change.status === "READY"
+                    ? "Tayyor"
+                    : change.status === "CONFIGURED"
+                      ? "Sozlangan"
+                      : change.status === "NEEDS_ATTENTION"
+                        ? "E’tibor kerak"
+                        : change.status}
+                </StatusBadge>
               </DataTableCell>
             </DataTableRow>
           ))
