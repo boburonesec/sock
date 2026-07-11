@@ -87,6 +87,7 @@ export interface StageMovementCreationResponse {
     sourceStageInventory: StageInventoryResponse;
     destinationStageInventory: StageInventoryResponse;
     stageMovement: StageMovementResponse;
+    workerActivityCount?: number;
   };
 }
 

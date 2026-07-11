@@ -208,6 +208,7 @@ export function ProductionBoard() {
     employeesQuery.data?.data.map((employee) => ({
       id: employee.id,
       label: employee.name,
+      stageIds: (employee.stages ?? []).map((stage) => stage.id),
     })) ?? [];
   const warehouseZoneOptions =
     warehouseZonesQuery.data?.data.map((zone) => ({

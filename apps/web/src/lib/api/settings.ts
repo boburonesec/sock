@@ -46,10 +46,7 @@ export interface SalaryRate {
 
 export interface SalaryRatePayload {
   stageId: string;
-  productVariantId?: string | null;
   amount: string;
-  effectiveFrom: string;
-  effectiveTo?: string | null;
 }
 
 export interface SettingsRole {

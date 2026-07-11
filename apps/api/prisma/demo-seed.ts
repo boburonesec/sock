@@ -190,6 +190,19 @@ async function main(): Promise<void> {
   }
   const [ali, vali, dilshod, sardor] = employees;
 
+  // Ishbay ishchilar — bosqich biriktirish
+  await prisma.employeeStageAssignment.deleteMany({
+    where: { tenantId, factoryId: factory.id },
+  });
+  await prisma.employeeStageAssignment.createMany({
+    data: [
+      { tenantId, factoryId: factory.id, employeeId: ali.id, productionStageId: requireStage(stageByName, 'Averlog').id },
+      { tenantId, factoryId: factory.id, employeeId: vali.id, productionStageId: requireStage(stageByName, 'Dazmol').id },
+      { tenantId, factoryId: factory.id, employeeId: dilshod.id, productionStageId: requireStage(stageByName, 'Sifat').id },
+      { tenantId, factoryId: factory.id, employeeId: sardor.id, productionStageId: requireStage(stageByName, 'Qadoqlash').id },
+    ],
+  });
+
   // --- Salary rates ---
   await prisma.salaryRate.deleteMany({ where: { tenantId, factoryId: factory.id } });
   await prisma.salaryRate.createMany({
@@ -198,7 +211,6 @@ async function main(): Promise<void> {
         tenantId,
         factoryId: factory.id,
         productionStageId: requireStage(stageByName, 'Averlog').id,
-        productVariantId: classicBlack.id,
         amount: new Prisma.Decimal('120'),
         effectiveFrom: previousMonth,
       },

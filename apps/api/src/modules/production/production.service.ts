@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EmployeeStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -287,6 +292,48 @@ export class ProductionService {
         select: stageInventorySelect,
       });
 
+      const employeeIds = Array.from(
+        new Set((dto.employeeIds ?? []).map((id) => id.trim()).filter(Boolean)),
+      );
+
+      if (employeeIds.length === 0) {
+        throw new BadRequestException(
+          'Kamida bitta ishchi tanlanishi shart (faollik yoziladi).',
+        );
+      }
+
+      const employees = await tx.employee.findMany({
+        where: {
+          tenantId,
+          factoryId,
+          id: { in: employeeIds },
+          status: EmployeeStatus.ACTIVE,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      });
+
+      if (employees.length !== employeeIds.length) {
+        throw new NotFoundException(
+          'Tanlangan ishchilardan ba’zilari topilmadi yoki nofaol.',
+        );
+      }
+
+      // Manba bosqichda ishlangan: shu bosqich stavkasi bo‘yicha faollik.
+      const salaryRate = await this.findActiveSalaryRate(tx, {
+        tenantId,
+        factoryId,
+        productionStageId: sourceStage.id,
+        productVariantId: productVariant.id,
+        at: now,
+      });
+
+      if (!salaryRate) {
+        throw new ConflictException(
+          `«${sourceStage.name}» bosqichi uchun ishbay stavka yo‘q. Avval Sozlamalar → Stavkalardan qo‘ying.`,
+        );
+      }
+
       const stageMovement = await tx.stageMovement.create({
         data: {
           tenantId,
@@ -302,6 +349,33 @@ export class ProductionService {
         select: stageMovementSelect,
       });
 
+      // Miqdor ishchilar o‘rtasida teng bo‘linadi (qoldiq birinchisiga).
+      const baseQty = Math.floor(dto.quantity / employees.length);
+      let remainder = dto.quantity - baseQty * employees.length;
+      const activityIds: string[] = [];
+
+      for (const employee of employees) {
+        const qty = baseQty + (remainder > 0 ? 1 : 0);
+        if (remainder > 0) remainder -= 1;
+        if (qty <= 0) continue;
+
+        const workerActivity = await tx.workerActivity.create({
+          data: {
+            tenantId,
+            factoryId,
+            employeeId: employee.id,
+            productionStageId: sourceStage.id,
+            productVariantId: productVariant.id,
+            quantity: qty,
+            salaryRateAmount: salaryRate.amount,
+            activityDate: now,
+            enteredByUserId: context.userId,
+          },
+          select: { id: true },
+        });
+        activityIds.push(workerActivity.id);
+      }
+
       await this.auditService.createWithTransaction(tx, {
         tenantId,
         factoryId,
@@ -310,6 +384,11 @@ export class ProductionService {
         entityType: 'StageMovement',
         entityId: stageMovement.id,
         after: stageMovement,
+        metadata: {
+          employeeIds: employees.map((employee) => employee.id),
+          workerActivityIds: activityIds,
+          salaryRateId: salaryRate.id,
+        },
       });
 
       await this.auditService.createWithTransaction(tx, {
@@ -350,6 +429,7 @@ export class ProductionService {
           destinationStageInventoryAfter,
         ),
         stageMovement,
+        workerActivityCount: activityIds.length,
       };
     });
 
@@ -933,23 +1013,25 @@ export class ProductionService {
       OR: [{ effectiveTo: null }, { effectiveTo: { gt: input.at } }],
     } satisfies Prisma.SalaryRateWhereInput;
 
-    const productSpecificRate = await tx.salaryRate.findFirst({
+    // Prefer stage-level rate (product variant yo‘q — asosiy model).
+    const stageRate = await tx.salaryRate.findFirst({
       where: {
         ...baseWhere,
-        productVariantId: input.productVariantId,
+        productVariantId: null,
       },
       orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
       select: salaryRateSelect,
     });
 
-    if (productSpecificRate) {
-      return productSpecificRate;
+    if (stageRate) {
+      return stageRate;
     }
 
+    // Eski demo/legacy: variant-specific stavka.
     return tx.salaryRate.findFirst({
       where: {
         ...baseWhere,
-        productVariantId: null,
+        productVariantId: input.productVariantId,
       },
       orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
       select: salaryRateSelect,

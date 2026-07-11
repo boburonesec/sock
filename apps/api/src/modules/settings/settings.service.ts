@@ -310,62 +310,39 @@ export class SettingsService {
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
     const amount = this.parsePositiveAmount(dto.amount);
-    const effectiveFrom = new Date(dto.effectiveFrom);
-    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
-    const productVariantId = dto.productVariantId ?? null;
-
-    if (effectiveTo && effectiveTo <= effectiveFrom) {
-      throw new BadRequestException('effectiveTo must be after effectiveFrom.');
-    }
+    const effectiveFrom = new Date();
 
     const created = await this.prisma.$transaction(async (tx) => {
-      const [stage, productVariant] = await Promise.all([
-        tx.productionStage.findFirst({
-          where: {
-            id: dto.stageId,
-            tenantId,
-            factoryId,
-            deletedAt: null,
-          },
-          select: { id: true },
-        }),
-        productVariantId
-          ? tx.productVariant.findFirst({
-              where: {
-                id: productVariantId,
-                tenantId,
-                deletedAt: null,
-                product: { deletedAt: null },
-              },
-              select: { id: true },
-            })
-          : Promise.resolve(null),
-      ]);
+      const stage = await tx.productionStage.findFirst({
+        where: {
+          id: dto.stageId,
+          tenantId,
+          factoryId,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      });
 
       if (!stage) {
         throw new NotFoundException('Production stage not found.');
       }
 
-      if (productVariantId && !productVariant) {
-        throw new NotFoundException('Product variant not found.');
-      }
-
-      const overlappingRate = await tx.salaryRate.findFirst({
+      // Bir bosqichda faqat bitta faol (ochiq) stavka.
+      const existingActive = await tx.salaryRate.findFirst({
         where: {
           tenantId,
           factoryId,
           productionStageId: stage.id,
-          productVariantId,
+          productVariantId: null,
           deletedAt: null,
-          effectiveFrom: effectiveTo ? { lt: effectiveTo } : undefined,
-          OR: [{ effectiveTo: null }, { effectiveTo: { gt: effectiveFrom } }],
+          effectiveTo: null,
         },
         select: { id: true },
       });
 
-      if (overlappingRate) {
+      if (existingActive) {
         throw new ConflictException(
-          'Salary rate overlaps with an existing active rate for this scope.',
+          'Bu bosqich uchun faol stavka allaqachon bor. Avval eskisini arxivlang.',
         );
       }
 
@@ -374,10 +351,10 @@ export class SettingsService {
           tenantId,
           factoryId,
           productionStageId: stage.id,
-          productVariantId,
+          productVariantId: null,
           amount,
           effectiveFrom,
-          effectiveTo,
+          effectiveTo: null,
         },
         select: salaryRateSelect,
       });

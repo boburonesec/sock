@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 function trimString(value: unknown): unknown {
   return typeof value === 'string' ? value.trim() : value;
@@ -53,6 +61,15 @@ export class CreateStageMovementDto {
   @IsInt()
   @Min(1)
   quantity!: number;
+
+  /**
+   * Manba bosqichda ishlagan ishchi(lar).
+   * Faollik avtomatik yoziladi (miqdor teng bo‘linadi).
+   */
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  employeeIds!: string[];
 
   @Transform(({ value }) => normalizeOptionalString(value))
   @IsOptional()

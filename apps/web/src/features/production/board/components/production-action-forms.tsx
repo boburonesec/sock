@@ -39,6 +39,9 @@ const moveStageSchema = z
       .number({ invalid_type_error: "Miqdor son bo‘lishi kerak." })
       .int("Miqdor butun son bo‘lishi kerak.")
       .positive("Miqdor 0 dan katta bo‘lishi kerak."),
+    employeeIds: z
+      .array(z.string())
+      .min(1, "Kamida bitta ishchi tanlanishi shart."),
     note: z
       .string()
       .trim()
@@ -114,6 +117,8 @@ export interface StageOption {
 export interface EmployeeOption {
   id: string;
   label: string;
+  /** Biriktirilgan bosqich ID lari (filter uchun). */
+  stageIds?: string[];
 }
 
 export interface WarehouseZoneOption {
@@ -259,6 +264,7 @@ function CreateBatchForm({
 function MoveStageForm({
   productVariantOptions,
   stageOptions,
+  employeeOptions,
   isMoveStagePending,
   moveStageError,
   onMoveStage,
@@ -269,6 +275,8 @@ function MoveStageForm({
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm<MoveStageValues>({
     resolver: zodResolver(moveStageSchema),
     defaultValues: {
@@ -276,27 +284,54 @@ function MoveStageForm({
       destinationStageId: "",
       productVariantId: "",
       quantity: 500,
+      employeeIds: [],
       note: "",
     },
   });
+
+  const sourceStageId = watch("sourceStageId");
+  const selectedEmployeeIds = watch("employeeIds") ?? [];
+
+  // Manba bosqichga biriktirilgan ishchilar birinchi; boshqalar ham tanlanishi mumkin.
+  const preferredEmployees = employeeOptions.filter(
+    (employee) =>
+      !sourceStageId ||
+      !employee.stageIds?.length ||
+      employee.stageIds.includes(sourceStageId),
+  );
+  const otherEmployees = employeeOptions.filter(
+    (employee) => !preferredEmployees.some((item) => item.id === employee.id),
+  );
+  const orderedEmployees = [...preferredEmployees, ...otherEmployees];
 
   const submit = async (values: MoveStageValues) => {
     try {
       await onMoveStage(values);
       reset();
-      onSuccess("Mahsulot keyingi bosqichga o‘tkazildi.");
+      onSuccess(
+        "Smena o‘tkazildi. Tanlangan ishchilarga faollik avtomatik yozildi.",
+      );
     } catch {
       // The mutation error is rendered from parent state so the drawer remains open.
     }
   };
 
   const hasRequiredOptions =
-    productVariantOptions.length > 0 && stageOptions.length >= 2;
+    productVariantOptions.length > 0 &&
+    stageOptions.length >= 2 &&
+    employeeOptions.length > 0;
+
+  function toggleEmployee(employeeId: string) {
+    const next = selectedEmployeeIds.includes(employeeId)
+      ? selectedEmployeeIds.filter((id) => id !== employeeId)
+      : [...selectedEmployeeIds, employeeId];
+    setValue("employeeIds", next, { shouldValidate: true, shouldDirty: true });
+  }
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(submit)}>
       <FormField
-        label="Mahsulot varianti"
+        label="Mahsulot"
         htmlFor="moveProductVariantId"
         error={errors.productVariantId?.message}
         required
@@ -321,7 +356,7 @@ function MoveStageForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
-          label="Qayerdan"
+          label="Qayerdan (ishlangan bosqich)"
           htmlFor="sourceStageId"
           error={errors.sourceStageId?.message}
           required
@@ -371,13 +406,12 @@ function MoveStageForm({
 
       {!hasRequiredOptions ? (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-          Bosqichga o‘tkazish uchun kamida bitta product variant va ikkita active
-          ishlab chiqarish bosqichi kerak.
+          Smena uchun: mahsulot, kamida 2 ta bosqich va kamida 1 ta faol ishchi kerak.
         </p>
       ) : null}
 
       <FormField
-        label="Miqdor"
+        label="Miqdor (dona)"
         htmlFor="moveQuantity"
         error={errors.quantity?.message}
         required
@@ -393,6 +427,50 @@ function MoveStageForm({
           {...register("quantity")}
         />
       </FormField>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">
+          Kim ishladi? <span className="text-muted-foreground">(bitta yoki bir nechta)</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Miqdor tanlangan ishchilar o‘rtasida teng bo‘linadi. Faollik «Qayerdan»
+          bosqichi bo‘yicha yoziladi.
+        </p>
+        <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">
+          {orderedEmployees.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Faol ishchi yo‘q.</p>
+          ) : (
+            orderedEmployees.map((employee) => {
+              const checked = selectedEmployeeIds.includes(employee.id);
+              const preferred =
+                sourceStageId && employee.stageIds?.includes(sourceStageId);
+              return (
+                <label
+                  key={employee.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={checked}
+                    disabled={isMoveStagePending}
+                    onChange={() => toggleEmployee(employee.id)}
+                  />
+                  <span className="text-sm">
+                    {employee.label}
+                    {preferred ? (
+                      <span className="ml-2 text-xs text-primary">shu bosqich</span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })
+          )}
+        </div>
+        {errors.employeeIds?.message ? (
+          <p className="text-sm text-rose-400">{errors.employeeIds.message}</p>
+        ) : null}
+      </div>
 
       <FormField label="Izoh" htmlFor="moveNote" error={errors.note?.message}>
         <Textarea
@@ -414,7 +492,7 @@ function MoveStageForm({
         className="w-full"
         disabled={isMoveStagePending || !hasRequiredOptions}
       >
-        {isMoveStagePending ? "Yuborilmoqda..." : "Bosqichga o‘tkazish"}
+        {isMoveStagePending ? "Yuborilmoqda..." : "Smenani saqlash"}
       </Button>
     </form>
   );

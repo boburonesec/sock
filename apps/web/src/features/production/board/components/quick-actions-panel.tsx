@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRightLeft, ClipboardPlus, PackageCheck, Plus } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, PackageCheck, Plus } from "lucide-react";
 import { InfoCard } from "@/components/cards/info-card";
 import { Button } from "@/components/ui/button";
 import type { ProductionAction } from "./production-action-types";
@@ -11,15 +11,9 @@ const actions: {
 }[] = [
   { label: "Partiya yaratish", action: "create-batch", icon: Plus, status: "ma’lumot" },
   {
-    label: "Bosqichga o‘tkazish",
+    label: "Smena o‘tkazish (+ ishchilar)",
     action: "move-stage",
     icon: ArrowRightLeft,
-    status: "ma’lumot",
-  },
-  {
-    label: "Ishchi faolligi qo‘shish",
-    action: "add-activity",
-    icon: ClipboardPlus,
     status: "ma’lumot",
   },
   {

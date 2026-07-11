@@ -1,11 +1,14 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import type { Employee } from "@/lib/api/employees";
+import { productApi } from "@/lib/api/product";
+import { queryKeys } from "@/lib/api/query-keys";
 import { EmployeeDetailsDrawer } from "./components/employee-details-drawer";
 import { EmployeeFormDrawer } from "./components/employee-form-drawer";
 import { EmployeeTable } from "./components/employee-table";
@@ -22,6 +25,10 @@ type FormState =
 
 export function EmployeesModule() {
   const { data, error, isError, isPending, refetch } = useEmployees();
+  const stagesQuery = useQuery({
+    queryKey: queryKeys.product.stages(),
+    queryFn: productApi.getStages,
+  });
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const inactivateEmployee = useInactivateEmployee();
@@ -30,7 +37,7 @@ export function EmployeesModule() {
   const [employeeToInactivate, setEmployeeToInactivate] = useState<Employee | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
 
-  if (isPending) {
+  if (isPending || stagesQuery.isPending) {
     return <LoadingState label="Xodimlar yuklanmoqda..." />;
   }
 
@@ -104,21 +111,23 @@ export function EmployeesModule() {
         open={Boolean(formState)}
         mode={formState?.mode ?? "create"}
         employee={formState?.employee ?? null}
+        stageOptions={stagesQuery.data?.data ?? []}
         isSubmitting={createEmployee.isPending || updateEmployee.isPending}
         errorMessage={formError}
         onOpenChange={(open) => {
           if (!open) setFormState(null);
         }}
-        onSubmit={async ({ name }) => {
+        onSubmit={async ({ name, stageIds }) => {
           setFeedback(null);
           if (formState?.mode === "edit") {
             await updateEmployee.mutateAsync({
               employeeId: formState.employee.id,
               name,
+              stageIds,
             });
             setFeedback({ tone: "success", message: "Xodim ma’lumotlari yangilandi." });
           } else {
-            await createEmployee.mutateAsync({ name });
+            await createEmployee.mutateAsync({ name, stageIds });
             setFeedback({ tone: "success", message: "Yangi xodim yaratildi." });
           }
           setFormState(null);

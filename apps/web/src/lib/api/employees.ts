@@ -1,16 +1,24 @@
 import { apiClient } from "./client";
 import { ApiCollection, ApiDateTime } from "./types";
 
+export interface EmployeeStage {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+
 export interface Employee {
   id: string;
   name: string;
   status: string;
+  stages: EmployeeStage[];
   createdAt: ApiDateTime;
   updatedAt: ApiDateTime;
 }
 
 export interface EmployeePayload {
   name: string;
+  stageIds?: string[];
 }
 
 export const employeesApi = {

@@ -18,8 +18,17 @@ import type { ProductionAction } from "./production-action-types";
 
 const actionContent: Record<ProductionAction, { title: string; description: string; icon: typeof Plus }> = {
   "create-batch": { title: "Partiya yaratish", description: "Partiya yaratiladi va birinchi bosqich qoldig‘i tizim orqali yangilanadi.", icon: Plus },
-  "move-stage": { title: "Bosqichga o‘tkazish", description: "Mahsulotni bir bosqichdan boshqasiga tizim orqali o‘tkazadi.", icon: ArrowRightLeft },
-  "add-activity": { title: "Ishchi faolligi qo‘shish", description: "Ishchi bajargan dona miqdorini tizim orqali qayd qiladi.", icon: ClipboardPlus },
+  "move-stage": {
+    title: "Smena o‘tkazish",
+    description:
+      "Mahsulotni keyingi bosqichga o‘tkazing va ishlagan ishchi(lar)ni tanlang — faollik avtomatik yoziladi.",
+    icon: ArrowRightLeft,
+  },
+  "add-activity": {
+    title: "Ishchi faolligi (eski)",
+    description: "Alohida faollik. Asosan smena o‘tkazishdan foydalaning.",
+    icon: ClipboardPlus,
+  },
   "register-defect": { title: "Brak qayd qilish", description: "Brakni tizim orqali audit qilinadigan yozuv sifatida qayd qiladi.", icon: AlertTriangle },
   "receive-finished": { title: "Omborga qabul qilish", description: "Ombor bosqichidagi tayyor mahsulotni ombor qoldig‘iga qo‘shadi.", icon: PackageCheck },
 };

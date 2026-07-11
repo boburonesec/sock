@@ -35,26 +35,13 @@ import {
   type SalaryRatePayload,
 } from "@/lib/api/settings";
 
-const salaryRateFormSchema = z
-  .object({
-    stageId: z.string().min(1, "Bosqich tanlanishi kerak."),
-    productVariantId: z.string().optional(),
-    amount: z
-      .string()
-      .transform((value) => value.trim())
-      .refine((value) => Number(value) > 0, "Stavka musbat bo‘lishi kerak."),
-    effectiveFrom: z.string().min(1, "Boshlanish sanasi kiritilishi shart."),
-    effectiveTo: z.string().optional(),
-  })
-  .refine(
-    (values) =>
-      !values.effectiveTo ||
-      new Date(values.effectiveTo) > new Date(values.effectiveFrom),
-    {
-      path: ["effectiveTo"],
-      message: "Tugash sanasi boshlanish sanasidan keyin bo‘lishi kerak.",
-    },
-  );
+const salaryRateFormSchema = z.object({
+  stageId: z.string().min(1, "Bosqich tanlanishi kerak."),
+  amount: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => Number(value) > 0, "Stavka musbat bo‘lishi kerak."),
+});
 
 type SalaryRateFormValues = z.infer<typeof salaryRateFormSchema>;
 
@@ -67,10 +54,6 @@ export function SalaryRatesPage() {
   const stagesQuery = useQuery({
     queryKey: queryKeys.product.stages(),
     queryFn: productApi.getStages,
-  });
-  const productsQuery = useQuery({
-    queryKey: queryKeys.product.products(),
-    queryFn: productApi.getProducts,
   });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -91,23 +74,14 @@ export function SalaryRatesPage() {
 
   const salaryRates = salaryRatesQuery.data?.data ?? [];
   const stages = stagesQuery.data?.data ?? [];
-  const productVariantOptions =
-    productsQuery.data?.data.flatMap((product) =>
-      product.variants.map((variant) => ({
-        id: variant.id,
-        label: `${variant.product.name} · ${variant.color.name} · ${variant.material.name} · ${variant.season.name}`,
-      })),
-    ) ?? [];
-  const isLoading =
-    salaryRatesQuery.isPending || stagesQuery.isPending || productsQuery.isPending;
-  const firstError =
-    salaryRatesQuery.error ?? stagesQuery.error ?? productsQuery.error;
+  const isLoading = salaryRatesQuery.isPending || stagesQuery.isPending;
+  const firstError = salaryRatesQuery.error ?? stagesQuery.error;
 
   return (
     <div>
       <PageHeader
-        title="Ish haqi stavkalari"
-        description="Bosqich va mahsulot varianti bo‘yicha ishbay stavkalarni boshqarish"
+        title="Ishbay stavkalar"
+        description="Har bir ishlab chiqarish bosqichi uchun 1 dona ish qancha to‘lanadi"
       />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -135,11 +109,11 @@ export function SalaryRatesPage() {
         </Button>
       </div>
 
-      {isLoading ? <LoadingState label="Ishbay stavkalar yuklanmoqda..." /> : null}
+      {isLoading ? <LoadingState label="Stavkalar yuklanmoqda..." /> : null}
 
       {firstError ? (
         <ErrorState
-          title="Ishbay stavkalar yuklanmadi"
+          title="Stavkalar yuklanmadi"
           description={
             firstError instanceof Error
               ? firstError.message
@@ -152,7 +126,6 @@ export function SalaryRatesPage() {
               onClick={() => {
                 void salaryRatesQuery.refetch();
                 void stagesQuery.refetch();
-                void productsQuery.refetch();
               }}
             >
               Qayta urinish
@@ -163,66 +136,43 @@ export function SalaryRatesPage() {
 
       {!isLoading && !firstError && salaryRates.length === 0 ? (
         <EmptyState
-          title="Ishbay stavkalar mavjud emas"
-          description="Stavka yaratilgach, xodim ishiga shu stavka qo‘llanadi."
+          title="Stavka yo‘q"
+          description="Masalan: Averlog — 120 so‘m/dona. Keyin smena o‘tkazganda ishchiga shu stavka yoziladi."
         />
       ) : null}
 
       {!isLoading && !firstError && salaryRates.length > 0 ? (
-        <DataTable label="Ishbay stavkalar jadvali">
+        <DataTable label="Ishbay stavkalar">
           <DataTableHead>
             <DataTableRow>
               <DataTableHeader>Bosqich</DataTableHeader>
-              <DataTableHeader>Qo‘llanish turi</DataTableHeader>
-              <DataTableHeader>Mahsulot varianti</DataTableHeader>
-              <DataTableHeader>Stavka</DataTableHeader>
-              <DataTableHeader>Amal qilish davri</DataTableHeader>
+              <DataTableHeader>1 dona uchun</DataTableHeader>
               <DataTableHeader>Amallar</DataTableHeader>
             </DataTableRow>
           </DataTableHead>
           <tbody>
-            {salaryRates.length > 0 ? (
-              salaryRates.map((rate) => (
-                <DataTableRow key={rate.id}>
-                  <DataTableCell className="font-semibold">
-                    {rate.stage.name}
-                  </DataTableCell>
-                  <DataTableCell>
-                    {rate.productVariant ? "Alohida mahsulot" : "Butun bosqich"}
-                  </DataTableCell>
-                  <DataTableCell>
-                    {rate.productVariant
-                      ? `${rate.productVariant.product.name} · ${rate.productVariant.color.name} · ${rate.productVariant.material.name} · ${rate.productVariant.season.name}`
-                      : "Barcha mahsulot variantlari"}
-                  </DataTableCell>
-                  <DataTableCell>{formatAmount(rate.amount)} so‘m / dona</DataTableCell>
-                  <DataTableCell>
-                    {formatDateTime(rate.effectiveFrom)} →{" "}
-                    {rate.effectiveTo ? formatDateTime(rate.effectiveTo) : "Ochiq"}
-                  </DataTableCell>
-                  <DataTableCell>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-9 border-rose-500/40 text-rose-300 hover:bg-rose-500/10"
-                      disabled={archiveMutation.isPending}
-                      onClick={() => {
-                        setFeedback(null);
-                        setRateToArchive(rate);
-                      }}
-                    >
-                      Arxivlash
-                    </Button>
-                  </DataTableCell>
-                </DataTableRow>
-              ))
-            ) : (
-              <EmptyTableState
-                colSpan={6}
-                title="Stavkalar mavjud emas"
-                description="Yangi stavka qo‘shing."
-              />
-            )}
+            {salaryRates.map((rate) => (
+              <DataTableRow key={rate.id}>
+                <DataTableCell className="font-semibold">
+                  {rate.stage.name}
+                </DataTableCell>
+                <DataTableCell>{formatAmount(rate.amount)} so‘m</DataTableCell>
+                <DataTableCell>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 border-rose-500/40 text-rose-300 hover:bg-rose-500/10"
+                    disabled={archiveMutation.isPending}
+                    onClick={() => {
+                      setFeedback(null);
+                      setRateToArchive(rate);
+                    }}
+                  >
+                    Arxivlash
+                  </Button>
+                </DataTableCell>
+              </DataTableRow>
+            ))}
           </tbody>
         </DataTable>
       ) : null}
@@ -230,7 +180,6 @@ export function SalaryRatesPage() {
       <SalaryRateFormDrawer
         open={isCreateOpen}
         stages={stages}
-        productVariantOptions={productVariantOptions}
         isSubmitting={createMutation.isPending}
         errorMessage={
           createMutation.error instanceof Error ? createMutation.error.message : null
@@ -241,8 +190,12 @@ export function SalaryRatesPage() {
         }}
         onSubmit={async (values) => {
           setFeedback(null);
-          await createMutation.mutateAsync(buildSalaryRatePayload(values));
-          setFeedback({ tone: "success", message: "Ishbay stavka yaratildi." });
+          const payload: SalaryRatePayload = {
+            stageId: values.stageId,
+            amount: values.amount,
+          };
+          await createMutation.mutateAsync(payload);
+          setFeedback({ tone: "success", message: "Stavka saqlandi." });
           setIsCreateOpen(false);
         }}
       />
@@ -262,7 +215,7 @@ export function SalaryRatesPage() {
             onSuccess: () => {
               setFeedback({
                 tone: "success",
-                message: "Ishbay stavka arxivlandi.",
+                message: "Stavka arxivlandi.",
               });
               setRateToArchive(null);
             },
@@ -285,7 +238,6 @@ export function SalaryRatesPage() {
 function SalaryRateFormDrawer({
   open,
   stages,
-  productVariantOptions,
   isSubmitting,
   errorMessage,
   onOpenChange,
@@ -293,7 +245,6 @@ function SalaryRateFormDrawer({
 }: {
   open: boolean;
   stages: Array<{ id: string; name: string; sortOrder: number }>;
-  productVariantOptions: Array<{ id: string; label: string }>;
   isSubmitting: boolean;
   errorMessage?: string | null;
   onOpenChange: (open: boolean) => void;
@@ -308,22 +259,13 @@ function SalaryRateFormDrawer({
     resolver: zodResolver(salaryRateFormSchema),
     defaultValues: {
       stageId: "",
-      productVariantId: "",
       amount: "",
-      effectiveFrom: "",
-      effectiveTo: "",
     },
   });
 
   useEffect(() => {
     if (!open) {
-      reset({
-        stageId: "",
-        productVariantId: "",
-        amount: "",
-        effectiveFrom: "",
-        effectiveTo: "",
-      });
+      reset({ stageId: "", amount: "" });
     }
   }, [open, reset]);
 
@@ -332,7 +274,7 @@ function SalaryRateFormDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Yangi ishbay stavka"
-      description="V1: stage-level yoki product-specific stavka. Employee-specific stavka keyingi ehtiyoj bo‘lsa qo‘shiladi."
+      description="Faqat bosqich va 1 dona narxi. Masalan: Dazmol — 80 so‘m."
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <FormField
@@ -359,25 +301,9 @@ function SalaryRateFormDrawer({
           </Select>
         </FormField>
 
-        <FormField htmlFor="salaryRateProductVariantId" label="Mahsulot varianti">
-          <Select
-            id="salaryRateProductVariantId"
-            defaultValue=""
-            disabled={isSubmitting}
-            {...register("productVariantId")}
-          >
-            <option value="">Barcha product variantlar</option>
-            {productVariantOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-
         <FormField
           htmlFor="salaryRateAmount"
-          label="Stavka"
+          label="1 dona uchun to‘lov (so‘m)"
           error={errors.amount?.message}
           required
         >
@@ -393,42 +319,6 @@ function SalaryRateFormDrawer({
           />
         </FormField>
 
-        <FormField
-          htmlFor="salaryRateEffectiveFrom"
-          label="Boshlanish vaqti"
-          error={errors.effectiveFrom?.message}
-          required
-        >
-          <Input
-            id="salaryRateEffectiveFrom"
-            type="datetime-local"
-            disabled={isSubmitting}
-            aria-invalid={Boolean(errors.effectiveFrom)}
-            {...register("effectiveFrom")}
-          />
-        </FormField>
-
-        <FormField
-          htmlFor="salaryRateEffectiveTo"
-          label="Tugash vaqti"
-          error={errors.effectiveTo?.message}
-        >
-          <Input
-            id="salaryRateEffectiveTo"
-            type="datetime-local"
-            disabled={isSubmitting}
-            aria-invalid={Boolean(errors.effectiveTo)}
-            {...register("effectiveTo")}
-          />
-        </FormField>
-
-        {stages.length === 0 ? (
-          <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-            Stavka yaratish uchun avval ishlab chiqarish bosqichlari sozlanishi
-            kerak.
-          </p>
-        ) : null}
-
         {errorMessage ? (
           <p
             role="alert"
@@ -439,42 +329,21 @@ function SalaryRateFormDrawer({
         ) : null}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Saqlanmoqda..." : "Stavka yaratish"}
+          {isSubmitting ? "Saqlanmoqda..." : "Stavkani saqlash"}
         </Button>
       </form>
     </Drawer>
   );
 }
 
-function buildSalaryRatePayload(
-  values: SalaryRateFormValues,
-): SalaryRatePayload {
-  return {
-    stageId: values.stageId,
-    productVariantId: values.productVariantId || null,
-    amount: values.amount,
-    effectiveFrom: toIsoString(values.effectiveFrom),
-    effectiveTo: values.effectiveTo ? toIsoString(values.effectiveTo) : null,
-  };
-}
-
-function toIsoString(value: string): string {
-  return new Date(value).toISOString();
-}
-
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 function formatAmount(value: string): string {
-  return new Intl.NumberFormat("uz-UZ").format(Number(value));
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return value;
+  return amount.toLocaleString("uz-UZ");
 }
 
-async function invalidateSalaryRateQueries(queryClient: ReturnType<typeof useQueryClient>) {
-  await Promise.all([
+function invalidateSalaryRateQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.settings.salaryRates() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.settings.overview() }),
   ]);

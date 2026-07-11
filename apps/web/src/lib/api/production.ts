@@ -106,7 +106,16 @@ export interface CreateStageMovementPayload {
   destinationStageId: string;
   productVariantId: string;
   quantity: number;
+  /** Manba bosqichda ishlagan ishchilar — faollik avtomatik yoziladi. */
+  employeeIds: string[];
   note?: string;
+}
+
+export interface StageMovementCreation {
+  sourceStageInventory: StageInventory;
+  destinationStageInventory: StageInventory;
+  stageMovement: StageMovement;
+  workerActivityCount?: number;
 }
 
 export interface CreateWorkerActivityPayload {
@@ -134,12 +143,6 @@ export interface ProductionBatchCreation {
     createdBy: UserReference;
   };
   stageInventory: StageInventory;
-  stageMovement: StageMovement;
-}
-
-export interface StageMovementCreation {
-  sourceStageInventory: StageInventory;
-  destinationStageInventory: StageInventory;
   stageMovement: StageMovement;
 }
 

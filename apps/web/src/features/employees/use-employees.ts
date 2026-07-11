@@ -29,10 +29,12 @@ export function useUpdateEmployee() {
     mutationFn: ({
       employeeId,
       name,
+      stageIds,
     }: {
       employeeId: string;
       name: string;
-    }) => employeesApi.updateEmployee(employeeId, { name }),
+      stageIds?: string[];
+    }) => employeesApi.updateEmployee(employeeId, { name, stageIds }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.employees.list() });
     },

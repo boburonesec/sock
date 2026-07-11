@@ -18,10 +18,9 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Ism</DataTableHeader>
+          <DataTableHeader>Ish bosqichlari</DataTableHeader>
           <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Yaratilgan</DataTableHeader>
-          <DataTableHeader>Yangilangan</DataTableHeader>
-          <DataTableHeader>Faollik / ish haqi</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
       <tbody>
@@ -50,21 +49,22 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
                   </span>
                 </div>
               </DataTableCell>
+              <DataTableCell className="text-sm text-muted-foreground">
+                {(employee.stages ?? []).length > 0
+                  ? employee.stages.map((stage) => stage.name).join(", ")
+                  : "Belgilanmagan"}
+              </DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={employee.status === "ACTIVE" ? "success" : "neutral"}>
                   {employee.status === "ACTIVE" ? "Faol" : "Nofaol"}
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell>{formatDateTimeForUser(employee.createdAt)}</DataTableCell>
-              <DataTableCell>{formatDateTimeForUser(employee.updatedAt)}</DataTableCell>
-              <DataTableCell className="text-muted-foreground">
-                Hozircha ma’lumot yo‘q
-              </DataTableCell>
             </DataTableRow>
           ))
         ) : (
           <EmptyTableState
-            colSpan={5}
+            colSpan={4}
             title="Xodimlar yo‘q"
             description="Xodim qo‘shilgach, shu ro‘yxatda ko‘rinadi."
           />
