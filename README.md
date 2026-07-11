@@ -178,7 +178,9 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:55432/paypoq_os?schema=pub
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN=replace-with-same-factory-tv-display-token
+# Server-only (not NEXT_PUBLIC): used by /api/factory-tv/summary proxy
+FACTORY_TV_ACCESS_TOKEN=replace-with-same-factory-tv-display-token
+API_INTERNAL_URL=http://localhost:3001
 ```
 
 ### Telegram bot

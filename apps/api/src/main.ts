@@ -10,7 +10,6 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('app.corsOrigin', 'http://localhost:3000');
-  const isProduction = configService.get<string>('app.nodeEnv') === 'production';
 
   // Security headers (API is JSON — CSP not required here; web owns page CSP).
   app.use(

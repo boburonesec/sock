@@ -65,7 +65,7 @@ Legend:
 | --- | --- | --- |
 | `/tv` not on public internet (or VPN) | **OPS** | nginx example shows IP allowlist pattern |
 | Strong `FACTORY_TV_ACCESS_TOKEN` + rotation | **DONE** (validation) + **OPS** | |
-| TV token is `NEXT_PUBLIC_*` (browser-visible) | **PARTIAL** | Accepted risk; keep internal network |
+| TV token server-side via `/api/factory-tv/summary` (not `NEXT_PUBLIC_*`) | **DONE** | Web proxy + runtime env; still keep `/tv` internal |
 | `/admin` IP allowlist / VPN | **OPS** | nginx comment block |
 
 ### 1.5 Telegram bot
