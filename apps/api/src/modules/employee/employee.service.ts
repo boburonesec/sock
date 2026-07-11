@@ -60,6 +60,8 @@ export class EmployeeService {
         dto.stageIds ?? [],
       );
 
+      // Nested create: Prisma infers employeeId/tenantId/factoryId from parent
+      // Employee; only productionStageId is accepted on nested input.
       const createdEmployee = await tx.employee.create({
         data: {
           tenantId,
@@ -68,8 +70,6 @@ export class EmployeeService {
           status: EmployeeStatus.ACTIVE,
           stageAssignments: {
             create: stageIds.map((productionStageId) => ({
-              tenantId,
-              factoryId,
               productionStageId,
             })),
           },

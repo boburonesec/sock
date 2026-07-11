@@ -31,12 +31,12 @@ jobs:
       NODE_ENV: test
       CORS_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3001
+      API_INTERNAL_URL: http://localhost:3001
       JWT_ACCESS_SECRET: local-ci-jwt-secret-change-me
       PLATFORM_JWT_ACCESS_SECRET: local-ci-platform-jwt-secret-change-me
       TELEGRAM_LINK_TOKEN_SECRET: local-ci-telegram-link-token-secret
       BOT_INTERNAL_API_KEY: local-ci-bot-internal-api-key-change-me
       FACTORY_TV_ACCESS_TOKEN: local-ci-factory-tv-token-change-me
-      NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN: local-ci-factory-tv-token-change-me
 
     steps:
       - name: Checkout
@@ -83,7 +83,7 @@ jobs:
       - name: Verify Docker image builds
         run: |
           docker build -f apps/api/Dockerfile -t paypoq-api:ci .
-          docker build -f apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 --build-arg NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN=local-ci-factory-tv-token-change-me -t paypoq-web:ci .
+          docker build -f apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 -t paypoq-web:ci .
           docker build -f apps/bot/Dockerfile -t paypoq-bot:ci .
 
       - name: Run Telegram smoke suite
@@ -92,5 +92,33 @@ jobs:
       - name: Run MVP smoke suite
         run: pnpm smoke:mvp
 
+      - name: Seed demo data for live API suites
+        run: pnpm prisma:seed
+
+      - name: Start API for live suites
+        run: |
+          node apps/api/dist/src/main.js > /tmp/paypoq-api.log 2>&1 &
+          echo $! > /tmp/paypoq-api.pid
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:3001/health >/dev/null; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start" >&2
+          cat /tmp/paypoq-api.log >&2 || true
+          exit 1
+
+      - name: Run RBAC role-access suite
+        run: node apps/api/scripts/rbac-role-access-test.mjs
+
       - name: Run employee self-service smoke suite
-        run: pnpm smoke:employee-self-service
+        run: node apps/api/scripts/employee-self-service-smoke-test.mjs
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -f /tmp/paypoq-api.pid ]; then
+            kill "$(cat /tmp/paypoq-api.pid)" || true
+          fi

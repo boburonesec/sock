@@ -91,18 +91,30 @@ export interface FactoryTvSummary {
 export const dashboardApi = {
   getExecutiveSummary: () =>
     apiClient<{ data: ExecutiveSummary }>("/dashboard/executive-summary"),
-  getFactoryTvSummary: () => {
-    const accessToken = process.env.NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN;
+  /**
+   * Factory TV goes through the same-origin Next.js proxy so the access token
+   * stays on the server (FACTORY_TV_ACCESS_TOKEN), not in the browser bundle.
+   */
+  getFactoryTvSummary: async () => {
+    const response = await fetch("/api/factory-tv/summary", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
 
-    if (!accessToken) {
-      throw new Error("NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN is not configured.");
+    const body = (await response.json().catch(() => null)) as unknown;
+
+    if (!response.ok) {
+      const message =
+        body &&
+        typeof body === "object" &&
+        "message" in body &&
+        typeof (body as { message: unknown }).message === "string"
+          ? (body as { message: string }).message
+          : `Factory TV failed (${response.status})`;
+      throw new Error(message);
     }
 
-    return apiClient<{ data: FactoryTvSummary }>("/dashboard/factory-tv-summary", {
-      skipAuth: true,
-      headers: {
-        "X-Factory-TV-Token": accessToken,
-      },
-    });
+    return body as { data: FactoryTvSummary };
   },
 };

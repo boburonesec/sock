@@ -66,7 +66,6 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-        NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN: ${NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN:?NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN is required}
     restart: unless-stopped
     depends_on:
       api:
@@ -75,7 +74,10 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN: ${NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN:?NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN is required}
+      # Browser-facing API URL (baked at build) + server-side TV proxy config.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:3001}
+      FACTORY_TV_ACCESS_TOKEN: ${FACTORY_TV_ACCESS_TOKEN:?FACTORY_TV_ACCESS_TOKEN is required}
     ports:
       - "${WEB_PORT:-3000}:3000"
 

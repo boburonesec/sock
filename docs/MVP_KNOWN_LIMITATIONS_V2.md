@@ -31,17 +31,29 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 - No self-service password reset email flow
 - No invite-user email flow
 - Platform admin and tenant operator are separate login paths
+- Login/refresh rate limiting is **in-process** (per API instance). Multi-instance
+  deploys should move rate limits to Redis or the edge proxy.
+- Refresh cookies are HttpOnly; access tokens remain in SPA memory/storage (XSS still matters)
 
 ### Production
 
 - No stage movement correction after commit
 - No batch cancellation
-- Defects do not auto-reduce StageInventory
+- Defects do not auto-reduce StageInventory (operator must adjust stock separately if needed)
 - Defects do not auto-create penalties
 - No automatic material consumption from production
 - No IoT
 - Stage move requires workers assigned to the source stage (Xodimlar)
 - Per-worker quantities supported; equal split is the default helper only
+- Stage move **auto-writes** worker activity for payroll — do not re-enter the same
+  pieces via the manual activity form (double-count risk)
+
+### Factory TV
+
+- Token must stay **server-side** (`FACTORY_TV_ACCESS_TOKEN` on web + API).
+  Browser uses same-origin `/api/factory-tv/summary` proxy; do not put the token in
+  `NEXT_PUBLIC_*` for new deploys.
+- Keep `/tv` on internal network / VPN when possible
 
 ### Warehouse
 
@@ -69,8 +81,17 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 ### Reports / notifications
 
 - No generated report files, Excel, or PDF export
+- No dedicated `/reports/*` sub-pages; `/reports` is a hub of links to operational screens
 - Notification center is a placeholder shell (use domain screens for low stock /
   advances)
+- `NotificationModule` is an empty boundary module (no push/email/in-app feed yet)
+
+### QA / automation drift (watch)
+
+- MVP smoke suite must stay aligned with production DTOs (salary rates are
+  stage-level only; stage movements require `employeeIds`)
+- Nested Prisma writes for employee stage assignment must not re-send
+  parent tenant/factory fields (fixed 2026-07-11)
 
 ### Mobile / bot
 

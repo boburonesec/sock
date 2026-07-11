@@ -272,10 +272,6 @@ async function createProductSetup() {
 }
 
 async function createEmployeeAndSalaryRate(variantId) {
-  const employee = (await request('/employees', {
-    method: 'POST',
-    body: { name: `Smoke Employee ${suffix}` },
-  })).data;
   const stages = (await request('/product/stages')).data;
   const firstStage = stages[0];
   const secondStage = stages[1];
@@ -283,13 +279,34 @@ async function createEmployeeAndSalaryRate(variantId) {
 
   assert(firstStage && secondStage && omborStage, 'default production stages should exist');
 
+  // Stage move requires workers assigned to the source stage.
+  // Also assign second stage so manual activity endpoint can be exercised there
+  // without double-counting the first move's automatic activity.
+  const employee = (await request('/employees', {
+    method: 'POST',
+    body: {
+      name: `Smoke Employee ${suffix}`,
+      stageIds: [firstStage.id, secondStage.id],
+    },
+  })).data;
+
+  // Salary rates are stage-level only (amount per piece). At most one active
+  // rate per stage (partial unique index). Archive any open rate, then create.
+  const existingRates = (await request('/settings/salary-rates')).data ?? [];
+  for (const rate of existingRates) {
+    const stageId = rate.stageId ?? rate.productionStageId ?? rate.stage?.id;
+    if (stageId === firstStage.id && !rate.effectiveTo && !rate.deletedAt) {
+      await request(`/settings/salary-rates/${rate.id}/archive`, {
+        method: 'PATCH',
+      });
+    }
+  }
+
   await request('/settings/salary-rates', {
     method: 'POST',
     body: {
       stageId: firstStage.id,
-      productVariantId: variantId,
       amount: '7',
-      effectiveFrom: '2026-01-01',
     },
   });
 
@@ -307,24 +324,40 @@ async function runProductionChain({ employee, firstStage, secondStage, omborStag
       note: `Smoke batch ${suffix}`,
     },
   });
-  await request('/production/stage-movements', {
-    method: 'POST',
-    body: {
-      sourceStageId: firstStage.id,
-      destinationStageId: secondStage.id,
-      productVariantId: variant.id,
-      quantity: 6,
-    },
-  });
-  const workerActivity = (await request('/production/worker-activities', {
-    method: 'POST',
-    body: {
-      employeeId: employee.id,
-      stageId: firstStage.id,
-      productVariantId: variant.id,
-      quantity: 4,
-    },
-  })).data;
+  // Stage move auto-creates worker activities — do not also POST
+  // /worker-activities for the same work (would double-count payroll).
+  const firstMove = (
+    await request('/production/stage-movements', {
+      method: 'POST',
+      body: {
+        sourceStageId: firstStage.id,
+        destinationStageId: secondStage.id,
+        productVariantId: variant.id,
+        quantity: 6,
+        employeeIds: [employee.id],
+      },
+    })
+  ).data;
+
+  assert(
+    Number(firstMove.workerActivityCount ?? 0) >= 1,
+    'stage movement should create worker activity snapshots',
+  );
+
+  // Manual worker-activity endpoint remains available for corrections;
+  // exercise it on a separate small quantity after move (not same work).
+  const workerActivity = (
+    await request('/production/worker-activities', {
+      method: 'POST',
+      body: {
+        employeeId: employee.id,
+        stageId: secondStage.id,
+        productVariantId: variant.id,
+        quantity: 1,
+        note: `Smoke manual activity ${suffix}`,
+      },
+    })
+  ).data;
 
   await request('/production/defects', {
     method: 'POST',
@@ -343,6 +376,7 @@ async function runProductionChain({ employee, firstStage, secondStage, omborStag
       destinationStageId: omborStage.id,
       productVariantId: variant.id,
       quantity: 5,
+      employeeIds: [employee.id],
     },
   });
   await request('/warehouse/finished-product-receipts', {

@@ -1,85 +1,136 @@
 # Paypoq OS — Page Map v1
 
-Status: Approved  
-Version: 1.0
+Status: Active (aligned with shipped web routes)  
+Version: 1.1  
+Date: 2026-07-11
 
 ## Global layout
 
-Ichki ilova `sidebar`, top navigation, asosiy kontent maydoni, notification center va user menu’dan iborat. Dark mode standart, light mode optional.
+Ichki ilova `sidebar`, top navigation, asosiy kontent maydoni, notification bell va user menu’dan iborat. Dark mode standart, light mode optional.
+
+Frontend route access `apps/web/src/lib/access-control.ts` orqali permission bilan cheklanadi. Backend RBAC alohida guard.
 
 ## Dashboardlar
 
-| Yo‘l | Foydalanuvchilar | Asosiy ko‘rsatkichlar |
-| --- | --- | --- |
-| `/dashboard/executive` | Owner, Manager | Ishlab chiqarish, ombor, client/supplier debt, sotuv, xarajatlar |
-| `/dashboard/operations` | Manager | Stage inventory, faollik, trend, bottleneck, nuqsonlar |
-| `/dashboard/finance` | Accountant, Owner, Manager | Qarzdorlik, payroll, avans va xarajatlar |
-| `/dashboard/sales` | Seller, Manager, Owner | Buyurtmalar, sotuv, client debt, top clients |
+| Yo‘l | Foydalanuvchilar (permission) | Asosiy ko‘rsatkichlar | Holat |
+| --- | --- | --- | --- |
+| `/dashboard/executive` | `dashboard.view` (Owner, Manager) | Ishlab chiqarish, ombor, client/supplier debt, sotuv, xarajatlar | **Shipped** |
+| `/dashboard/operations` | `dashboard.view` | Stage inventory, faollik, bottleneck, nuqsonlar | **Shipped** |
+| `/dashboard/finance` | — | — | **Yo‘q** — moliya KPI executive + `/finance` ichida |
+| `/dashboard/sales` | — | — | **Yo‘q** — sotuv KPI executive + `/sales` ichida |
 
 ## Ishlab chiqarish
 
-| Yo‘l | Vazifa |
-| --- | --- |
-| `/production` | Production board: stage cards, summary, batch, ko‘chirish, faoliyat va nuqson qaydi |
-| `/production/stages` | Bosqich qoldiqlari va mahsulotlar kesimi |
-| `/production/activities` | Ishchi faolligi va unumdorlik |
-| `/production/defects` | Nuqsonlar ro‘yxati, statistikasi va tarixi |
+| Yo‘l | Vazifa | Holat |
+| --- | --- | --- |
+| `/production` | Production board: stage cards, batch, ko‘chirish, ishchi faoliyati, nuqson | **Shipped** (bitta board) |
+| `/production/stages` | Alohida sahifa | **Yo‘q** — board ichida |
+| `/production/activities` | Alohida sahifa | **Yo‘q** — board ichida |
+| `/production/defects` | Alohida sahifa | **Yo‘q** — board ichida |
 
-Production sahifalari Manager va Shift Receiver uchun.
+Production: Manager va Shift Receiver (`production.view` / `production.write`).
 
 ## Ombor
 
-| Yo‘l | Vazifa |
-| --- | --- |
-| `/warehouse` | Tayyor mahsulot, material qoldiqlari va low-stock holati |
-| `/warehouse/materials` | Material inventory va qabul qilish |
-| `/warehouse/movements` | Harakatlar tarixi va tuzatishlar |
-| `/warehouse/zones` | Ombor zonalari va transferlar |
+| Yo‘l | Vazifa | Holat |
+| --- | --- | --- |
+| `/warehouse` | Tayyor mahsulot qoldig‘i, low-stock, tuzatish | **Shipped** |
+| `/warehouse/materials` | Material inventory va qabul | **Shipped** |
+| `/warehouse/movements` | Harakatlar tarixi | **Shipped** |
+| `/warehouse/zones` | Zonalar overview (read) | **Shipped** — zona→zona transfer **yo‘q** |
 
-Ombor sahifalari Warehouse Operator va Manager uchun.
+Ombor: Warehouse Operator va Manager (`warehouse.view` / `warehouse.write`).
 
 ## Sotuvlar
 
-| Yo‘l | Vazifa |
-| --- | --- |
-| `/sales/clients` | Mijozlar ro‘yxati va qarz xulosasi |
-| `/sales/clients/:id` | Mijoz ma’lumoti, buyurtma, to‘lov va qarz |
-| `/sales/orders` | Buyurtmalar va holatlar |
-| `/sales/orders/:id` | Buyurtma tafsilotlari, mahsulotlar, to‘lovlar, timeline |
-| `/sales/payments` | To‘lovlar ro‘yxati |
-| `/sales/debts` | Client debt va aging |
+| Yo‘l | Vazifa | Holat |
+| --- | --- | --- |
+| `/sales` | Sotuvlar hub | **Shipped** |
+| `/sales/clients` | Mijozlar ro‘yxati | **Shipped** |
+| `/sales/clients/:id` | Mijoz tafsiloti (drawer/panel, route ixtiyoriy) | UI da drawer asosiy |
+| `/sales/orders` | Buyurtmalar | **Shipped** |
+| `/sales/orders/:id` | Buyurtma tafsiloti | UI da drawer asosiy |
+| `/sales/payments` | To‘lovlar | **Shipped** |
+| `/sales/debts` | Client debt | **Shipped** |
 
 ## Moliya
 
-| Yo‘l | Vazifa |
-| --- | --- |
-| `/finance/expenses` | Xarajatlar va tasdiqlash |
-| `/finance/advances` | Avans so‘rovlari, tasdiqlash va to‘lov |
-| `/finance/payroll` | Payroll davrlari va holatlari |
-| `/finance/payroll/:id` | Xodimlar bo‘yicha payroll va to‘lovlar |
-| `/finance/suppliers` | Supplier directory, xarid va qarzdorlik |
+| Yo‘l | Vazifa | Holat |
+| --- | --- | --- |
+| `/finance` | Moliya hub / summary | **Shipped** |
+| `/finance/expenses` | Xarajatlar workflow | **Shipped** |
+| `/finance/advances` | Avanslar workflow | **Shipped** |
+| `/finance/payroll` | Payroll davrlari | **Shipped** |
+| `/finance/payroll/:id` | Davr itemlari | UI drawer/panel |
+| `/finance/suppliers` | Supplier, xarid, qarz | **Shipped** |
 
 ## Xodimlar
 
-| Yo‘l | Vazifa |
+| Yo‘l | Vazifa | Holat |
+| --- | --- | --- |
+| `/employees` | Ishbay ishchilar (dasturga kirmaydi) | **Shipped** |
+| `/employees/:id` | Tafsilot | UI drawer asosiy |
+| `/employees/bonuses` | Bonus yozuvlari | **Shipped** |
+| `/employees/penalties` | Jarima yozuvlari | **Shipped** |
+
+## Hisobotlar
+
+| Yo‘l | Holat |
 | --- | --- |
-| `/employees` | Xodimlar ro‘yxati |
-| `/employees/:id` | Faollik, bonus, jarima, avans va payroll tarixi |
-| `/employees/bonuses` | Bonus yozuvlari |
-| `/employees/penalties` | Jarima yozuvlari |
+| `/reports` | **Shipped** — overview + tezkor havolalar operatsion ekranlarga |
+| `/reports/production` va boshqa sub-route’lar | **Yo‘q** alohida generated report sahifalari |
+| Excel / PDF export | **Yo‘q** (keyingi bosqich; UI da aniq yozilgan) |
 
-## Hisobotlar va sozlamalar
+## Sozlamalar
 
-- Hisobotlar: `/reports/production`, `/reports/employees`, `/reports/sales`, `/reports/finance`, `/reports/warehouse`.
-- Barcha hisobotlarda sana filtri, qidiruv, Excel va PDF eksport mavjud bo‘ladi.
-- Sozlamalar: mahsulotlar, model, rang, material, mavsum, bosqich, salary rate, expense category, warehouse zone, threshold, role va permission.
+| Yo‘l | Holat |
+| --- | --- |
+| `/settings` | Overview hub |
+| `/settings/products` | Mahsulot + variant |
+| `/settings/colors`, `/materials`, `/seasons`, `/stages` | Master data |
+| `/settings/salary-rates` | Bosqich bo‘yicha ishbay stavka |
+| `/settings/expense-categories` | Xarajat kategoriyalari |
+| `/settings/zones`, `/settings/thresholds` | Zona / low-stock limit |
+| `/settings/roles` | Rollar (read) |
+| `/settings/company` | Filiallar + operatorlar (**Owner only**) |
+| `/settings/telegram` | Telegram link / account boshqaruvi |
+| `/settings/product-models`, `/settings/permissions` | Navigation metadata mavjud; alohida page yo‘q yoki roles ichida |
 
 ## Umumiy ekranlar
 
-| Yo‘l | Vazifa | Ruxsat |
+| Yo‘l | Vazifa | Holat |
 | --- | --- | --- |
-| `/notifications` | Bildirishnomalar feed’i | Barcha foydalanuvchilar |
-| `/audit` | Audit log va filterlar | Owner, Manager |
-| `/tv` | Login talab qilmaydigan, faqat o‘qish uchun Factory TV dashboard | Factory monitor |
+| `/login` | Tenant operator login | **Shipped** |
+| `/profile` | Operator akkaunt | **Shipped** |
+| `/notifications` | Placeholder shell | **Shipped shell** — avtomatik feed yo‘q |
+| `/audit` | Audit log | **Shipped** — faqat `audit.view` (default: Owner; Manager’da **yo‘q**) |
+| `/tv` | Factory TV (login yo‘q; server-side token via `/api/factory-tv/summary`) | **Shipped** |
+| `/admin/*` | Platform super-admin (alohida login) | **Shipped** |
+| `/design-system` | Dev design system | **Shipped** (ichki) |
 
-Factory TV bugungi ishlab chiqarish, stage inventory, top workerlar va joriy maqsadlarni ko‘rsatadi.
+## Platform admin
+
+| Yo‘l | Vazifa |
+| --- | --- |
+| `/admin/login` | Platform admin login |
+| `/admin` | Admin home |
+| `/admin/tenants` | Tenant ro‘yxati / yaratish |
+| `/admin/tenants/:id` | Tenant detail, factory, owner, branch mode |
+| `/admin/profile` | Platform admin profil |
+
+## Mobile (Expo) — asosiy yo‘llar
+
+| Yo‘l | Vazifa |
+| --- | --- |
+| Login | Operator login (tenant auth) |
+| Home / activities / payroll / advances / profile | Employee self-service (linked employee) |
+| Manager screens | Executive / production / warehouse / sales / finance o‘qish |
+
+## Telegram bot
+
+Read-only: employee salary/activity/advance/payroll; client orders/debt/payments. Private chat only. API key orqali internal endpoints.
+
+## Manba
+
+Amalda route ro‘yxati: `apps/web/src/app/**` va `next build` output.  
+Cheklovlar: `docs/MVP_KNOWN_LIMITATIONS_V2.md`.

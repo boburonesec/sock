@@ -8,7 +8,7 @@ This document covers operational handling for:
 - `PLATFORM_JWT_ACCESS_SECRET`
 - `TELEGRAM_LINK_TOKEN_SECRET`
 - `BOT_INTERNAL_API_KEY`
-- `FACTORY_TV_ACCESS_TOKEN` (also mirrored as `NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN` for the browser TV page — treat as display secret, not equivalent to JWT)
+- `FACTORY_TV_ACCESS_TOKEN` (API + web server; **not** `NEXT_PUBLIC_*` on new deploys)
 - `TELEGRAM_BOT_TOKEN`
 - PostgreSQL credentials
 
@@ -19,7 +19,8 @@ Do not:
 - commit secrets
 - store secrets in docs
 - store secrets in Docker images
-- store secrets in frontend code
+- store secrets in frontend code (`NEXT_PUBLIC_*` includes values in the browser bundle)
+- put `FACTORY_TV_ACCESS_TOKEN` in `NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN` on new deploys
 - paste secrets into screenshots or chat logs
 - reuse local development secrets in production
 

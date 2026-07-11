@@ -2,7 +2,7 @@
 
 Status: Active
 
-Date: 2026-06-30
+Date: 2026-07-11
 
 ## Purpose
 
@@ -33,9 +33,9 @@ Covered:
 
 - auth login and request context
 - product / variant / price setup
-- employee and salary rate setup
+- employee (with stage assignment) and stage-level salary rate setup
 - production batch
-- stage movement
+- stage movement with `employeeIds` (required for activity snapshot)
 - worker activity
 - defect
 - finished product receipt

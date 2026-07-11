@@ -16,9 +16,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
-ARG NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN=local-development-factory-tv-token-change-me
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN=$NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN
 COPY . .
 RUN pnpm --filter @paypoq/web build
 
@@ -30,6 +28,8 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
+# Runtime-only TV secrets (not baked into the client bundle).
+# FACTORY_TV_ACCESS_TOKEN and API_INTERNAL_URL come from compose/env.
 USER nextjs
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]

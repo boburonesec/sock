@@ -22,13 +22,13 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Trust reverse proxy (Nginx/Caddy) so request.ip and Secure cookies work.
-  if (isProduction) {
-    const expressApp = app.getHttpAdapter().getInstance() as {
-      set?: (key: string, value: unknown) => void;
-    };
-    expressApp.set?.('trust proxy', 1);
-  }
+  // Trust reverse proxy (Nginx/Caddy) so request.ip (rate limiting) and Secure cookies work.
+  const expressApp = app.getHttpAdapter().getInstance() as {
+    set?: (key: string, value: unknown) => void;
+    disable?: (key: string) => void;
+  };
+  expressApp.set?.('trust proxy', 1);
+  expressApp.disable?.('x-powered-by');
 
   app.enableCors({
     origin: corsOrigin

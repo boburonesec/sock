@@ -58,7 +58,8 @@ proven on a **target production server** (code may already exist):
 - production server `pnpm deploy:smoke`
 - installed monitoring + named alert channel
 - assigned backup/off-server copy ownership
-- public Factory TV protection if internet-exposed
+- multi-instance (Redis) auth rate limiting (in-process limiter exists)
+- public Factory TV exposure if internet-facing (server-side token proxy shipped)
 - mobile live-device session smoke
 - reverse proxy TLS installed from `configs/nginx.paypoq.example.conf` (or equivalent)
 
@@ -100,7 +101,7 @@ Reasons:
 - Limited automated tenant/RBAC negative coverage.
 - No centralized production observability.
 - No automated off-server backup integration.
-- No auth rate limiting in the app.
+- Auth rate limiting is process-local only (not Redis/edge shared).
 - No mature incident/security monitoring.
 - Mobile and self-service surfaces are new and need pilot validation.
 

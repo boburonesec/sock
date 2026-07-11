@@ -21,7 +21,7 @@ Tizim generic ERP emas. Uning markazida stage inventory, smena qabul qiluvchi ki
 | Owner | Barcha ko‘rsatkichlar, moliya va hisobotlarni ko‘rish |
 | Manager | Ishlab chiqarish, tasdiqlar, xodimlar va operatsiyalarni boshqarish |
 | Shift Receiver | Partiya, bosqich ko‘chishi, ishchi faolligi va nuqsonlarni kiritish |
-| Warehouse Worker | Ombor qoldig‘i va harakatlarini yuritish |
+| Warehouse Operator | Ombor qoldig‘i va harakatlarini yuritish |
 | Seller | Mijozlar, buyurtmalar va to‘lovlarni yuritish |
 | Accountant | Xarajatlar, avans to‘lovlari, ish haqi va qarzlarni yuritish |
 
@@ -79,17 +79,26 @@ Mahsulot oqimi:
 - Sotuv: buyurtmalar, mijozlar va qarzdorlik.
 - Moliya: xarajatlar, to‘lovlar, supplier debt va cash flow.
 - Xodimlar: ishlab chiqarilgan dona, ish haqi, bonus, jarima va avans.
-- Hisobotlar filtrlanadigan va keyinchalik eksport qilinadigan bo‘ladi.
+- **V1 holati:** `/reports` hub operatsion ekranlarga tezkor havola beradi;
+  alohida generated report, Excel/PDF export yo‘q (keyingi bosqich).
 
 ## 10. Dashboards
 
-- Executive: ishlab chiqarish, sotuv, qarzdorlik va asosiy moliyaviy KPI.
-- Operations: bosqich qoldiqlari, bottleneck, bugungi partiyalar va nuqsonlar.
-- Finance: mijoz qarzi, supplier debt, xarajatlar va kutilayotgan to‘lovlar.
-- Sales: faol buyurtmalar, muddatlar, to‘lovlar va mijoz qarzi.
+- Executive (`/dashboard/executive`): ishlab chiqarish, sotuv, qarzdorlik va asosiy moliyaviy KPI.
+- Operations (`/dashboard/operations`): bosqich qoldiqlari, bottleneck, bugungi partiyalar va nuqsonlar.
+- Alohida `/dashboard/finance` va `/dashboard/sales` route’lari V1’da **yo‘q**; moliya/sotuv KPI executive va `/finance`, `/sales` modulllarida.
+- Factory TV (`/tv`): login yo‘q; token web serverda saqlanadi, brauzerga chiqmaydi
+  (`/api/factory-tv/summary` proxy).
 - Dashboard ko‘rinishi foydalanuvchi roliga mos bo‘ladi.
 
 ## 11. Notifications
+
+**V1 holati (2026-07-11):** avtomatik bildirishnoma markazi hali yo‘q.
+`/notifications` — placeholder shell. Low-stock va avans holati domain
+ekranlaridan (Ombor / Moliya) kuzatiladi. `NotificationModule` backend’da
+bo‘sh chegara modul.
+
+Kelajakdagi maqsad (hali shipped emas):
 
 - Past ombor qoldig‘i.
 - Buyurtma muddati yaqinlashishi yoki o‘tib ketishi.

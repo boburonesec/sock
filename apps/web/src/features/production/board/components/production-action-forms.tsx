@@ -784,7 +784,13 @@ function WorkerActivityForm({
           variant kerak. Tizim’da tegishli ishbay stavka ham sozlangan bo‘lishi
           shart.
         </p>
-      ) : null}
+      ) : (
+        <p className="rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-200">
+          Eslatma: «Bosqichga ko‘chirish» allaqachon ishchi faolligini yozadi
+          (ish haqi uchun). Bu forma faqat qo‘shimcha yoki tuzatish kiritish
+          uchun — bir xil ishni ikki marta yozmang.
+        </p>
+      )}
 
       <FormField
         label="Miqdor"
