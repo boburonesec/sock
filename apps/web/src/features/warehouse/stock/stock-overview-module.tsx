@@ -13,6 +13,7 @@ import { productApi } from "@/lib/api/product";
 import { queryKeys } from "@/lib/api/query-keys";
 import { warehouseApi, type StockCorrectionPayload } from "@/lib/api/warehouse";
 import { formatNumber } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
 import { LowStockMaterials } from "./components/low-stock-materials";
 import { MaterialStockTable } from "./components/material-stock-table";
 import { ProductStockTable } from "./components/product-stock-table";
@@ -22,6 +23,8 @@ import { useWarehouseStockData } from "./use-warehouse-stock-data";
 
 export function StockOverviewModule() {
   const queryClient = useQueryClient();
+  const permissions = useAuthStore((state) => state.permissions);
+  const canWriteWarehouse = permissions.includes("warehouse.write");
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
@@ -175,16 +178,18 @@ export function StockOverviewModule() {
           >
             Harakatlar tarixi
           </Link>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setFeedback(null);
-              setIsCorrectionOpen(true);
-            }}
-          >
-            Qoldiqni tuzatish
-          </Button>
+          {canWriteWarehouse ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFeedback(null);
+                setIsCorrectionOpen(true);
+              }}
+            >
+              Qoldiqni tuzatish
+            </Button>
+          ) : null}
         </div>
         <ProductStockTable stock={stock} />
       </PageSection>
@@ -193,19 +198,26 @@ export function StockOverviewModule() {
         title="Xomashyo qoldig‘i"
         description="Material va zona bo‘yicha joriy qoldiq."
       >
-        <div className="mb-4 flex justify-end">
-          <Link
-            href="/warehouse/materials"
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Material qabul qilish
-          </Link>
-        </div>
+        {canWriteWarehouse ? (
+          <div className="mb-4 flex justify-end">
+            <Link
+              href="/warehouse/materials"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Material qabul qilish
+            </Link>
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-muted-foreground">
+            Sotuvchi va boshqa o‘quv rollar faqat qoldiqni ko‘radi. Kirim/tuzatish —
+            omborchi yoki menejer.
+          </p>
+        )}
         <MaterialStockTable stock={materialStock} />
       </PageSection>
 
       <StockCorrectionDrawer
-        open={isCorrectionOpen}
+        open={isCorrectionOpen && canWriteWarehouse}
         products={productsQuery.data?.data ?? []}
         materialStock={materialStock}
         zones={zonesQuery.data?.data ?? []}

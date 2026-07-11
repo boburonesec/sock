@@ -76,8 +76,14 @@ const rolePermissions: Record<string, readonly string[]> = {
     'settings.view',
     'settings.write',
   ],
-  Accountant: ['finance.view', 'finance.write', 'sales.view', 'reports.view'],
-  Seller: ['sales.view', 'sales.write'],
+  Accountant: [
+    'finance.view',
+    'finance.write',
+    'sales.view',
+    'reports.view',
+    'warehouse.view',
+  ],
+  Seller: ['sales.view', 'sales.write', 'warehouse.view'],
   'Warehouse Operator': ['warehouse.view', 'warehouse.write'],
   'Shift Receiver': ['production.view', 'production.write'],
 };

@@ -16,6 +16,10 @@ import {
   DEFAULT_WAREHOUSE_ZONES,
 } from '../../common/factory-defaults';
 import {
+  PERMISSION_DEFINITIONS,
+  ROLE_PERMISSIONS,
+} from '../../common/role-permissions';
+import {
   CreatePlatformFactoryDto,
   CreatePlatformOwnerUserDto,
   CreatePlatformTenantDto,
@@ -24,48 +28,6 @@ import {
 } from './platform-admin.dto';
 
 const DEFAULT_FACTORY_NAME = 'Asosiy filial';
-
-const PERMISSION_DEFINITIONS = [
-  'dashboard.view',
-  'production.view',
-  'production.write',
-  'warehouse.view',
-  'warehouse.write',
-  'sales.view',
-  'sales.write',
-  'finance.view',
-  'finance.write',
-  'employees.view',
-  'employees.write',
-  'reports.view',
-  'settings.view',
-  'settings.write',
-  'audit.view',
-] as const;
-
-const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
-  Owner: PERMISSION_DEFINITIONS,
-  Manager: [
-    'dashboard.view',
-    'production.view',
-    'production.write',
-    'warehouse.view',
-    'warehouse.write',
-    'sales.view',
-    'sales.write',
-    'finance.view',
-    'finance.write',
-    'employees.view',
-    'employees.write',
-    'reports.view',
-    'settings.view',
-    'settings.write',
-  ],
-  Accountant: ['finance.view', 'finance.write', 'sales.view', 'reports.view'],
-  Seller: ['sales.view', 'sales.write'],
-  'Warehouse Operator': ['warehouse.view', 'warehouse.write'],
-  'Shift Receiver': ['production.view', 'production.write'],
-};
 
 @Injectable()
 export class PlatformAdminService {

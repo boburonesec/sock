@@ -15,6 +15,7 @@ import { productApi } from "@/lib/api/product";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { MaterialStock } from "@/lib/api/warehouse";
 import { warehouseApi, type MaterialReceiptPayload } from "@/lib/api/warehouse";
+import { useAuthStore } from "@/stores/auth-store";
 import { MaterialDetailsDrawer } from "./components/material-details-drawer";
 import { MaterialReceiptDrawer } from "./components/material-receipt-drawer";
 import { MaterialsTable } from "./components/materials-table";
@@ -22,6 +23,9 @@ import { useMaterials } from "./use-materials";
 
 export function MaterialsModule() {
   const queryClient = useQueryClient();
+  const canWriteWarehouse = useAuthStore((state) =>
+    state.permissions.includes("warehouse.write"),
+  );
   const { data, error, isError, isPending, refetch } = useMaterials();
   const materialsQuery = useQuery({
     queryKey: queryKeys.product.materials(),
@@ -112,27 +116,33 @@ export function MaterialsModule() {
         title="Materiallar"
         description="Yarn, elastic, labels va packaging materiallari."
       >
-        <div className="mb-4 flex justify-end">
-          <Button
-            onClick={() => {
-              setFeedback(null);
-              receiptMutation.reset();
-              setIsReceiptOpen(true);
-            }}
-          >
-            Material qabul qilish
-          </Button>
-        </div>
+        {canWriteWarehouse ? (
+          <div className="mb-4 flex justify-end">
+            <Button
+              onClick={() => {
+                setFeedback(null);
+                receiptMutation.reset();
+                setIsReceiptOpen(true);
+              }}
+            >
+              Material qabul qilish
+            </Button>
+          </div>
+        ) : null}
         <MaterialsTable materials={materials} onSelect={setSelectedMaterial} />
       </PageSection>
 
       <MaterialDetailsDrawer
         material={selectedMaterial}
-        onReceive={() => {
-          setFeedback(null);
-          receiptMutation.reset();
-          setIsReceiptOpen(true);
-        }}
+        onReceive={
+          canWriteWarehouse
+            ? () => {
+                setFeedback(null);
+                receiptMutation.reset();
+                setIsReceiptOpen(true);
+              }
+            : undefined
+        }
         onOpenChange={(open) => {
           if (!open) setSelectedMaterial(null);
         }}

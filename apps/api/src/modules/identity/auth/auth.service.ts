@@ -11,6 +11,10 @@ import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash } from 'crypto';
 import * as argon2 from 'argon2';
 import * as jwt from 'jsonwebtoken';
+import {
+  PERMISSION_DEFINITIONS,
+  ROLE_PERMISSIONS,
+} from '../../../common/role-permissions';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { RequestContext } from '../request-context/request-context.types';
 import {
@@ -32,6 +36,9 @@ const REFRESH_RATE_LIMIT = {
   maxAttempts: 60,
   windowMs: 10 * 60 * 1000,
 };
+
+/** Avoid re-upserting default role matrix on every authenticated request. */
+const rolePermissionsEnsuredTenants = new Set<string>();
 
 type TenantAuthAuditUser = {
   id: string;
@@ -495,6 +502,29 @@ export class AuthService {
 
     await this.assertTenantCanAuthenticate(user.tenant);
 
+    // Keep default role permissions current for existing tenants (e.g. Seller + warehouse.view).
+    await this.ensureDefaultRolePermissions(user.tenantId);
+
+    const refreshedRoles = await this.prisma.userRole.findMany({
+      where: {
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: { deletedAt: null },
+      },
+      select: {
+        role: {
+          select: {
+            name: true,
+            permissions: {
+              select: {
+                permission: { select: { key: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
     const accessibleFactoryIds = user.factoryAccesses.map((access) => access.factoryId);
     const activeFactoryId = requestedFactoryId ?? accessibleFactoryIds[0] ?? null;
 
@@ -502,10 +532,10 @@ export class AuthService {
       throw new ForbiddenException('Factory access is not allowed.');
     }
 
-    const roles = user.roles.map((userRole) => userRole.role.name);
+    const roles = refreshedRoles.map((userRole) => userRole.role.name);
     const permissions = Array.from(
       new Set(
-        user.roles.flatMap((userRole) =>
+        refreshedRoles.flatMap((userRole) =>
           userRole.role.permissions.map((rolePermission) => rolePermission.permission.key),
         ),
       ),
@@ -520,6 +550,68 @@ export class AuthService {
       roles,
       permissions,
     };
+  }
+
+  /**
+   * Idempotent: upserts permission catalog + default role bindings for a tenant.
+   * Runs at most once per tenant per API process (login/session context build).
+   */
+  private async ensureDefaultRolePermissions(tenantId: string): Promise<void> {
+    if (rolePermissionsEnsuredTenants.has(tenantId)) {
+      return;
+    }
+
+    const permissionsByKey = new Map<string, string>();
+
+    for (const key of PERMISSION_DEFINITIONS) {
+      const permission = await this.prisma.permission.upsert({
+        where: { key },
+        create: { key, name: key },
+        update: { name: key },
+      });
+      permissionsByKey.set(key, permission.id);
+    }
+
+    for (const [roleName, permissionKeys] of Object.entries(ROLE_PERMISSIONS)) {
+      const role = await this.prisma.role.upsert({
+        where: {
+          tenantId_name: {
+            tenantId,
+            name: roleName,
+          },
+        },
+        create: {
+          tenantId,
+          name: roleName,
+        },
+        update: {
+          deletedAt: null,
+        },
+      });
+
+      for (const permissionKey of permissionKeys) {
+        const permissionId = permissionsByKey.get(permissionKey);
+        if (!permissionId) continue;
+
+        await this.prisma.rolePermission.upsert({
+          where: {
+            tenantId_roleId_permissionId: {
+              tenantId,
+              roleId: role.id,
+              permissionId,
+            },
+          },
+          create: {
+            tenantId,
+            roleId: role.id,
+            permissionId,
+          },
+          update: {},
+        });
+      }
+    }
+
+    rolePermissionsEnsuredTenants.add(tenantId);
   }
 
   private signAccessToken(userId: string, tenantId: string): string {

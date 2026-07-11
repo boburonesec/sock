@@ -6,7 +6,7 @@ import type { MaterialStock } from "@/lib/api/warehouse";
 
 interface MaterialDetailsDrawerProps {
   material: MaterialStock | null;
-  onReceive: () => void;
+  onReceive?: () => void;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -34,7 +34,9 @@ export function MaterialDetailsDrawer({
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
-          <Button onClick={onReceive}>Material qabul qilish</Button>
+          {onReceive ? (
+            <Button onClick={onReceive}>Material qabul qilish</Button>
+          ) : null}
           <Link
             href="/settings/thresholds"
             className="inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold hover:bg-muted"
