@@ -159,7 +159,7 @@ Bu tizimning eng muhim sahifasi.
 ### Tezkor amallar tartibi
 
 ```text
-1. Partiya yaratish
+1. Stanoklar bo‘limida production runni boshlash va outputni qabul qilish
 2. Bosqichga o‘tkazish
 3. Ishchi faolligi qo‘shish
 4. Brak qayd qilish (kerak bo‘lsa)
@@ -168,7 +168,7 @@ Bu tizimning eng muhim sahifasi.
 
 | Amal | Nima bo‘ladi |
 | --- | --- |
-| Partiya yaratish | Batch + birinchi stage inventory oshadi |
+| Production run outputini qabul qilish | Batch va birinchi stage inventory yaratiladi; mexanik/operatorga model stavkasi bilan alohida ishbay activity yoziladi |
 | Bosqichga o‘tkazish | Source ↓ destination ↑ (manfiy bo‘lmaydi) |
 | Ishchi faolligi | Payroll uchun yozuv; inventory o‘zgarmaydi |
 | Brak | Defect yozuvi; avtomatik jarima yo‘q |
@@ -178,6 +178,7 @@ Bu tizimning eng muhim sahifasi.
 
 - Asosiy metriks — **Stage Inventory**, batch soni emas  
 - Ishchilar webga kirmaydi — Shift Receiver kiritadi  
+- Qabulda tanlangan mexanik/operator faqat ishning audit qaydi; bu amal ularga payroll yoki ishbay faollik yozmaydi
 
 ---
 
@@ -338,11 +339,20 @@ Period create → Calculate → Review → Pay → Close
 
 **Yo‘l:** `/employees`
 
-1. **Xodim qo‘shish**  
+1. **Xodim qo‘shish** — ism, ish bosqichlari va kunduzgi/kechki smenani tanlang
 2. Faollik, bonus, jarima, avans shu yerdan boshqariladi  
 3. Hard-delete **yo‘q** — inactive qiling  
 
 ![Xodimlar](screenshots/19-employees.png)
+
+### 11.1 Davomat
+
+**Yo‘l:** `/attendance`
+
+- Oy bo‘yicha xodim necha kun kelgani ko‘rinadi.
+- Kirish va chiqish bo‘lsa kun to‘liq yopilgan hisoblanadi.
+- Chiqish yo‘q va smena yakuni o‘tgan bo‘lsa “Xodim kunni yopmadi” ogohlantirishi chiqadi.
+- Hozirgi bosqichda ma’lumot qo‘lda kiritilmaydi; Trunket FaceID formati tasdiqlangach integratsiya ulanadi.
 
 ---
 
@@ -410,7 +420,13 @@ MVP’da **size yo‘q**. Order narxi snapshot sifatida saqlanadi.
 
 ![Kompaniya](screenshots/28-settings-company.png)
 
-### 13.7 Telegram bog‘lash
+### 13.7 Ish smenalari
+
+**Yo‘l:** `/settings/shifts`
+
+Owner yoki Manager kunduzgi va kechki smena vaqtlarini hamda kechki smena uchun dona ustamasini so‘mda belgilaydi. O‘zgarish eski ish haqi yozuvlarini qayta hisoblamaydi.
+
+### 13.8 Telegram bog‘lash
 
 **Yo‘l:** `/settings/telegram`
 
@@ -556,7 +572,25 @@ pnpm restore:db path/to/backup.dump
 **Mavjud:** auth/RBAC, production, warehouse, sales+return+reversal, supplier,
 payroll, dashboards, TV, Telegram, mobile foundation, super admin.
 
-**Hali yo‘q:** full accounting, invoice/print, IoT, audit UI, supplier payment
+**Hali yo‘q:** full accounting, invoice/print, IoT telemetriya/sensor integratsiyasi
+
+### Xodim turi, haq turi va account
+
+`Xodimlar` sahifasida ish profili va haq turi alohida tanlanadi. Bosqich faqat
+bosqich ishchisiga beriladi. Operator account olmaydi. Mexanik va
+mexanik-master tegishli account rolini oladi. Oylik xodimda amaldagi salary
+agreement, ishbay mexanik/operator uchun esa model stavkasi ishlatiladi.
+
+### Stanok va mexanik nazorati
+
+`Stanoklar` sahifasida stanok yarating, smena/vaqt bo‘yicha mexanikni biriktiring
+va operator bilan production runni boshlang. Output qabuli Stage Inventoryni va
+ikki ishbay activityni bitta transactionda yozadi. `Manual qabul (legacy)`
+payroll yaratmaydi.
+
+Mexanik `Mexanik` sahifasida tasklar, inspection roundlar va target/min/max
+o‘lchovlarini ko‘radi. Normadan chiqish runni avtomatik to‘xtatmaydi; 30
+daqiqalik qayta o‘lchov yaratadi. HOLD qarorini master beradi.
 reversal, production movement correction, partial delivery, mobile offline write.
 
 To‘liq: `docs/MVP_KNOWN_LIMITATIONS_V2.md`

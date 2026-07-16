@@ -9,12 +9,17 @@ Paypoq OS — paypoq fabrikalari uchun Manufacturing Operations Platform. U prod
 
 U generic ERP, buxgalteriya tizimi yoki IoT platformasi emas. Birinchi versiya operatsion ko‘rinish va jarayon boshqaruviga qaratilgan.
 
+Manual stanok registry, mechanic assignment, production run, maintenance task
+va qo‘lda o‘lchov nazorati V1 capability hisoblanadi. Sensor, telemetriya va
+avtomatik machine counter hanuz IoT non-goal. Ish profili, compensation turi va
+RBAC account roli uchta mustaqil o‘qdir.
+
 ## Non-negotiable business model
 
 - Eng muhim metrka: **Stage Inventory** — har bir bosqichdagi hozirgi mahsulot soni.
 - Batch reporting birligi emas; u faqat traceability va audit uchun ishlatiladi.
 - Ishlab chiqarish ma’lumotini Shift Receiver qo‘lda kiritadi.
-- Ishchilar web-ilovaga kirmaydi; ular Factory TV va Telegram Bot’dan foydalanadi.
+- Bosqich ishchisi va operator web-ilovaga kirmaydi; mexanik va staff RBAC account bilan kirishi mumkin.
 - Default batch size 500, lekin sozlanadi.
 
 ## Default production flow
@@ -29,7 +34,8 @@ Bosqichlar sozlanadi, ammo har bir harakat stage inventory’ni aniq va audit qi
 - Variant default narxni override qilishi mumkin. Buyurtma tarixiy narxni saqlaydi.
 - Client debt = tasdiqlangan buyurtmalar jami − qabul qilingan to‘lovlar jami. Qarzni qo‘lda tahrirlash mumkin emas.
 - Supplier debt = xaridlar jami − supplier to‘lovlari jami. Qarzni qo‘lda tahrirlash mumkin emas.
-- Payroll worker activity, bonus, penalty va advance’dan hosil qilinadi; tarixiy rate saqlanishi kerak.
+- Payroll worker activity, bonus, penalty va advance’dan hosil qilinadi; tarixiy base rate, NIGHT dona ustamasi va effective rate saqlanishi kerak.
+- Xodim DAY yoki NIGHT smenaga biriktiriladi. Davomat check-in/check-out yozuvi; checkout yo‘q va smena tugagan bo‘lsa rahbarga yopilmagan kun sifatida ko‘rsatiladi.
 - Nuqson ixtiyoriy manager qarori bilan jarimaga olib kelishi mumkin.
 
 ## Tenant and factory isolation

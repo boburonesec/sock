@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity/auth/jwt-auth.guard';
 import { PermissionGuard } from '../identity/authorization/permission.guard';
 import { RequirePermissions } from '../identity/authorization/require-permissions.decorator';
@@ -9,6 +9,9 @@ import {
   CreateProductionBatchDto,
   CreateStageMovementDto,
   CreateWorkerActivityDto,
+  CreateProductionRunDto,
+  CreateProductionRunIntakeDto,
+  ChangeProductionRunStatusDto,
 } from './production.dto';
 import { ProductionService } from './production.service';
 import {
@@ -29,6 +32,21 @@ import {
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class ProductionController {
   constructor(private readonly productionService: ProductionService) {}
+
+  @Get('runs')
+  getRuns(@CurrentContext() context: RequestContext) { return this.productionService.getRuns(context); }
+
+  @Post('runs')
+  @RequirePermissions('production.write')
+  createRun(@CurrentContext() context: RequestContext, @Body() dto: CreateProductionRunDto) { return this.productionService.createRun(context, dto); }
+
+  @Patch('runs/:id/status')
+  @RequirePermissions('production.write')
+  changeRunStatus(@CurrentContext() context: RequestContext, @Param('id') id: string, @Body() dto: ChangeProductionRunStatusDto) { return this.productionService.changeRunStatus(context, id, dto); }
+
+  @Post('runs/:id/intakes')
+  @RequirePermissions('production.write')
+  createRunIntake(@CurrentContext() context: RequestContext, @Param('id') id: string, @Body() dto: CreateProductionRunIntakeDto) { return this.productionService.createRunIntake(context, id, dto); }
 
   @Post('batches')
   @RequirePermissions('production.write')

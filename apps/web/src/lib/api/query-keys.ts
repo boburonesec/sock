@@ -69,10 +69,15 @@ export const queryKeys = {
     all: ["employees"] as const,
     list: () => ["employees", "list"] as const,
   },
+  attendance: {
+    all: ["attendance"] as const,
+    overview: (month: string) => ["attendance", "overview", month] as const,
+  },
   settings: {
     all: ["settings"] as const,
     overview: () => ["settings", "overview"] as const,
     salaryRates: () => ["settings", "salary-rates"] as const,
+    workShifts: () => ["settings", "work-shifts"] as const,
     roles: () => ["settings", "roles"] as const,
     permissions: () => ["settings", "permissions"] as const,
     expenseCategories: () => ["settings", "expense-categories"] as const,

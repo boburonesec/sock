@@ -4,12 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, WorkShiftCode } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import { requireActiveFactoryId } from '../identity/request-context/request-context.utils';
-import { CreateSalaryRateDto } from './settings.dto';
+import { CreateSalaryRateDto, UpsertWorkShiftDto } from './settings.dto';
 import {
   CollectionResponse,
   SalaryRateResponse,
@@ -18,6 +18,7 @@ import {
   SettingsOverviewResponse,
   SettingsOverviewStatus,
   SingleResponse,
+  WorkShiftResponse,
 } from './settings.types';
 
 @Injectable()
@@ -43,6 +44,7 @@ export class SettingsService {
       products,
       productVariants,
       salaryRates,
+      workShifts,
     ] = await Promise.all([
       this.prisma.color.findMany({
         where: { tenantId, deletedAt: null },
@@ -91,6 +93,10 @@ export class SettingsService {
         where: { tenantId, factoryId, deletedAt: null },
         select: { updatedAt: true },
       }),
+      this.prisma.workShift.findMany({
+        where: { tenantId, factoryId, deletedAt: null },
+        select: { code: true, updatedAt: true },
+      }),
     ]);
 
     const categoryCards: SettingsCategoryCardResponse[] = [
@@ -133,6 +139,14 @@ export class SettingsService {
         countLabel: `${salaryRates.length} ta`,
         records: salaryRates,
         href: '/settings/salary-rates',
+      }),
+      this.categoryCard({
+        id: 'work-shifts',
+        name: 'Ish smenalari',
+        description: 'Kunduzgi va kechki smena vaqti hamda tungi ustama',
+        countLabel: `${workShifts.length} ta`,
+        records: workShifts,
+        href: '/settings/shifts',
       }),
       this.categoryCard({
         id: 'expense-categories',
@@ -185,6 +199,15 @@ export class SettingsService {
         label: 'Ombor zonalari',
         description: `${warehouseZones.length} ta faol ombor zonasi.`,
         status: this.configured(warehouseZones.length > 0),
+      },
+      {
+        id: 'work-shifts',
+        label: 'Ish smenalari',
+        description: `${workShifts.length} ta smena sozlangan. Kunduzgi va kechki smena ikkalasi ham kerak.`,
+        status: this.configured(
+          workShifts.some((shift) => shift.code === WorkShiftCode.DAY) &&
+            workShifts.some((shift) => shift.code === WorkShiftCode.NIGHT),
+        ),
       },
       {
         id: 'roles',
@@ -432,6 +455,86 @@ export class SettingsService {
     return { data: archived };
   }
 
+  async getWorkShifts(
+    context: RequestContext,
+  ): Promise<CollectionResponse<WorkShiftResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const shifts = await this.prisma.workShift.findMany({
+      where: { tenantId, factoryId, deletedAt: null },
+      orderBy: { code: 'asc' },
+      select: workShiftSelect,
+    });
+
+    return { data: shifts.map(mapWorkShiftResponse) };
+  }
+
+  async upsertWorkShift(
+    context: RequestContext,
+    rawCode: string,
+    dto: UpsertWorkShiftDto,
+  ): Promise<SingleResponse<WorkShiftResponse>> {
+    const code = rawCode.toUpperCase();
+    if (!(code in WorkShiftCode) || dto.code !== code) {
+      throw new BadRequestException('URL va so‘rovdagi smena turi bir xil bo‘lishi kerak.');
+    }
+
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const startMinute = this.timeToMinute(dto.startTime);
+    const endMinute = this.timeToMinute(dto.endTime);
+    if (startMinute === endMinute) {
+      throw new BadRequestException('Smena boshlanishi va tugashi bir xil bo‘la olmaydi.');
+    }
+    const premiumPerPiece = this.parseNonNegativeAmount(dto.premiumPerPiece);
+    if (dto.code === WorkShiftCode.DAY && !premiumPerPiece.isZero()) {
+      throw new BadRequestException('Kunduzgi smena ustamasi 0 bo‘lishi kerak.');
+    }
+
+    const response = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.workShift.findUnique({
+        where: { tenantId_factoryId_code: { tenantId, factoryId, code: dto.code } },
+        select: workShiftSelect,
+      });
+      const shift = await tx.workShift.upsert({
+        where: { tenantId_factoryId_code: { tenantId, factoryId, code: dto.code } },
+        create: {
+          tenantId,
+          factoryId,
+          code: dto.code,
+          name: dto.name,
+          startMinute,
+          endMinute,
+          premiumPerPiece,
+        },
+        update: {
+          name: dto.name,
+          startMinute,
+          endMinute,
+          premiumPerPiece,
+          deletedAt: null,
+        },
+        select: workShiftSelect,
+      });
+      const after = mapWorkShiftResponse(shift);
+
+      await this.auditService.createWithTransaction(tx, {
+        tenantId,
+        factoryId,
+        userId: context.userId,
+        action: existing ? 'WORK_SHIFT_UPDATED' : 'WORK_SHIFT_CREATED',
+        entityType: 'WorkShift',
+        entityId: shift.id,
+        before: existing ? mapWorkShiftResponse(existing) : undefined,
+        after,
+      });
+
+      return after;
+    });
+
+    return { data: response };
+  }
+
   private categoryCard(input: {
     id: string;
     name: string;
@@ -476,6 +579,19 @@ export class SettingsService {
 
     return amount;
   }
+
+  private parseNonNegativeAmount(value: string): Prisma.Decimal {
+    const amount = new Prisma.Decimal(value);
+    if (!amount.isFinite() || amount.isNegative()) {
+      throw new BadRequestException('Ustama manfiy bo‘la olmaydi.');
+    }
+    return amount;
+  }
+
+  private timeToMinute(value: string): number {
+    const [hour, minute] = value.split(':').map(Number);
+    return hour * 60 + minute;
+  }
 }
 
 const productVariantSelect = {
@@ -502,6 +618,42 @@ const salaryRateSelect = {
   },
   productVariant: { select: productVariantSelect },
 } satisfies Prisma.SalaryRateSelect;
+
+const workShiftSelect = {
+  id: true,
+  code: true,
+  name: true,
+  startMinute: true,
+  endMinute: true,
+  premiumPerPiece: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.WorkShiftSelect;
+
+function mapWorkShiftResponse(shift: {
+  id: string;
+  code: WorkShiftCode;
+  name: string;
+  startMinute: number;
+  endMinute: number;
+  premiumPerPiece: Prisma.Decimal;
+  createdAt: Date;
+  updatedAt: Date;
+}): WorkShiftResponse {
+  const toTime = (minute: number) =>
+    `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+
+  return {
+    id: shift.id,
+    code: shift.code,
+    name: shift.name,
+    startTime: toTime(shift.startMinute),
+    endTime: toTime(shift.endMinute),
+    premiumPerPiece: shift.premiumPerPiece.toString(),
+    createdAt: shift.createdAt,
+    updatedAt: shift.updatedAt,
+  };
+}
 
 function mapSalaryRateResponse(salaryRate: {
   id: string;

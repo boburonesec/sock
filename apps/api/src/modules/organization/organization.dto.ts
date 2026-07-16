@@ -57,3 +57,9 @@ export class UpdateOrganizationUserFactoryAccessDto {
   @IsString({ each: true })
   factoryIds!: string[];
 }
+
+export class LinkOrganizationUserEmployeeDto {
+  @IsString()
+  @MinLength(1)
+  employeeId!: string;
+}

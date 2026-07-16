@@ -63,6 +63,13 @@ const permissionDefinitions = [
   'finance.write',
   'employees.view',
   'employees.write',
+  'attendance.view',
+  'machines.view',
+  'machines.write',
+  'maintenance.view',
+  'maintenance.write',
+  'quality.view',
+  'quality.write',
   'reports.view',
   'settings.view',
   'settings.write',
@@ -83,6 +90,7 @@ const rolePermissions: Record<string, readonly string[]> = {
     'finance.write',
     'employees.view',
     'employees.write',
+    'attendance.view',
     'reports.view',
     'settings.view',
     'settings.write',
@@ -96,7 +104,9 @@ const rolePermissions: Record<string, readonly string[]> = {
   ],
   Seller: ['sales.view', 'sales.write', 'warehouse.view'],
   'Warehouse Operator': ['warehouse.view', 'warehouse.write'],
-  'Shift Receiver': ['production.view', 'production.write'],
+  'Shift Receiver': ['production.view', 'production.write', 'machines.view'],
+  Mechanic: ['production.view', 'machines.view', 'maintenance.view', 'maintenance.write', 'quality.view', 'quality.write'],
+  'Mechanic Master': ['production.view', 'production.write', 'machines.view', 'machines.write', 'maintenance.view', 'maintenance.write', 'quality.view', 'quality.write', 'employees.view'],
 };
 
 const warehouseZoneNames = [
@@ -192,6 +202,45 @@ async function main(): Promise<void> {
     update: {
       deletedAt: null,
     },
+  });
+
+  await prisma.workShift.upsert({
+    where: {
+      tenantId_factoryId_code: {
+        tenantId: tenant.id,
+        factoryId: factory.id,
+        code: 'DAY',
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      factoryId: factory.id,
+      code: 'DAY',
+      name: 'Kunduzgi smena',
+      startMinute: 480,
+      endMinute: 1200,
+      premiumPerPiece: 0,
+    },
+    update: { deletedAt: null },
+  });
+  await prisma.workShift.upsert({
+    where: {
+      tenantId_factoryId_code: {
+        tenantId: tenant.id,
+        factoryId: factory.id,
+        code: 'NIGHT',
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      factoryId: factory.id,
+      code: 'NIGHT',
+      name: 'Kechki smena',
+      startMinute: 1200,
+      endMinute: 480,
+      premiumPerPiece: 10,
+    },
+    update: { deletedAt: null },
   });
 
   const warehouse = await prisma.warehouse.upsert({

@@ -1,17 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity/auth/jwt-auth.guard';
 import { PermissionGuard } from '../identity/authorization/permission.guard';
 import { RequireAnyPermissions } from '../identity/authorization/require-any-permissions.decorator';
 import { RequirePermissions } from '../identity/authorization/require-permissions.decorator';
 import { CurrentContext } from '../identity/request-context/current-context.decorator';
 import { RequestContext } from '../identity/request-context/request-context.types';
-import { CreateSalaryRateDto } from './settings.dto';
+import { CreateSalaryRateDto, UpsertWorkShiftDto } from './settings.dto';
 import { SettingsService } from './settings.service';
 import {
   CollectionResponse,
   SalaryRateResponse,
   SettingsOverviewResponse,
   SingleResponse,
+  WorkShiftResponse,
 } from './settings.types';
 
 @Controller('settings')
@@ -68,5 +69,23 @@ export class SettingsController {
     @Param('id') id: string,
   ): Promise<SingleResponse<SalaryRateResponse>> {
     return this.settingsService.archiveSalaryRate(context, id);
+  }
+
+  @Get('work-shifts')
+  @RequireAnyPermissions('settings.view', 'employees.view', 'production.view')
+  getWorkShifts(
+    @CurrentContext() context: RequestContext,
+  ): Promise<CollectionResponse<WorkShiftResponse>> {
+    return this.settingsService.getWorkShifts(context);
+  }
+
+  @Put('work-shifts/:code')
+  @RequirePermissions('settings.write')
+  upsertWorkShift(
+    @CurrentContext() context: RequestContext,
+    @Param('code') code: string,
+    @Body() dto: UpsertWorkShiftDto,
+  ): Promise<SingleResponse<WorkShiftResponse>> {
+    return this.settingsService.upsertWorkShift(context, code, dto);
   }
 }

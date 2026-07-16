@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { Bell, LogOut, Menu, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -26,6 +26,8 @@ function formatRole(role: string): string {
     Seller: "Sotuvchi",
     "Warehouse Operator": "Omborchi",
     "Shift Receiver": "Smena qabul qiluvchi",
+    Mechanic: "Mexanik",
+    "Mechanic Master": "Mexanik-master",
   };
 
   return labels[role] ?? role;
@@ -122,7 +124,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         </button>
         <button
           type="button"
-          className="hidden h-11 w-11 place-items-center rounded-lg hover:bg-muted sm:grid"
+          className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted"
           aria-label="Bildirishnomalar"
           onClick={() => router.push("/notifications")}
         >
@@ -201,6 +203,31 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                   </div>
                 </div>
               </section>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    router.push("/profile");
+                  }}
+                >
+                  <UserRound size={16} />
+                  Profil
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    router.push("/notifications");
+                  }}
+                >
+                  <Bell size={16} />
+                  Xabarlar
+                </Button>
+              </div>
 
               <form className="space-y-4" onSubmit={handlePasswordSubmit}>
                 <FormField htmlFor="current-password" label="Hozirgi parol" required>

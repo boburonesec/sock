@@ -8,7 +8,10 @@ import {
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge } from "@/components/data-display/status-badge";
-import type { Employee } from "@/lib/api/employees";
+import {
+  employeeWorkProfileLabels,
+  type Employee,
+} from "@/lib/api/employees";
 import { formatDateTimeForUser } from "@/lib/format";
 
 interface EmployeeTableProps { employees: Employee[]; onSelect: (employee: Employee) => void; }
@@ -18,6 +21,8 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
       <DataTableHead>
         <DataTableRow>
           <DataTableHeader>Ism</DataTableHeader>
+          <DataTableHeader>Lavozim</DataTableHeader>
+          <DataTableHeader>Smena</DataTableHeader>
           <DataTableHeader>Ish bosqichlari</DataTableHeader>
           <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Yaratilgan</DataTableHeader>
@@ -49,6 +54,14 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
                   </span>
                 </div>
               </DataTableCell>
+              <DataTableCell>{employeeWorkProfileLabels[employee.workProfile]}</DataTableCell>
+              <DataTableCell>
+                {employee.workShift ? (
+                  <span className="text-sm font-medium">{employee.workShift.name}</span>
+                ) : (
+                  <StatusBadge tone="warning">Tanlanmagan</StatusBadge>
+                )}
+              </DataTableCell>
               <DataTableCell className="text-sm text-muted-foreground">
                 {(employee.stages ?? []).length > 0
                   ? employee.stages.map((stage) => stage.name).join(", ")
@@ -64,7 +77,7 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
           ))
         ) : (
           <EmptyTableState
-            colSpan={4}
+            colSpan={6}
             title="Xodimlar yo‘q"
             description="Xodim qo‘shilgach, shu ro‘yxatda ko‘rinadi."
           />

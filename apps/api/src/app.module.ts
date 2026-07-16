@@ -4,12 +4,14 @@ import configuration from './config/configuration';
 import { validateEnvironment } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { FactoryModule } from './modules/factory/factory.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { MobileModule } from './modules/mobile/mobile.module';
+import { MachineModule } from './modules/machine/machine.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
@@ -37,6 +39,7 @@ import { PrismaModule } from './prisma/prisma.module';
     DashboardModule,
     IdentityModule,
     MobileModule,
+    MachineModule,
     TenantModule,
     FactoryModule,
     ProductModule,
@@ -54,6 +57,7 @@ import { PrismaModule } from './prisma/prisma.module';
     OrganizationModule,
     TelegramModule,
     AuditModule,
+    AttendanceModule,
   ],
 })
 export class AppModule {}

@@ -11,7 +11,7 @@ export interface ApiSingle<T> {
 export interface LinkedAccount {
   telegramAccountId: string;
   tenantId: string;
-  type: 'EMPLOYEE' | 'CLIENT';
+  type: 'EMPLOYEE' | 'CLIENT' | 'USER';
   employee: {
     id: string;
     name: string;
@@ -20,6 +20,7 @@ export interface LinkedAccount {
     id: string;
     name: string;
   } | null;
+  user: { id: string; name: string } | null;
   linkedAt: string;
 }
 
@@ -109,6 +110,13 @@ export interface ClientPayment {
   }>;
 }
 
+export interface NotificationDelivery {
+  id: string;
+  chatId: string | null;
+  title: string;
+  body: string;
+}
+
 export class BotApiClient {
   constructor(private readonly config: BotConfig) {}
 
@@ -174,6 +182,16 @@ export class BotApiClient {
     return this.request(
       `/telegram/bot/client/payments?${this.telegramUserQuery(telegramUserId)}`,
     );
+  }
+
+  claimNotificationDeliveries(): Promise<ApiCollection<NotificationDelivery>> {
+    return this.request('/internal/notification-deliveries/claim', { method: 'POST' });
+  }
+
+  acknowledgeNotificationDelivery(id: string, status: 'SENT' | 'FAILED', error?: string): Promise<ApiSingle<unknown>> {
+    return this.request(`/internal/notification-deliveries/${id}/ack`, {
+      method: 'POST', body: JSON.stringify({ status, error }),
+    });
   }
 
   private telegramUserQuery(telegramUserId: string): string {

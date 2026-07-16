@@ -40,6 +40,16 @@ const ROUTE_PERMISSION_RULES: Array<{
     label: "Audit jurnali",
   },
   {
+    match: (p) => p.startsWith("/mechanic"),
+    requiredPermissions: ["maintenance.view", "quality.view"],
+    label: "Mexanik ish maydoni",
+  },
+  {
+    match: (p) => p.startsWith("/machines"),
+    requiredPermissions: ["machines.view"],
+    label: "Stanoklar",
+  },
+  {
     match: (p) => p.startsWith("/production"),
     requiredPermissions: ["production.view"],
     label: "Ishlab chiqarish",
@@ -58,6 +68,11 @@ const ROUTE_PERMISSION_RULES: Array<{
     match: (p) => p.startsWith("/finance"),
     requiredPermissions: ["finance.view"],
     label: "Moliya",
+  },
+  {
+    match: (p) => p.startsWith("/attendance"),
+    requiredPermissions: ["attendance.view"],
+    label: "Davomat",
   },
   {
     match: (p) => p.startsWith("/employees"),
@@ -85,11 +100,13 @@ const ROUTE_PERMISSION_RULES: Array<{
 /** Preferred landing path order after login. */
 const HOME_CANDIDATES: Array<{ href: string; permission?: string }> = [
   { href: "/dashboard/executive", permission: "dashboard.view" },
+  { href: "/mechanic", permission: "maintenance.view" },
   { href: "/production", permission: "production.view" },
   { href: "/sales", permission: "sales.view" },
   { href: "/warehouse", permission: "warehouse.view" },
   { href: "/finance", permission: "finance.view" },
   { href: "/employees", permission: "employees.view" },
+  { href: "/attendance", permission: "attendance.view" },
   { href: "/reports", permission: "reports.view" },
   { href: "/settings", permission: "settings.view" },
   { href: "/profile" },

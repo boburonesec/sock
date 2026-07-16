@@ -35,9 +35,10 @@ export function createEmployeeBot(input: {
 
     try {
       const account = await input.apiClient.me(telegramUserId);
-      const linkedName =
-        account.data.type === 'CLIENT'
-          ? `Ulangan client: ${account.data.client?.name ?? 'Noma’lum'}`
+      const linkedName = account.data.type === 'CLIENT'
+        ? `Ulangan client: ${account.data.client?.name ?? 'Noma’lum'}`
+        : account.data.type === 'USER'
+          ? `Ulangan operator: ${account.data.user?.name ?? 'Noma’lum'}`
           : `Ulangan xodim: ${account.data.employee?.name ?? 'Noma’lum'}`;
       await ctx.reply(
         [

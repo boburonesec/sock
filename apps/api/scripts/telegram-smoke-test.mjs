@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { PrismaClient } from '@prisma/client';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const apiRoot = path.resolve(path.dirname(scriptPath), '..');
@@ -18,9 +19,11 @@ const botInternalApiKey =
   'local-development-bot-internal-api-key-change-me';
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const checks = [];
+const prisma = new PrismaClient();
 
 let accessToken = '';
 let serverProcess = null;
+let currentUser = null;
 
 function assert(condition, message) {
   if (!condition) {
@@ -185,6 +188,7 @@ async function login() {
 
   accessToken = loginResponse.data.accessToken;
   const me = (await request('/auth/me')).data;
+  currentUser = me;
 
   assert(me.tenantId, 'auth context should include tenantId');
   assert(me.activeFactoryId, 'auth context should include activeFactoryId');
@@ -195,10 +199,35 @@ async function login() {
   });
 }
 
+async function runUserNotificationFlow() {
+  const token = (await request('/telegram/link-tokens/me', { method: 'POST' })).data;
+  const telegramUserId = `user-${suffix}`;
+  const telegramChatId = `chat-${suffix}`;
+  const linked = (await request('/telegram/bot/link', { method: 'POST', skipAuth: true, headers: { 'x-bot-api-key': botInternalApiKey }, body: { code: token.code, telegramUserId, telegramChatId } })).data;
+  assert(linked.type === 'USER' && linked.user?.id === currentUser.user.id, 'USER Telegram link should target current user');
+  const notification = await prisma.notification.create({ data: { tenantId: currentUser.tenantId, recipientUserId: currentUser.user.id, type: 'SMOKE', title: 'Smoke notification', body: 'Outbox delivery smoke', dedupeKey: `telegram-user-smoke:${suffix}`, deliveries: { create: {} } } });
+  const claimed = (await request('/internal/notification-deliveries/claim', { method: 'POST', skipAuth: true, headers: { 'x-bot-api-key': botInternalApiKey } })).data;
+  const delivery = claimed.find((item) => item.title === notification.title);
+  assert(delivery?.chatId === telegramChatId, 'outbox claim should resolve only linked USER chat');
+  await request(`/internal/notification-deliveries/${delivery.id}/ack`, { method: 'POST', skipAuth: true, headers: { 'x-bot-api-key': botInternalApiKey }, body: { status: 'SENT' } });
+  await request('/telegram/bot/unlink', { method: 'POST', skipAuth: true, headers: { 'x-bot-api-key': botInternalApiKey }, body: { telegramUserId } });
+  pass('USER Telegram link and durable notification outbox claim/ack');
+}
+
 async function createEmployee(namePrefix = 'Telegram Smoke Employee') {
+  const shifts = (await request('/settings/work-shifts')).data;
+  const dayShift = shifts.find((shift) => shift.code === 'DAY');
+  const stages = (await request('/product/stages')).data;
+  assert(dayShift, 'default DAY work shift should exist');
   return (await request('/employees', {
     method: 'POST',
-    body: { name: `${namePrefix} ${suffix}` },
+    body: {
+      name: `${namePrefix} ${suffix}`,
+      workProfile: 'STAGE_WORKER',
+      compensationType: 'PIECE_RATE',
+      workShiftId: dayShift.id,
+      stageIds: [stages[0].id],
+    },
   })).data;
 }
 
@@ -449,6 +478,7 @@ async function main() {
   await runBlockedRelinkFlow();
   const { token: usedClientToken } = await runClientFlow();
   await runCodeSecurityChecks(usedClientToken);
+  await runUserNotificationFlow();
   await runSettingsChecks();
 
   console.log(
@@ -471,5 +501,6 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
+    await prisma.$disconnect();
     await stopServerIfNeeded();
   });

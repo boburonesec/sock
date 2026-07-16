@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Boxes, ClipboardList, Factory, History, LayoutDashboard, Package, Settings, Users, WalletCards } from "lucide-react";
+import { BarChart3, Boxes, CalendarCheck, ClipboardList, Factory, History, LayoutDashboard, Package, Settings, Users, WalletCards, Wrench } from "lucide-react";
 
 export interface PageDefinition {
   title: string;
@@ -20,10 +20,13 @@ export const navigationItems: NavigationItem[] = [
   { href: "/reports", title: "Hisobotlar", description: "Hisobotlar moduli", icon: BarChart3, section: "monitoring", requiredPermissions: ["reports.view"] },
   { href: "/audit", title: "Audit jurnali", description: "Tizim amallari tarixi", icon: History, section: "monitoring", requiredPermissions: ["audit.view"] },
   { href: "/production", title: "Ishlab chiqarish", description: "Ishlab chiqarish moduli", icon: Boxes, section: "work", requiredPermissions: ["production.view"] },
+  { href: "/machines", title: "Stanoklar", description: "Stanok, assignment va runlar", icon: Wrench, section: "work", requiredPermissions: ["machines.view"] },
+  { href: "/mechanic", title: "Mexanik", description: "Task va o‘lchov nazorati", icon: Wrench, section: "work", requiredPermissions: ["maintenance.view", "quality.view"] },
   { href: "/warehouse", title: "Ombor", description: "Ombor moduli", icon: Package, section: "work", requiredPermissions: ["warehouse.view"] },
   { href: "/sales", title: "Sotuvlar", description: "Sotuvlar moduli", icon: ClipboardList, section: "work", requiredPermissions: ["sales.view"] },
   { href: "/finance", title: "Moliya", description: "Moliya moduli", icon: WalletCards, section: "work", requiredPermissions: ["finance.view"] },
-  { href: "/employees", title: "Xodimlar", description: "Ishbay ishchilar (dasturga kirmaydi)", icon: Users, section: "work", requiredPermissions: ["employees.view"] },
+  { href: "/employees", title: "Xodimlar", description: "Barcha xodimlar va ish profillari", icon: Users, section: "work", requiredPermissions: ["employees.view"] },
+  { href: "/attendance", title: "Davomat", description: "Ishga kelib-ketish hisoboti", icon: CalendarCheck, section: "work", requiredPermissions: ["attendance.view"] },
   { href: "/settings", title: "Sozlamalar", description: "Tizim sozlamalari", icon: Settings, section: "system", requiredPermissions: ["settings.view"] },
 ];
 
@@ -37,6 +40,8 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/production/stages": { title: "Bosqichlar", description: "Ishlab chiqarish bosqichlari" },
   "/production/activities": { title: "Faoliyatlar", description: "Xodim faoliyatlari" },
   "/production/defects": { title: "Nuqsonlar", description: "Nuqsonlar moduli" },
+  "/machines": { title: "Stanoklar", description: "Stanoklar va production run boshqaruvi" },
+  "/mechanic": { title: "Mexanik ish maydoni", description: "Tasklar va o‘lchov nazorati" },
   "/warehouse": { title: "Ombor", description: "Ombor moduli" },
   "/warehouse/materials": { title: "Materiallar", description: "Materiallar moduli" },
   "/warehouse/movements": { title: "Ombor harakatlari", description: "Ombor harakatlari" },
@@ -51,7 +56,8 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/finance/advances": { title: "Avanslar", description: "Avanslar moduli" },
   "/finance/payroll": { title: "Ish haqi", description: "Xodimlar ish haqi" },
   "/finance/suppliers": { title: "Yetkazib beruvchilar", description: "Yetkazib beruvchilar moduli" },
-  "/employees": { title: "Xodimlar", description: "Ishbay ishchilar — faollik va ish haqi" },
+  "/employees": { title: "Xodimlar", description: "Barcha xodimlar, ish profili va haq turi" },
+  "/attendance": { title: "Davomat", description: "Xodimlarning ishga kelib-ketish hisoboti" },
   "/employees/bonuses": { title: "Bonuslar", description: "Bonuslar moduli" },
   "/employees/penalties": { title: "Jarimalar", description: "Jarimalar moduli" },
   "/profile": { title: "Profil", description: "Operator akkaunti va ruxsatlar" },
@@ -70,6 +76,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/settings/seasons": { title: "Mavsumlar", description: "Sozlamalar" },
   "/settings/stages": { title: "Ishlab chiqarish bosqichlari", description: "Sozlamalar" },
   "/settings/salary-rates": { title: "Ish haqi stavkalari", description: "Sozlamalar" },
+  "/settings/shifts": { title: "Ish smenalari", description: "Sozlamalar" },
   "/settings/expense-categories": { title: "Xarajat kategoriyalari", description: "Sozlamalar" },
   "/settings/zones": { title: "Ombor zonalari", description: "Sozlamalar" },
   "/settings/thresholds": { title: "Limit sozlamalari", description: "Sozlamalar" },

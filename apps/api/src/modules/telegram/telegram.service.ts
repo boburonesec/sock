@@ -108,6 +108,17 @@ export class TelegramService {
     return { data: token };
   }
 
+  async createUserLinkToken(
+    context: RequestContext,
+  ): Promise<SingleResponse<TelegramLinkTokenCreatedResponse>> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: context.userId, tenantId: context.tenantId, status: 'ACTIVE', deletedAt: null },
+      select: { id: true, name: true },
+    });
+    if (!user) throw new NotFoundException('Active user not found.');
+    return { data: await this.createLinkToken(context, { targetType: TelegramAccountType.USER, targetId: user.id, targetName: user.name }) };
+  }
+
   async createClientLinkToken(
     context: RequestContext,
     clientId: string,
@@ -263,6 +274,7 @@ export class TelegramService {
           type: true,
           employeeId: true,
           clientId: true,
+          userId: true,
           status: true,
         },
       });
@@ -273,7 +285,7 @@ export class TelegramService {
 
       const candidateTokens = await tx.telegramLinkToken.findMany({
         where: {
-          targetType: { in: [TelegramAccountType.EMPLOYEE, TelegramAccountType.CLIENT] },
+          targetType: { in: [TelegramAccountType.EMPLOYEE, TelegramAccountType.CLIENT, TelegramAccountType.USER] },
           usedAt: null,
           expiresAt: { gt: now },
         },
@@ -284,6 +296,7 @@ export class TelegramService {
           targetType: true,
           employeeId: true,
           clientId: true,
+          userId: true,
           expiresAt: true,
           employee: {
             select: {
@@ -301,6 +314,9 @@ export class TelegramService {
               status: true,
               deletedAt: true,
             },
+          },
+          user: {
+            select: { id: true, name: true, status: true, deletedAt: true },
           },
         },
       });
@@ -337,17 +353,21 @@ export class TelegramService {
         }
       }
 
+      if (token.targetType === TelegramAccountType.USER) {
+        if (!token.userId || !token.user || token.user.status !== 'ACTIVE' || token.user.deletedAt) {
+          throw new ConflictException('User is not active.');
+        }
+      }
+
       if (
         token.targetType !== TelegramAccountType.EMPLOYEE &&
-        token.targetType !== TelegramAccountType.CLIENT
+        token.targetType !== TelegramAccountType.CLIENT &&
+        token.targetType !== TelegramAccountType.USER
       ) {
         throw new BadRequestException('Unsupported Telegram link token type.');
       }
 
-      const targetId =
-        token.targetType === TelegramAccountType.EMPLOYEE
-          ? token.employeeId
-          : token.clientId;
+      const targetId = token.employeeId ?? token.clientId ?? token.userId;
 
       if (!targetId) {
         throw new BadRequestException('Invalid Telegram link token target.');
@@ -361,7 +381,9 @@ export class TelegramService {
           existingTelegramAccount.employeeId ===
             (token.targetType === TelegramAccountType.EMPLOYEE ? targetId : null) &&
           existingTelegramAccount.clientId ===
-            (token.targetType === TelegramAccountType.CLIENT ? targetId : null)
+            (token.targetType === TelegramAccountType.CLIENT ? targetId : null) &&
+          existingTelegramAccount.userId ===
+            (token.targetType === TelegramAccountType.USER ? targetId : null)
         )
       ) {
         throw new ConflictException(
@@ -393,6 +415,10 @@ export class TelegramService {
                   : null,
               clientId:
                 token.targetType === TelegramAccountType.CLIENT
+                  ? targetId
+                  : null,
+              userId:
+                token.targetType === TelegramAccountType.USER
                   ? targetId
                   : null,
               status: TelegramAccountStatus.ACTIVE,
@@ -453,10 +479,12 @@ export class TelegramService {
       if (
         !account ||
         (account.type !== TelegramAccountType.EMPLOYEE &&
-          account.type !== TelegramAccountType.CLIENT) ||
+          account.type !== TelegramAccountType.CLIENT &&
+          account.type !== TelegramAccountType.USER) ||
         account.status !== TelegramAccountStatus.ACTIVE ||
         (account.type === TelegramAccountType.EMPLOYEE && !account.employee) ||
-        (account.type === TelegramAccountType.CLIENT && !account.client)
+        (account.type === TelegramAccountType.CLIENT && !account.client) ||
+        (account.type === TelegramAccountType.USER && !account.user)
       ) {
         throw new NotFoundException('Active Telegram account not found.');
       }
@@ -485,6 +513,7 @@ export class TelegramService {
           id: account.id,
           employeeId: account.employeeId,
           clientId: account.clientId,
+          userId: account.userId,
           status: account.status,
         },
         after: {
@@ -870,7 +899,7 @@ export class TelegramService {
 
   private async findActiveTelegramAccount(
     telegramUserId: string,
-  ): Promise<ActiveEmployeeTelegramAccount | ActiveClientTelegramAccount> {
+  ): Promise<ActiveEmployeeTelegramAccount | ActiveClientTelegramAccount | ActiveUserTelegramAccount> {
     const account = await this.prisma.telegramAccount.findUnique({
       where: { telegramUserId },
       select: telegramAccountSelect,
@@ -898,6 +927,10 @@ export class TelegramService {
       !account.client.deletedAt
     ) {
       return account as ActiveClientTelegramAccount;
+    }
+
+    if (account.type === TelegramAccountType.USER && account.userId && account.user && account.user.status === 'ACTIVE' && !account.user.deletedAt) {
+      return account as ActiveUserTelegramAccount;
     }
 
     throw new NotFoundException('Active Telegram account not found.');
@@ -953,7 +986,10 @@ export class TelegramService {
             input.targetType === TelegramAccountType.CLIENT
               ? input.targetId
               : null,
-          userId: null,
+          userId:
+            input.targetType === TelegramAccountType.USER
+              ? input.targetId
+              : null,
           usedAt: null,
           expiresAt: { gt: now },
         },
@@ -972,6 +1008,10 @@ export class TelegramService {
               : null,
           clientId:
             input.targetType === TelegramAccountType.CLIENT
+              ? input.targetId
+              : null,
+          userId:
+            input.targetType === TelegramAccountType.USER
               ? input.targetId
               : null,
           expiresAt,
@@ -1139,6 +1179,9 @@ const telegramAccountSelect = {
       deletedAt: true,
     },
   },
+  user: {
+    select: { id: true, name: true, status: true, deletedAt: true },
+  },
 } satisfies Prisma.TelegramAccountSelect;
 
 const telegramAccountListSelect = {
@@ -1183,6 +1226,10 @@ type ActiveEmployeeTelegramAccount = TelegramAccountPayload & {
 type ActiveClientTelegramAccount = TelegramAccountPayload & {
   clientId: string;
   client: NonNullable<TelegramAccountPayload['client']>;
+};
+type ActiveUserTelegramAccount = TelegramAccountPayload & {
+  userId: string;
+  user: NonNullable<TelegramAccountPayload['user']>;
 };
 
 type TelegramAccountListPayload = Prisma.TelegramAccountGetPayload<{
@@ -1260,7 +1307,8 @@ function mapLinkedAccountResponse(
 ): TelegramBotLinkedAccountResponse {
   if (
     account.type !== TelegramAccountType.EMPLOYEE &&
-    account.type !== TelegramAccountType.CLIENT
+    account.type !== TelegramAccountType.CLIENT &&
+    account.type !== TelegramAccountType.USER
   ) {
     throw new NotFoundException('Linked Telegram account type is not supported.');
   }
@@ -1272,11 +1320,14 @@ function mapLinkedAccountResponse(
   if (account.type === TelegramAccountType.CLIENT && !account.client) {
     throw new NotFoundException('Linked client not found.');
   }
+  if (account.type === TelegramAccountType.USER && !account.user) {
+    throw new NotFoundException('Linked user not found.');
+  }
 
   return {
     telegramAccountId: account.id,
     tenantId: account.tenantId,
-    type: account.type === TelegramAccountType.CLIENT ? 'CLIENT' : 'EMPLOYEE',
+    type: account.type,
     employee: account.employee
       ? {
           id: account.employee.id,
@@ -1289,6 +1340,7 @@ function mapLinkedAccountResponse(
           name: account.client.name,
         }
       : null,
+    user: account.user ? { id: account.user.id, name: account.user.name } : null,
     linkedAt: account.linkedAt,
   };
 }

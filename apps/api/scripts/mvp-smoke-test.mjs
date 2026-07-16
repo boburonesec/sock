@@ -273,11 +273,14 @@ async function createProductSetup() {
 
 async function createEmployeeAndSalaryRate(variantId) {
   const stages = (await request('/product/stages')).data;
+  const shifts = (await request('/settings/work-shifts')).data;
+  const dayShift = shifts.find((shift) => shift.code === 'DAY');
   const firstStage = stages[0];
   const secondStage = stages[1];
   const omborStage = stages.find((stage) => stage.name === 'Ombor');
 
   assert(firstStage && secondStage && omborStage, 'default production stages should exist');
+  assert(dayShift, 'default DAY work shift should exist');
 
   // Stage move requires workers assigned to the source stage.
   // Also assign second stage so manual activity endpoint can be exercised there
@@ -286,7 +289,33 @@ async function createEmployeeAndSalaryRate(variantId) {
     method: 'POST',
     body: {
       name: `Smoke Employee ${suffix}`,
+      workProfile: 'STAGE_WORKER',
+      compensationType: 'PIECE_RATE',
+      workShiftId: dayShift.id,
       stageIds: [firstStage.id, secondStage.id],
+    },
+  })).data;
+
+  const mechanic = (await request('/employees', {
+    method: 'POST',
+    body: {
+      name: `Smoke Mechanic ${suffix}`,
+      workProfile: 'MECHANIC',
+      compensationType: 'PIECE_RATE',
+      workShiftId: dayShift.id,
+      stageIds: [],
+      account: { email: `smoke-mechanic-${suffix}@paypoq.local`, password: 'ChangeMe123!', roleName: 'Mechanic' },
+    },
+  })).data;
+
+  const machineOperator = (await request('/employees', {
+    method: 'POST',
+    body: {
+      name: `Smoke Machine Operator ${suffix}`,
+      workProfile: 'MACHINE_OPERATOR',
+      compensationType: 'PIECE_RATE',
+      workShiftId: dayShift.id,
+      stageIds: [],
     },
   })).data;
 
@@ -320,21 +349,86 @@ async function createEmployeeAndSalaryRate(variantId) {
 
   pass('employee and salary rate setup', {
     employeeId: employee.id,
+    mechanicId: mechanic.id,
+    machineOperatorId: machineOperator.id,
     rateStages: stagesNeedingRates.length,
   });
 
-  return { employee, stages, firstStage, secondStage, omborStage };
+  return {
+    employee,
+    mechanic,
+    machineOperator,
+    stages,
+    firstStage,
+    secondStage,
+    omborStage,
+    dayShift,
+  };
 }
 
-async function runProductionChain({ employee, firstStage, secondStage, omborStage, variant }) {
-  await request('/production/batches', {
+async function runProductionChain({
+  employee,
+  mechanic,
+  machineOperator,
+  firstStage,
+  secondStage,
+  omborStage,
+  variant,
+  product,
+  dayShift,
+}) {
+  const workerActivitiesBefore = (await request('/production/worker-activities')).data.length;
+  const machine = (await request('/machines', {
     method: 'POST',
-    body: {
-      productVariantId: variant.id,
-      quantity: 30,
-      note: `Smoke batch ${suffix}`,
-    },
+    body: { code: `SM-${suffix}`, name: `Smoke Machine ${suffix}` },
+  })).data;
+  await request('/machines/assignments', { method: 'POST', body: { machineId: machine.id, mechanicId: mechanic.id, workShiftId: dayShift.id, validFrom: new Date(Date.now() - 60_000).toISOString() } });
+  for (const workRole of ['MECHANIC', 'MACHINE_OPERATOR']) {
+    await request('/machines/piece-rates', { method: 'POST', body: { productId: product.id, workRole, amount: workRole === 'MECHANIC' ? 2 : 3, effectiveFrom: new Date(Date.now() - 60_000).toISOString() } });
+  }
+  const run = (await request('/production/runs', { method: 'POST', body: { machineId: machine.id, productVariantId: variant.id, operatorEmployeeId: machineOperator.id, workShiftId: dayShift.id } })).data;
+  const idempotencyKey = `smoke-intake-${suffix}`;
+  const intake = (await request(`/production/runs/${run.id}/intakes`, { method: 'POST', body: { quantity: 30, idempotencyKey } })).data;
+  const replay = (await request(`/production/runs/${run.id}/intakes`, { method: 'POST', body: { quantity: 30, idempotencyKey } })).data;
+  assert(replay.id === intake.id, 'intake retry should return the original record');
+  const workerActivitiesAfter = (await request('/production/worker-activities')).data.length;
+  assert(
+    workerActivitiesAfter === workerActivitiesBefore + 2,
+    'run intake should create exactly mechanic and operator activity',
+  );
+
+  const specification = (await request(`/machines/products/${product.id}/specifications`, {
+    method: 'POST',
+    body: { metrics: [
+      { code: 'TOTAL_LENGTH', name: 'Umumiy uzunlik', unit: 'cm', target: 20, min: 19, max: 21, displayOrder: 1 },
+      { code: 'HEEL_LENGTH', name: 'Tovongacha', unit: 'cm', target: 12, min: 11, max: 13, displayOrder: 2 },
+    ] },
+  })).data;
+  await request(`/machines/specifications/${specification.id}/activate`, { method: 'POST' });
+  for (const [index, minuteOffset] of [0, 120, 240].entries()) {
+    await request('/machines/inspection-slots', { method: 'POST', body: { workShiftId: dayShift.id, slotNumber: index + 1, minuteOffset } });
+  }
+  const runRounds = (await request('/machines/inspection-rounds/mine')).data.filter((round) => round.productionRun.id === run.id);
+  assert(runRounds.length === 3, 'active run should have exactly three shift inspection rounds');
+  const metrics = runRounds[0].specification.metrics;
+  await request(`/machines/inspection-rounds/${runRounds[0].id}/measurements`, { method: 'POST', body: { measurements: metrics.map((metric, index) => ({ metricId: metric.id, value: index === 0 ? 25 : Number(metric.target) })) } });
+  const issue = (await request('/machines/quality-issues')).data.find((item) => item.productionRun.id === run.id && item.status === 'ATTENTION');
+  assert(issue, 'out-of-range measurement should create ATTENTION issue');
+  const recheck = (await request(`/machines/quality-issues/${issue.id}/recheck`, { method: 'POST', body: { measurements: metrics.map((metric) => ({ metricId: metric.id, value: Number(metric.target) })) } })).data;
+  assert(recheck.issue.status === 'RESOLVED', 'normal recheck should resolve quality issue');
+  const task = (await request('/machines/tasks', { method: 'POST', body: { machineId: machine.id, assigneeMechanicId: mechanic.id, type: 'INSPECTION', priority: 'MEDIUM', description: `Smoke task ${suffix}` } })).data;
+  const taskNotification = await prisma.notification.findFirst({ where: { sourceType: 'MaintenanceTask', sourceId: task.id }, include: { deliveries: true } });
+  assert(taskNotification?.deliveries.length === 1, 'task should create persistent notification and outbox delivery');
+  const mechanicToken = await loginAs(`smoke-mechanic-${suffix}@paypoq.local`);
+  await withAccessToken(mechanicToken, async () => {
+    await request(`/machines/tasks/${task.id}`, { method: 'PATCH', body: { status: 'IN_PROGRESS' } });
+    await expectStatus('/machines/tasks', 403, { method: 'POST', body: { machineId: machine.id, assigneeMechanicId: mechanic.id, type: 'OTHER', priority: 'LOW', description: 'Mechanic must not assign tasks' } });
   });
+  const recentMovements = (await request('/production/recent-movements')).data;
+  const batchIntake = recentMovements.find(
+    (movement) => movement.productionBatch?.id === intake.batch.id,
+  );
+  assert(batchIntake, 'batch intake should be present in recent movement history');
   // Stage move auto-creates worker activities — do not also POST
   // /worker-activities for the same work (would double-count payroll).
   const firstMove = (
@@ -399,7 +493,7 @@ async function runProductionChain({ employee, firstStage, secondStage, omborStag
     },
   });
 
-  pass('production batch, stage movement, activity, defect, and finished receipt');
+  pass('production run, idempotent intake, quality recheck, notification, stage movement, and finished receipt');
 
   return { workerActivity };
 }
@@ -503,6 +597,8 @@ async function runRbacMatrix({ material, rawZone }) {
   });
 
   await withAccessToken(shiftToken, async () => {
+    await request('/machines');
+    await request('/machines/lookups');
     await request('/production/defects', {
       method: 'POST',
       body: {
@@ -540,7 +636,7 @@ async function runRbacMatrix({ material, rawZone }) {
   pass('limited-role RBAC matrix', {
     seller: 'sales allowed, finance/warehouse writes denied',
     warehouse: 'warehouse write allowed, sales payment denied',
-    shiftReceiver: 'production write allowed, finance write denied',
+    shiftReceiver: 'machine read + production write allowed, finance write denied',
     accountant: 'finance/supplier/payroll allowed, production write denied',
     manager: 'main operational summaries allowed',
   });
@@ -910,6 +1006,7 @@ async function runSmokeSuite() {
   const production = await runProductionChain({
     ...employeeSetup,
     variant: productSetup.variant,
+    product: productSetup.product,
   });
   const warehouse = await runWarehouseChecks({
     material: productSetup.material,

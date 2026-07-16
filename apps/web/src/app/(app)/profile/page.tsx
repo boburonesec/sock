@@ -1,8 +1,10 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { telegramApi } from "@/lib/api/telegram";
 import { entityStatusLabel, formatRoleName, labelStatus } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -16,6 +18,8 @@ export default function ProfilePage() {
   const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
   const setActiveFactory = useAuthStore((state) => state.setActiveFactory);
   const logout = useAuthStore((state) => state.logout);
+  const [telegramCode, setTelegramCode] = useState<string | null>(null);
+  const telegramLink = useMutation({ mutationFn: telegramApi.createMyUserLinkToken, onSuccess: (response) => setTelegramCode(response.data.code) });
 
   async function handleLogout() {
     await logout();
@@ -25,7 +29,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Profil</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Profil</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Akkaunt va korxonaga kirish ruxsatlari
         </p>
@@ -43,7 +47,7 @@ export default function ProfilePage() {
           <Button
             type="button"
             variant="outline"
-            className="border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+            className="w-full border-rose-500/30 text-rose-300 hover:bg-rose-500/10 sm:w-auto"
             onClick={handleLogout}
           >
             Chiqish
@@ -68,6 +72,12 @@ export default function ProfilePage() {
           <p className="text-xs uppercase text-muted-foreground">Ruxsatlar</p>
           <p className="mt-2 font-semibold">{permissions.length}</p>
         </div>
+      </section>
+
+      <section className="panel p-5">
+        <h2 className="font-semibold">Telegram bildirishnomalari</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Task va recheck xabarlarini olish uchun USER accountingizni botga ulang.</p>
+        {telegramCode ? <p className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 font-mono text-lg">/link {telegramCode}</p> : <Button className="mt-3" variant="outline" onClick={() => telegramLink.mutate()}>Ulanish kodini olish</Button>}
       </section>
 
       <section className="panel p-5">

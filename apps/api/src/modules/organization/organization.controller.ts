@@ -8,6 +8,7 @@ import {
   CreateOrganizationUserDto,
   UpdateOrganizationUserFactoryAccessDto,
   UpdateOrganizationUserPasswordDto,
+  LinkOrganizationUserEmployeeDto,
 } from './organization.dto';
 import { OrganizationService } from './organization.service';
 
@@ -57,6 +58,15 @@ export class OrganizationController {
     @Body() dto: UpdateOrganizationUserPasswordDto,
   ) {
     return this.organizationService.updateUserPassword(context, id, dto);
+  }
+
+  @Patch('users/:id/employee')
+  linkUserEmployee(
+    @CurrentContext() context: RequestContext,
+    @Param('id') id: string,
+    @Body() dto: LinkOrganizationUserEmployeeDto,
+  ) {
+    return this.organizationService.linkUserEmployee(context, id, dto.employeeId);
   }
 
   @Patch('users/:id/factory-access')

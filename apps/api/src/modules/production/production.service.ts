@@ -4,7 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EmployeeStatus, Prisma } from '@prisma/client';
+import {
+  EmployeeJobRole,
+  EmployeeStatus,
+  EmployeeWorkProfile,
+  MachineWorkRole,
+  Prisma,
+  ProductionRunStatus,
+  WorkerActivitySource,
+} from '@prisma/client';
 import { sanitizeOperatorText } from '../../common/sanitize-operator-text';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -15,6 +23,9 @@ import {
   CreateProductionBatchDto,
   CreateStageMovementDto,
   CreateWorkerActivityDto,
+  CreateProductionRunDto,
+  CreateProductionRunIntakeDto,
+  ChangeProductionRunStatusDto,
 } from './production.dto';
 import {
   CollectionResponse,
@@ -45,6 +56,85 @@ export class ProductionService {
     private readonly auditService: AuditService,
   ) {}
 
+  async getRuns(context: RequestContext) {
+    const factoryId = requireActiveFactoryId(context);
+    return { data: await this.prisma.productionRun.findMany({
+      where: { tenantId: context.tenantId, factoryId },
+      include: { machine: true, productVariant: { include: { product: true, color: true } }, operator: true, mechanic: true, workShift: true },
+      orderBy: { createdAt: 'desc' }, take: 100,
+    }) };
+  }
+
+  async createRun(context: RequestContext, dto: CreateProductionRunDto) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context); const now = new Date();
+    return { data: await this.prisma.$transaction(async (tx) => {
+      const [machine, variant, operator, shift, assignments, openRun] = await Promise.all([
+        tx.machine.findFirst({ where: { id: dto.machineId, tenantId, factoryId, status: 'ACTIVE', deletedAt: null } }),
+        tx.productVariant.findFirst({ where: { id: dto.productVariantId, tenantId, deletedAt: null, product: { deletedAt: null } } }),
+        tx.employee.findFirst({ where: { id: dto.operatorEmployeeId, tenantId, factoryId, workProfile: EmployeeWorkProfile.MACHINE_OPERATOR, status: EmployeeStatus.ACTIVE, deletedAt: null } }),
+        tx.workShift.findFirst({ where: { id: dto.workShiftId, tenantId, factoryId, deletedAt: null } }),
+        tx.machineMechanicAssignment.findMany({ where: { tenantId, factoryId, machineId: dto.machineId, workShiftId: dto.workShiftId, validFrom: { lte: now }, OR: [{ validTo: null }, { validTo: { gt: now } }] }, include: { mechanic: true } }),
+        tx.productionRun.findFirst({ where: { tenantId, factoryId, machineId: dto.machineId, status: { in: ['PLANNED', 'RUNNING', 'HOLD'] } } }),
+      ]);
+      if (!machine || !variant || !operator || !shift) throw new BadRequestException('Stanok, mahsulot varianti, operator yoki smena mos emas.');
+      if (openRun) throw new ConflictException('Bu stanokda yopilmagan production run mavjud.');
+      if (assignments.length !== 1 || assignments[0].mechanic.workProfile !== EmployeeWorkProfile.MECHANIC || assignments[0].mechanic.status !== EmployeeStatus.ACTIVE) throw new ConflictException('Stanok va smena uchun aynan bitta faol mexanik assignment bo‘lishi kerak.');
+      const run = await tx.productionRun.create({ data: { tenantId, factoryId, machineId: machine.id, productVariantId: variant.id, operatorEmployeeId: operator.id, mechanicEmployeeId: assignments[0].mechanicId, workShiftId: shift.id, status: ProductionRunStatus.RUNNING, startedAt: now, startedByUserId: context.userId, note: dto.note?.trim() } });
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'PRODUCTION_RUN_STARTED', entityType: 'ProductionRun', entityId: run.id, after: run, metadata: { mechanicAssignmentId: assignments[0].id } });
+      return run;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }) };
+  }
+
+  async changeRunStatus(context: RequestContext, id: string, dto: ChangeProductionRunStatusDto) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context);
+    const run = await this.prisma.productionRun.findFirst({ where: { id, tenantId, factoryId } });
+    if (!run) throw new NotFoundException('Production run topilmadi.');
+    const allowed: Record<ProductionRunStatus, ProductionRunStatus[]> = {
+      PLANNED: ['RUNNING', 'CANCELLED'], RUNNING: ['HOLD', 'STOPPED', 'COMPLETED'], HOLD: ['RUNNING', 'STOPPED', 'CANCELLED'], STOPPED: ['RUNNING', 'COMPLETED'], COMPLETED: [], CANCELLED: [],
+    };
+    if (!allowed[run.status].includes(dto.status)) throw new ConflictException(`${run.status} dan ${dto.status} ga o‘tish mumkin emas.`);
+    return { data: await this.prisma.productionRun.update({ where: { id }, data: { status: dto.status, ...(dto.status === 'COMPLETED' || dto.status === 'CANCELLED' ? { endedAt: new Date(), endedByUserId: context.userId } : {}), ...(dto.status === 'RUNNING' && !run.startedAt ? { startedAt: new Date() } : {}) } }) };
+  }
+
+  async createRunIntake(context: RequestContext, runId: string, dto: CreateProductionRunIntakeDto) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context); const now = new Date();
+    const existing = await this.prisma.productionRunIntake.findUnique({ where: { tenantId_idempotencyKey: { tenantId, idempotencyKey: dto.idempotencyKey } }, include: { batch: true, activities: true } });
+    if (existing) {
+      if (existing.productionRunId !== runId) throw new ConflictException('Idempotency key boshqa run uchun ishlatilgan.');
+      return { data: existing };
+    }
+    try {
+      return { data: await this.prisma.$transaction(async (tx) => {
+        const run = await tx.productionRun.findFirst({ where: { id: runId, tenantId, factoryId, status: ProductionRunStatus.RUNNING }, include: { productVariant: true, workShift: true } });
+        if (!run) throw new ConflictException('Faqat RUNNING holatdagi run outputi qabul qilinadi.');
+        const [firstStage, rates] = await Promise.all([
+          tx.productionStage.findFirst({ where: { tenantId, factoryId, deletedAt: null }, orderBy: { sortOrder: 'asc' } }),
+          tx.machinePieceRate.findMany({ where: { tenantId, factoryId, productId: run.productVariant.productId, workRole: { in: [MachineWorkRole.MECHANIC, MachineWorkRole.MACHINE_OPERATOR] }, deletedAt: null, effectiveFrom: { lte: now }, OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }] } }),
+        ]);
+        if (!firstStage) throw new ConflictException('Birinchi ishlab chiqarish bosqichi topilmadi.');
+        const mechanicRate = rates.filter((r) => r.workRole === MachineWorkRole.MECHANIC);
+        const operatorRate = rates.filter((r) => r.workRole === MachineWorkRole.MACHINE_OPERATOR);
+        if (mechanicRate.length !== 1 || operatorRate.length !== 1) throw new ConflictException('Mexanik va operator uchun aynan bittadan faol machine piece-rate kerak.');
+        const batch = await tx.productionBatch.create({ data: { tenantId, factoryId, productVariantId: run.productVariantId, productionRunId: run.id, quantity: dto.quantity, createdByUserId: context.userId } });
+        await tx.stageInventory.upsert({ where: { tenantId_factoryId_productionStageId_productVariantId: { tenantId, factoryId, productionStageId: firstStage.id, productVariantId: run.productVariantId } }, create: { tenantId, factoryId, productionStageId: firstStage.id, productVariantId: run.productVariantId, quantity: dto.quantity }, update: { quantity: { increment: dto.quantity } } });
+        const movement = await tx.stageMovement.create({ data: { tenantId, factoryId, sourceStageId: firstStage.id, destinationStageId: firstStage.id, productVariantId: run.productVariantId, productionBatchId: batch.id, quantity: dto.quantity, recordedByUserId: context.userId, occurredAt: now, note: dto.note?.trim() } });
+        const intake = await tx.productionRunIntake.create({ data: { tenantId, factoryId, productionRunId: run.id, productionBatchId: batch.id, quantity: dto.quantity, idempotencyKey: dto.idempotencyKey, recordedByUserId: context.userId } });
+        await tx.workerActivity.createMany({ data: [
+          { tenantId, factoryId, employeeId: run.mechanicEmployeeId, productionStageId: firstStage.id, productVariantId: run.productVariantId, workShiftId: run.workShiftId, quantity: dto.quantity, baseSalaryRateAmount: mechanicRate[0].amount, shiftPremiumAmount: 0, salaryRateAmount: mechanicRate[0].amount, workShiftCode: run.workShift.code, activityDate: now, enteredByUserId: context.userId, source: WorkerActivitySource.MACHINE_OUTPUT, productionRunIntakeId: intake.id, machinePieceRateId: mechanicRate[0].id },
+          { tenantId, factoryId, employeeId: run.operatorEmployeeId, productionStageId: firstStage.id, productVariantId: run.productVariantId, workShiftId: run.workShiftId, quantity: dto.quantity, baseSalaryRateAmount: operatorRate[0].amount, shiftPremiumAmount: 0, salaryRateAmount: operatorRate[0].amount, workShiftCode: run.workShift.code, activityDate: now, enteredByUserId: context.userId, source: WorkerActivitySource.MACHINE_OUTPUT, productionRunIntakeId: intake.id, machinePieceRateId: operatorRate[0].id },
+        ] });
+        await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'PRODUCTION_RUN_INTAKE_CREATED', entityType: 'ProductionRunIntake', entityId: intake.id, after: intake, metadata: { batchId: batch.id, stageMovementId: movement.id, mechanicEmployeeId: run.mechanicEmployeeId, operatorEmployeeId: run.operatorEmployeeId } });
+        return tx.productionRunIntake.findUniqueOrThrow({ where: { id: intake.id }, include: { batch: true, activities: true } });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }) };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const replay = await this.prisma.productionRunIntake.findUnique({ where: { tenantId_idempotencyKey: { tenantId, idempotencyKey: dto.idempotencyKey } }, include: { batch: true, activities: true } });
+        if (replay?.productionRunId === runId) return { data: replay };
+      }
+      throw error;
+    }
+  }
+
   async createBatch(
     context: RequestContext,
     dto: CreateProductionBatchDto,
@@ -53,8 +143,15 @@ export class ProductionService {
     const factoryId = requireActiveFactoryId(context);
     const now = new Date();
 
+    if (dto.mechanicEmployeeId && dto.mechanicEmployeeId === dto.machineOperatorEmployeeId) {
+      throw new BadRequestException(
+        'Mexanik va stanok operatori boshqa-boshqa xodim bo‘lishi kerak.',
+      );
+    }
+
     const created = await this.prisma.$transaction(async (tx) => {
-      const [productVariant, firstStage] = await Promise.all([
+      const [productVariant, firstStage, mechanic, machineOperator] =
+        await Promise.all([
         tx.productVariant.findFirst({
           where: {
             id: dto.productVariantId,
@@ -69,6 +166,26 @@ export class ProductionService {
           orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           select: productionStageSelect,
         }),
+        dto.mechanicEmployeeId ? tx.employee.findFirst({
+          where: {
+            id: dto.mechanicEmployeeId,
+            tenantId,
+            factoryId,
+            status: EmployeeStatus.ACTIVE,
+            deletedAt: null,
+          },
+          select: batchEmployeeSelect,
+        }) : Promise.resolve(null),
+        dto.machineOperatorEmployeeId ? tx.employee.findFirst({
+          where: {
+            id: dto.machineOperatorEmployeeId,
+            tenantId,
+            factoryId,
+            status: EmployeeStatus.ACTIVE,
+            deletedAt: null,
+          },
+          select: batchEmployeeSelect,
+        }) : Promise.resolve(null),
       ]);
 
       if (!productVariant) {
@@ -81,11 +198,37 @@ export class ProductionService {
         );
       }
 
+      if (dto.mechanicEmployeeId && !mechanic) {
+        throw new NotFoundException(
+          'Tanlangan mexanik topilmadi yoki faol emas.',
+        );
+      }
+
+      if (mechanic && mechanic.workProfile !== EmployeeWorkProfile.MECHANIC) {
+        throw new ConflictException(
+          `«${mechanic.name}» xodimiga Mexanik lavozimi biriktirilmagan.`,
+        );
+      }
+
+      if (dto.machineOperatorEmployeeId && !machineOperator) {
+        throw new NotFoundException(
+          'Tanlangan stanok operatori topilmadi yoki faol emas.',
+        );
+      }
+
+      if (machineOperator && machineOperator.workProfile !== EmployeeWorkProfile.MACHINE_OPERATOR) {
+        throw new ConflictException(
+          `«${machineOperator.name}» xodimiga Stanok operatori lavozimi biriktirilmagan.`,
+        );
+      }
+
       const batch = await tx.productionBatch.create({
         data: {
           tenantId,
           factoryId,
           productVariantId: productVariant.id,
+          mechanicEmployeeId: mechanic?.id ?? null,
+          machineOperatorEmployeeId: machineOperator?.id ?? null,
           quantity: dto.quantity,
           createdByUserId: context.userId,
         },
@@ -141,7 +284,11 @@ export class ProductionService {
         entityType: 'ProductionBatch',
         entityId: batch.id,
         after: batch,
-        metadata: dto.note ? { note: dto.note } : undefined,
+        metadata: {
+          mechanicEmployeeId: mechanic?.id ?? null,
+          machineOperatorEmployeeId: machineOperator?.id ?? null,
+          ...(dto.note ? { note: dto.note } : {}),
+        },
       });
 
       await this.auditService.createWithTransaction(tx, {
@@ -311,7 +458,13 @@ export class ProductionService {
           status: EmployeeStatus.ACTIVE,
           deletedAt: null,
         },
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          workShift: {
+            select: { id: true, code: true, name: true, premiumPerPiece: true },
+          },
+        },
       });
 
       if (employees.length !== employeeIds.length) {
@@ -374,6 +527,16 @@ export class ProductionService {
       for (const employee of employees) {
         const qty = quantityByEmployeeId.get(employee.id) ?? 0;
         if (qty <= 0) continue;
+        if (!employee.workShift) {
+          throw new ConflictException(
+            `«${employee.name}» uchun smena tanlanmagan. Avval Xodimlar bo‘limida smena biriktiring.`,
+          );
+        }
+        const shiftPremium =
+          employee.workShift.code === 'NIGHT'
+            ? employee.workShift.premiumPerPiece
+            : new Prisma.Decimal(0);
+        const effectiveRate = salaryRate.amount.plus(shiftPremium);
 
         const workerActivity = await tx.workerActivity.create({
           data: {
@@ -382,8 +545,12 @@ export class ProductionService {
             employeeId: employee.id,
             productionStageId: sourceStage.id,
             productVariantId: productVariant.id,
+            workShiftId: employee.workShift.id,
             quantity: qty,
-            salaryRateAmount: salaryRate.amount,
+            baseSalaryRateAmount: salaryRate.amount,
+            shiftPremiumAmount: shiftPremium,
+            salaryRateAmount: effectiveRate,
+            workShiftCode: employee.workShift.code,
             activityDate: now,
             enteredByUserId: context.userId,
           },
@@ -405,6 +572,12 @@ export class ProductionService {
           workerShares: employees.map((employee) => ({
             employeeId: employee.id,
             quantity: quantityByEmployeeId.get(employee.id) ?? 0,
+            workShiftCode: employee.workShift?.code ?? null,
+            baseSalaryRateAmount: salaryRate.amount.toString(),
+            shiftPremiumAmount:
+              employee.workShift?.code === 'NIGHT'
+                ? employee.workShift.premiumPerPiece.toString()
+                : '0',
           })),
           workerActivityIds: activityIds,
           salaryRateId: salaryRate.id,
@@ -474,7 +647,14 @@ export class ProductionService {
             status: EmployeeStatus.ACTIVE,
             deletedAt: null,
           },
-          select: { id: true, name: true, status: true },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            workShift: {
+              select: { id: true, code: true, name: true, premiumPerPiece: true },
+            },
+          },
         }),
         tx.productionStage.findFirst({
           where: {
@@ -498,6 +678,12 @@ export class ProductionService {
 
       if (!employee) {
         throw new NotFoundException('Active employee not found.');
+      }
+
+      if (!employee.workShift) {
+        throw new ConflictException(
+          `«${employee.name}» uchun smena tanlanmagan. Avval Xodimlar bo‘limida smena biriktiring.`,
+        );
       }
 
       if (!stage) {
@@ -533,6 +719,11 @@ export class ProductionService {
       const note = dto.note
         ? sanitizeOperatorText(dto.note, { maxLength: 500 })
         : undefined;
+      const shiftPremium =
+        employee.workShift.code === 'NIGHT'
+          ? employee.workShift.premiumPerPiece
+          : new Prisma.Decimal(0);
+      const effectiveRate = salaryRate.amount.plus(shiftPremium);
 
       const workerActivity = await tx.workerActivity.create({
         data: {
@@ -541,8 +732,12 @@ export class ProductionService {
           employeeId: employee.id,
           productionStageId: stage.id,
           productVariantId: productVariant.id,
+          workShiftId: employee.workShift.id,
           quantity: dto.quantity,
-          salaryRateAmount: salaryRate.amount,
+          baseSalaryRateAmount: salaryRate.amount,
+          shiftPremiumAmount: shiftPremium,
+          salaryRateAmount: effectiveRate,
+          workShiftCode: employee.workShift.code,
           activityDate: now,
           enteredByUserId: context.userId,
         },
@@ -564,6 +759,9 @@ export class ProductionService {
           salaryRateScope: salaryRate.productVariantId
             ? 'PRODUCT_VARIANT'
             : 'STAGE',
+          workShiftCode: employee.workShift.code,
+          baseSalaryRateAmount: salaryRate.amount.toString(),
+          shiftPremiumAmount: shiftPremium.toString(),
           ...(note ? { note } : {}),
         },
       });
@@ -735,7 +933,14 @@ export class ProductionService {
             season: { select: { id: true, name: true, code: true } },
           },
         },
-        productionBatch: { select: { id: true, quantity: true } },
+        productionBatch: {
+          select: {
+            id: true,
+            quantity: true,
+            mechanic: { select: { id: true, name: true } },
+            machineOperator: { select: { id: true, name: true } },
+          },
+        },
         recordedBy: { select: { id: true, name: true } },
       },
     });
@@ -767,7 +972,10 @@ export class ProductionService {
       select: {
         id: true,
         quantity: true,
+        baseSalaryRateAmount: true,
+        shiftPremiumAmount: true,
         salaryRateAmount: true,
+        workShiftCode: true,
         activityDate: true,
         employee: { select: { id: true, name: true, status: true } },
         productionStage: { select: { id: true, name: true, sortOrder: true } },
@@ -788,7 +996,10 @@ export class ProductionService {
       data: activities.map((activity) => ({
         id: activity.id,
         quantity: activity.quantity,
+        baseSalaryRateAmount: activity.baseSalaryRateAmount.toString(),
+        shiftPremiumAmount: activity.shiftPremiumAmount.toString(),
         salaryRateAmount: activity.salaryRateAmount.toString(),
+        workShiftCode: activity.workShiftCode,
         activityDate: activity.activityDate,
         employee: activity.employee,
         stage: activity.productionStage,
@@ -1054,6 +1265,8 @@ export class ProductionService {
         id: true,
         name: true,
         status: true,
+        jobRole: true,
+        workProfile: true,
         stageAssignments: {
           select: {
             productionStage: {
@@ -1070,6 +1283,8 @@ export class ProductionService {
         id: employee.id,
         name: employee.name,
         status: employee.status,
+        jobRole: employee.jobRole,
+        workProfile: employee.workProfile,
         stages: employee.stageAssignments.map((assignment) => ({
           id: assignment.productionStage.id,
           name: assignment.productionStage.name,
@@ -1277,8 +1492,17 @@ const productionBatchSelect = {
   quantity: true,
   createdAt: true,
   productVariant: { select: productVariantSelect },
+  mechanic: { select: { id: true, name: true } },
+  machineOperator: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
 } satisfies Prisma.ProductionBatchSelect;
+
+const batchEmployeeSelect = {
+  id: true,
+  name: true,
+  jobRole: true,
+  workProfile: true,
+} satisfies Prisma.EmployeeSelect;
 
 const stageMovementSelect = {
   id: true,
@@ -1288,14 +1512,24 @@ const stageMovementSelect = {
   sourceStage: { select: productionStageSelect },
   destinationStage: { select: productionStageSelect },
   productVariant: { select: productVariantSelect },
-  productionBatch: { select: { id: true, quantity: true } },
+  productionBatch: {
+    select: {
+      id: true,
+      quantity: true,
+      mechanic: { select: { id: true, name: true } },
+      machineOperator: { select: { id: true, name: true } },
+    },
+  },
   recordedBy: { select: { id: true, name: true } },
 } satisfies Prisma.StageMovementSelect;
 
 const workerActivitySelect = {
   id: true,
   quantity: true,
+  baseSalaryRateAmount: true,
+  shiftPremiumAmount: true,
   salaryRateAmount: true,
+  workShiftCode: true,
   activityDate: true,
   employee: { select: { id: true, name: true, status: true } },
   productionStage: { select: productionStageSelect },
@@ -1349,7 +1583,10 @@ function mapStageInventoryResponse(inventory: {
 function mapWorkerActivityResponse(activity: {
   id: string;
   quantity: number;
+  baseSalaryRateAmount: Prisma.Decimal;
+  shiftPremiumAmount: Prisma.Decimal;
   salaryRateAmount: Prisma.Decimal;
+  workShiftCode: 'DAY' | 'NIGHT' | null;
   activityDate: Date;
   employee: {
     id: string;
@@ -1376,7 +1613,10 @@ function mapWorkerActivityResponse(activity: {
   return {
     id: activity.id,
     quantity: activity.quantity,
+    baseSalaryRateAmount: activity.baseSalaryRateAmount.toString(),
+    shiftPremiumAmount: activity.shiftPremiumAmount.toString(),
     salaryRateAmount: activity.salaryRateAmount.toString(),
+    workShiftCode: activity.workShiftCode,
     activityDate: activity.activityDate,
     employee: activity.employee,
     stage: activity.productionStage,

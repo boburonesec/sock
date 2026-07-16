@@ -99,6 +99,12 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 
 - Mobile and Telegram remain secondary surfaces; web is primary for operators
 
+### Davomat / FaceID
+
+- Davomat read model, DAY/NIGHT smena va rahbar hisoboti tayyor.
+- Trunket FaceID ingestion endpointi va qo‘lda davomat yozish UI’i yo‘q: vendor payload, imzo va retry/idempotency kontrakti hali tasdiqlanmagan.
+- Chiqishsiz yozuvga soxta chiqish vaqti qo‘yilmaydi; smena yakuni o‘tgach hisobotda `MISSING_CHECK_OUT` bo‘ladi.
+
 ## Zone name note
 
 Warehouse and sales resolve finished-goods zone by canonical English name

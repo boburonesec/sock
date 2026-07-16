@@ -27,6 +27,8 @@ Frontend route access `apps/web/src/lib/access-control.ts` orqali permission bil
 | `/production/stages` | Alohida sahifa | **Yo‘q** — board ichida |
 | `/production/activities` | Alohida sahifa | **Yo‘q** — board ichida |
 | `/production/defects` | Alohida sahifa | **Yo‘q** — board ichida |
+| `/machines` | Stanok, mexanik assignment, production run va output qabul | **Shipped** |
+| `/mechanic` | Mexanik tasklari, inspection va quality attention | **Shipped** |
 
 Production: Manager va Shift Receiver (`production.view` / `production.write`).
 
@@ -69,6 +71,7 @@ Ombor: Warehouse Operator va Manager (`warehouse.view` / `warehouse.write`).
 | Yo‘l | Vazifa | Holat |
 | --- | --- | --- |
 | `/employees` | Ishbay ishchilar (dasturga kirmaydi) | **Shipped** |
+| `/attendance` | Oylik kelib-ketish va yopilmagan kunlar hisoboti | **Shipped** (Trunket ingestion kutilmoqda) |
 | `/employees/:id` | Tafsilot | UI drawer asosiy |
 | `/employees/bonuses` | Bonus yozuvlari | **Shipped** |
 | `/employees/penalties` | Jarima yozuvlari | **Shipped** |
@@ -89,6 +92,7 @@ Ombor: Warehouse Operator va Manager (`warehouse.view` / `warehouse.write`).
 | `/settings/products` | Mahsulot + variant |
 | `/settings/colors`, `/materials`, `/seasons`, `/stages` | Master data |
 | `/settings/salary-rates` | Bosqich bo‘yicha ishbay stavka |
+| `/settings/shifts` | DAY/NIGHT vaqti va kechki dona ustamasi |
 | `/settings/expense-categories` | Xarajat kategoriyalari |
 | `/settings/zones`, `/settings/thresholds` | Zona / low-stock limit |
 | `/settings/roles` | Rollar (read) |

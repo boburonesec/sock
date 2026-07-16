@@ -171,6 +171,7 @@ export const permissionKeyLabel: Record<string, string> = {
   "finance.view": "Moliyani ko‘rish",
   "finance.write": "Moliya/avans/ish haqi yozish",
   "employees.view": "Ishbay xodimlarni ko‘rish",
+  "attendance.view": "Xodimlar davomatini ko‘rish",
   "employees.write": "Ishbay xodimlarni boshqarish",
   "reports.view": "Hisobotlarni ko‘rish",
   "settings.view": "Sozlamalarni ko‘rish",

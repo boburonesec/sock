@@ -63,12 +63,16 @@ export interface CollectionResponse<T> {
 export interface TelegramBotLinkedAccountResponse {
   telegramAccountId: string;
   tenantId: string;
-  type: 'EMPLOYEE' | 'CLIENT';
+  type: 'EMPLOYEE' | 'CLIENT' | 'USER';
   employee: {
     id: string;
     name: string;
   } | null;
   client: {
+    id: string;
+    name: string;
+  } | null;
+  user: {
     id: string;
     name: string;
   } | null;

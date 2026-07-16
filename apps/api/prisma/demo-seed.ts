@@ -186,19 +186,40 @@ async function main(): Promise<void> {
   });
 
   // --- Employees (piece-rate workers) ---
-  const employeeNames = [
-    'Ali Averlogchi',
-    'Vali Dazmolchi',
-    'Dilshod Sifat nazorati',
-    'Sardor Qadoqlovchi',
+  const dayShift = await prisma.workShift.findFirstOrThrow({
+    where: { tenantId, factoryId: factory.id, code: 'DAY', deletedAt: null },
+  });
+  const nightShift = await prisma.workShift.findFirstOrThrow({
+    where: { tenantId, factoryId: factory.id, code: 'NIGHT', deletedAt: null },
+  });
+  const employeeDefinitions = [
+    { name: 'Ali Averlogchi', jobRole: 'STAGE_WORKER' },
+    { name: 'Vali Dazmolchi', jobRole: 'STAGE_WORKER' },
+    { name: 'Dilshod Sifat nazorati', jobRole: 'STAGE_WORKER' },
+    { name: 'Sardor Qadoqlovchi', jobRole: 'STAGE_WORKER' },
+    { name: 'Rustam Mexanik', jobRole: 'MECHANIC' },
+    { name: 'Odil Stanok operatori', jobRole: 'MACHINE_OPERATOR' },
   ] as const;
   const employees = [];
-  for (const name of employeeNames) {
+  for (const definition of employeeDefinitions) {
     const existing = await prisma.employee.findFirst({
-      where: { tenantId, factoryId: factory.id, name, deletedAt: null },
+      where: {
+        tenantId,
+        factoryId: factory.id,
+        name: definition.name,
+        deletedAt: null,
+      },
     });
     if (existing) {
-      employees.push(existing);
+      employees.push(
+        await prisma.employee.update({
+          where: { id: existing.id },
+          data: {
+            jobRole: definition.jobRole,
+            workShiftId: employees.length % 2 === 0 ? dayShift.id : nightShift.id,
+          },
+        }),
+      );
       continue;
     }
     employees.push(
@@ -206,13 +227,52 @@ async function main(): Promise<void> {
         data: {
           tenantId,
           factoryId: factory.id,
-          name,
+          name: definition.name,
+          jobRole: definition.jobRole,
           status: 'ACTIVE',
+          workShiftId: employees.length % 2 === 0 ? dayShift.id : nightShift.id,
         },
       }),
     );
   }
-  const [ali, vali, dilshod, sardor] = employees;
+  const [ali, vali, dilshod, sardor, mechanic, machineOperator] = employees;
+
+  await prisma.attendanceRecord.deleteMany({
+    where: { tenantId, factoryId: factory.id },
+  });
+  const attendanceDay = daysAgo(2).toISOString().slice(0, 10);
+  await prisma.attendanceRecord.createMany({
+    data: [
+      {
+        tenantId,
+        factoryId: factory.id,
+        employeeId: ali.id,
+        workShiftId: dayShift.id,
+        workDate: new Date(`${attendanceDay}T00:00:00.000Z`),
+        checkInAt: new Date(`${attendanceDay}T08:01:00+05:00`),
+        checkOutAt: new Date(`${attendanceDay}T20:03:00+05:00`),
+        shiftCode: dayShift.code,
+        shiftName: dayShift.name,
+        shiftStartMinute: dayShift.startMinute,
+        shiftEndMinute: dayShift.endMinute,
+        externalReference: 'demo-complete',
+      },
+      {
+        tenantId,
+        factoryId: factory.id,
+        employeeId: vali.id,
+        workShiftId: nightShift.id,
+        workDate: new Date(`${attendanceDay}T00:00:00.000Z`),
+        checkInAt: new Date(`${attendanceDay}T20:02:00+05:00`),
+        checkOutAt: null,
+        shiftCode: nightShift.code,
+        shiftName: nightShift.name,
+        shiftStartMinute: nightShift.startMinute,
+        shiftEndMinute: nightShift.endMinute,
+        externalReference: 'demo-missing-checkout',
+      },
+    ],
+  });
 
   // Ishbay ishchilar — bosqich biriktirish
   await prisma.employeeStageAssignment.deleteMany({
@@ -274,6 +334,8 @@ async function main(): Promise<void> {
       tenantId,
       factoryId: factory.id,
       productVariantId: classicBlack.id,
+      mechanicEmployeeId: mechanic.id,
+      machineOperatorEmployeeId: machineOperator.id,
       quantity: 500,
       createdByUserId: shiftUser.id,
       createdAt: midPrevMonth,
@@ -284,6 +346,8 @@ async function main(): Promise<void> {
       tenantId,
       factoryId: factory.id,
       productVariantId: classicBlack.id,
+      mechanicEmployeeId: mechanic.id,
+      machineOperatorEmployeeId: machineOperator.id,
       quantity: 500,
       createdByUserId: shiftUser.id,
       createdAt: daysAgo(5),
@@ -1163,6 +1227,7 @@ function act(
     productionStageId: requireStage(stageMap, stageName).id,
     productVariantId,
     quantity,
+    baseSalaryRateAmount: new Prisma.Decimal(rate),
     salaryRateAmount: new Prisma.Decimal(rate),
     activityDate,
     enteredByUserId,

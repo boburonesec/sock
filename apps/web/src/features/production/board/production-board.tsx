@@ -218,6 +218,7 @@ export function ProductionBoard() {
     employeesQuery.data?.data.map((employee) => ({
       id: employee.id,
       label: employee.name,
+      jobRole: employee.jobRole,
       stageIds: (employee.stages ?? []).map((stage) => stage.id),
     })) ?? [];
   const warehouseZoneOptions =
@@ -346,6 +347,7 @@ export function ProductionBoard() {
               <DataTableHeader>Qayerga</DataTableHeader>
               <DataTableHeader>Mahsulot</DataTableHeader>
               <DataTableHeader>Miqdor</DataTableHeader>
+              <DataTableHeader>Qabul qilgan jamoa</DataTableHeader>
               <DataTableHeader>Kiritgan</DataTableHeader>
               <DataTableHeader>Vaqt</DataTableHeader>
             </DataTableRow>
@@ -360,6 +362,12 @@ export function ProductionBoard() {
                     {movement.productVariant.product.name} · {movement.productVariant.color.name}
                   </DataTableCell>
                   <DataTableCell>{formatNumber(movement.quantity)} dona</DataTableCell>
+                  <DataTableCell>
+                    {movement.productionBatch?.mechanic &&
+                    movement.productionBatch.machineOperator
+                      ? `Mexanik: ${movement.productionBatch.mechanic.name} · Operator: ${movement.productionBatch.machineOperator.name}`
+                      : "—"}
+                  </DataTableCell>
                   <DataTableCell>{movement.recordedBy.name}</DataTableCell>
                   <DataTableCell>
                     {new Intl.DateTimeFormat("uz-UZ", {
@@ -371,7 +379,7 @@ export function ProductionBoard() {
               ))
             ) : (
               <EmptyTableState
-                colSpan={6}
+                colSpan={7}
                 title="Harakatlar mavjud emas"
                 description="Bosqichlar orasidagi mahsulot o‘tishlari qayd etilgach, ular shu yerda ko‘rinadi."
               />
@@ -385,9 +393,9 @@ export function ProductionBoard() {
         description="Asosiy kiritish amallari tizim ma’lumotlariga ulangan"
       >
         <p className="text-sm text-muted-foreground">
-          Smena o‘tkazishda tanlangan ishchilarga faollik avtomatik yoziladi
-          (miqdor teng bo‘linadi). Brak avtomatik jarima yoki qoldiq tuzatishi
-          yaratmaydi.
+          Smena o‘tkazishda tanlangan ishchilarga kiritilgan dona bo‘yicha
+          faollik avtomatik yoziladi. Brak avtomatik jarima yoki qoldiq
+          tuzatishi yaratmaydi.
           {canReceiveFinished
             ? " Omborga qabul qilish — Ombor bosqichidagi tayyor mahsulotni jismoniy ombor qoldig‘iga o‘tkazadi."
             : " Jismoniy omborga qabul qilish ombor operatori yoki menejer rolida ochiladi."}
@@ -410,6 +418,7 @@ export function ProductionBoard() {
         omborProductVariantOptions={omborProductVariantOptions}
         stageOptions={stageOptions}
         employeeOptions={employeeOptions}
+        stageInventory={inventory}
         warehouseZoneOptions={warehouseZoneOptions}
         isCreateBatchPending={
           createBatchMutation.isPending || productsQuery.isPending

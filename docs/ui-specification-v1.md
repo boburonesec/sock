@@ -10,6 +10,15 @@ Version: 1.0
 - Statuslar rangli badge va warning holatlari bilan ko‘rsatiladi.
 - Operatorlar uchun muhim ma’lumot birinchi ekranda, jadvalga yashirilmagan holda beriladi.
 
+## Machine and mechanic workspace
+
+- `/machines`: machine, active assignment, run status va idempotent output intake.
+- `/mechanic`: responsive tasklar, vaqt bo‘yicha roundlar va target/min/maxli
+  dinamik measurement form.
+- `ATTENTION` avtomatik stop emas; faqat master alohida `HOLD` beradi.
+- `/employees` ish profili, compensation va account rolini alohida ko‘rsatadi;
+  stage selector faqat `STAGE_WORKER` uchun ochiladi.
+
 ## 1. Executive Dashboard
 
 **Maqsad:** Owner va Manager biznes holatini 10 soniyada tushunishi.
@@ -52,12 +61,16 @@ Tezkor amallar va majburiy maydonlar:
 
 | Amal | Majburiy maydonlar |
 | --- | --- |
-| Create Batch | Product Variant, Quantity |
+| Ishlab chiqarishni qabul qilish | Mahsulot varianti, miqdor, mexanik, stanok operatori |
 | Move Stage | Source Stage, Destination Stage, Quantity |
 | Add Activity | Employee, Stage, Quantity |
 | Register Defect | Employee, Stage, Quantity, Reason |
 
 Bu tizimning eng muhim sahifasi. Har bir yuqoridagi amal ko‘pi bilan uch klikda boshlanishi kerak.
+
+Qabul qilish formasida faqat faol `MECHANIC` va `MACHINE_OPERATOR` xodimlar mos
+tanlovda ko‘rinadi. Ushbu ikki tanlov bajarilgan ishni audit qilish uchun; ular
+payroll faolligini yaratmaydi.
 
 ## 4. Employees
 
@@ -71,7 +84,15 @@ Jadval ustunlari: Name, Role, Status, Today’s Activity, Monthly Activity, Curr
 
 Drawer tablari: Activities, Payroll, Bonuses, Penalties, Advances.
 
-Amallar: xodim yaratish, tahrirlash, deaktivatsiya, bonus va jarima qo‘shish. Xodim tafsilotlari alohida sahifaga o‘tmasdan drawer’da ochilishi shart.
+Amallar: xodim yaratish, smena tanlash/almashtirish, tahrirlash, deaktivatsiya, bonus va jarima qo‘shish. Xodim tafsilotlari alohida sahifaga o‘tmasdan drawer’da ochilishi shart.
+
+### Attendance
+
+- Yo‘l: `/attendance`
+- Actorlar: Owner, Manager
+- Oylik KPI, xodimlar kesimidagi kelgan kunlar va kirish/chiqish tafsilotlari ko‘rinadi.
+- Chiqishsiz va yakun vaqti o‘tgan yozuv qizil “Xodim kunni yopmadi” holatida ko‘rinadi.
+- Trunket payload tasdiqlanmaguncha qo‘lda kiritish yoki import tugmasi ko‘rsatilmaydi.
 
 ## 5. Orders
 
