@@ -13,7 +13,10 @@ export interface ProductionStageReference extends NamedReference {
 
 export interface EmployeeReference extends NamedReference {
   status: "ACTIVE" | "INACTIVE";
+  jobRole?: "STAGE_WORKER" | "MECHANIC" | "MACHINE_OPERATOR";
 }
+
+type BatchEmployeeReference = NamedReference;
 
 export interface StageInventory {
   id: string;
@@ -31,14 +34,22 @@ export interface StageMovement {
   sourceStage: ProductionStageReference;
   destinationStage: ProductionStageReference;
   productVariant: ProductVariantReference;
-  productionBatch: { id: string; quantity: number } | null;
+  productionBatch: {
+    id: string;
+    quantity: number;
+    mechanic: BatchEmployeeReference | null;
+    machineOperator: BatchEmployeeReference | null;
+  } | null;
   recordedBy: UserReference;
 }
 
 export interface WorkerActivity {
   id: string;
   quantity: number;
+  baseSalaryRateAmount: string;
+  shiftPremiumAmount: string;
   salaryRateAmount: string;
+  workShiftCode: "DAY" | "NIGHT" | null;
   activityDate: ApiDateTime;
   employee: EmployeeReference;
   stage: ProductionStageReference;
@@ -97,8 +108,21 @@ export interface ProductionOperationsSummary {
 
 export interface CreateProductionBatchPayload {
   productVariantId: string;
+  mechanicEmployeeId?: string;
+  machineOperatorEmployeeId?: string;
   quantity: number;
   note?: string;
+}
+
+export interface ProductionRun {
+  id: string;
+  status: "PLANNED" | "RUNNING" | "STOPPED" | "COMPLETED" | "HOLD" | "CANCELLED";
+  machine: { id: string; code: string; name: string };
+  productVariant: ProductVariantReference;
+  operator: NamedReference;
+  mechanic: NamedReference;
+  workShift: NamedReference;
+  startedAt: ApiDateTime | null;
 }
 
 export interface CreateStageMovementPayload {
@@ -146,6 +170,8 @@ export interface ProductionBatchCreation {
     createdAt: ApiDateTime;
     productVariant: ProductVariantReference;
     createdBy: UserReference;
+    mechanic: BatchEmployeeReference | null;
+    machineOperator: BatchEmployeeReference | null;
   };
   stageInventory: StageInventory;
   stageMovement: StageMovement;
@@ -155,6 +181,8 @@ export interface ProductionLookupEmployee {
   id: string;
   name: string;
   status: string;
+  jobRole: "STAGE_WORKER" | "MECHANIC" | "MACHINE_OPERATOR";
+  workProfile: "STAGE_WORKER" | "MACHINE_OPERATOR" | "MECHANIC" | "MECHANIC_MASTER" | "STAFF";
   stages: Array<{ id: string; name: string; sortOrder: number }>;
 }
 
@@ -168,6 +196,13 @@ export interface ProductionLookupVariant {
 }
 
 export const productionApi = {
+  getRuns: () => apiClient<ApiCollection<ProductionRun>>("/production/runs"),
+  createRun: (payload: { machineId: string; productVariantId: string; operatorEmployeeId: string; workShiftId: string; note?: string }) =>
+    apiClient<{ data: ProductionRun }>("/production/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
+  changeRunStatus: (id: string, status: ProductionRun["status"]) =>
+    apiClient<{ data: ProductionRun }>(`/production/runs/${id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }),
+  createRunIntake: (id: string, payload: { quantity: number; idempotencyKey: string; note?: string }) =>
+    apiClient<{ data: unknown }>(`/production/runs/${id}/intakes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
   getStageInventory: () =>
     apiClient<ApiCollection<StageInventory>>("/production/stage-inventory"),
   getRecentMovements: () =>

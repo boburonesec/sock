@@ -25,7 +25,18 @@ Tizim generic ERP emas. Uning markazida stage inventory, smena qabul qiluvchi ki
 | Seller | Mijozlar, buyurtmalar va to‘lovlarni yuritish |
 | Accountant | Xarajatlar, avans to‘lovlari, ish haqi va qarzlarni yuritish |
 
-Ishchilar web-ilovadan foydalanmaydi. Ularning faolligi smena qabul qiluvchi tomonidan qayd etiladi.
+Account huquqi xodimning ish turi yoki haq turiga teng emas. Canonical registry
+`Employee`; `User` faqat dastur accounti kerak bo‘lgan xodimga ulanadi.
+
+- Bosqich ishchisi: accountsiz, bosqichga biriktirilgan, ishbay.
+- Stanok operatori: accountsiz, production-run output bo‘yicha ishbay.
+- Mexanik: `Mechanic` accounti, stanok assignmenti, output bo‘yicha ishbay.
+- Mexanik-master: `Mechanic Master` accounti, oylik.
+- Staff: tegishli RBAC accounti, bosqichsiz, oylik.
+
+`EmployeeWorkProfile`, `EmployeeCompensationType` va RBAC `UserRole` mustaqil
+tushunchalardir. Oylik summa effective-dated `EmployeeSalaryAgreement` bilan
+versiyalanadi.
 
 ## 4. Production Module
 
@@ -36,7 +47,18 @@ Mahsulot oqimi:
 - Ishlab chiqarish stage inventory bilan yuritiladi; har bosqichning qoldig‘i mavjud.
 - Partiya standart hajmi 500 dona, ammo sozlanadigan bo‘ladi.
 - Partiya mahsulot modeli, rangi, materiali va mavsumi bilan bog‘lanadi; MVP’da o‘lcham yo‘q.
-- Smena qabul qiluvchi partiyani yaratadi, bosqichga qabul qiladi va keyingi bosqichga ko‘chiradi.
+- Manual `Machine`, vaqt/smena bo‘yicha `MachineMechanicAssignment` va
+  `ProductionRun` V1 capability hisoblanadi; bu IoT telemetriya emas.
+- Shift Receiver runni stanok, variant va accountsiz operator bilan boshlaydi;
+  backend faol mexanik assignmentini snapshot qiladi.
+- Run output qabuli batch, birinchi Stage Inventory movementi hamda mexanik va
+  operator uchun alohida stavkali ikki immutable `MACHINE_OUTPUT`
+  `WorkerActivity`ni bitta idempotent transactionda yaratadi.
+- Eski batch mexanik/operator maydonlari faqat legacy audit. Manual batch qabul
+  payroll yaratmaydi va yangi oqimning source of truth’i emas.
+- Mexanik-master model darajasida target/min/max dinamik o‘lchov specificationini
+  versiyalaydi. Mexanik har smenadagi uchta slotda o‘lchaydi; normadan chiqish
+  `ATTENTION` va 30 daqiqalik recheck yaratadi, avtomatik stop qilmaydi.
 - Har ko‘chirishda miqdor, vaqt, mas’ul shaxs va izoh qayd etiladi.
 - Nuqsonlar kam uchraydi, biroq miqdor, sabab va aniqlangan bosqich bilan majburiy qayd etiladi.
 - Bosqichga ortiqcha miqdor chiqarish yoki manfiy qoldiq yaratish mumkin emas.
@@ -68,9 +90,12 @@ Mahsulot oqimi:
 ## 8. Employee Module
 
 - Xodim profili: ism, rol, bo‘lim, faol/ta’til holati.
+- Har bir xodimga kunduzgi yoki kechki smena biriktiriladi; Owner/Manager smena vaqtlarini va kechki dona ustamasini sozlaydi.
+- Davomat kirish va chiqishdan iborat. Chiqishsiz qolgan smena avtomatik yakun vaqtini o‘tgach rahbar hisobotida “kun yopilmagan” deb ko‘rsatiladi.
+- FaceID/Trunket integratsiyasi normalized davomat yozuvlarini keyin yuboradi; tashqi payload tasdiqlanmaguncha webhook kontrakti ochilmaydi.
 - Shift Receiver ishchi faoliyatini sana, bosqich, dona, stavka va xodim bo‘yicha kiritadi.
 - Bonus va jarimalar alohida yozuvlar sifatida saqlanadi.
-- Ish haqi: faoliyat miqdori × tegishli bosqich stavkasi + bonus − jarima − avans.
+- Ish haqi: faoliyat miqdori × (tegishli bosqich stavkasi + kechki smena dona ustamasi) + bonus − jarima − avans.
 - Ishchi faoliyatini kiritgan foydalanuvchi va o‘zgartirish tarixi saqlanadi.
 
 ## 9. Reports
@@ -93,12 +118,9 @@ Mahsulot oqimi:
 
 ## 11. Notifications
 
-**V1 holati (2026-07-11):** avtomatik bildirishnoma markazi hali yo‘q.
-`/notifications` — placeholder shell. Low-stock va avans holati domain
-ekranlaridan (Ombor / Moliya) kuzatiladi. `NotificationModule` backend’da
-bo‘sh chegara modul.
-
-Kelajakdagi maqsad (hali shipped emas):
+Persistent in-app inbox notificationlarning source of truth’idir. Telegram
+delivery durable outbox orqali leased claim, retry va dedupe bilan ishlaydi.
+Linked `USER` Telegram chatigagina proactive xabar yuboriladi.
 
 - Past ombor qoldig‘i.
 - Buyurtma muddati yaqinlashishi yoki o‘tib ketishi.
@@ -170,7 +192,6 @@ MVP quyidagilarni qamrab olmaydi:
 
 - Universal ERP yoki buxgalteriya tizimi bo‘lish.
 - Ishchilar uchun mobil/web self-service ilovasi.
-- Mahsulot o‘lchamlarini boshqarish.
 - Murakkab MRP, talab prognozi yoki avtomatik xarid rejalashtirish.
 - To‘liq IoT yoki mashina telemetriyasi.
 - Ko‘p valyutali boshqaruv.

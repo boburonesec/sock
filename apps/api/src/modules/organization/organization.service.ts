@@ -155,6 +155,7 @@ export class OrganizationService {
             createdAt: 'asc',
           },
         },
+        employee: { select: { id: true, name: true, workProfile: true, factoryId: true } },
       },
     });
 
@@ -167,6 +168,41 @@ export class OrganizationService {
     return this.createUser(context, {
       ...dto,
       roleName: 'Manager',
+    });
+  }
+
+  async linkUserEmployee(context: RequestContext, userId: string, employeeId: string) {
+    this.assertOwner(context);
+    return this.prisma.$transaction(async (tx) => {
+      const [user, employee, linked] = await Promise.all([
+        tx.user.findFirst({
+          where: { id: userId, tenantId: context.tenantId, deletedAt: null },
+          include: {
+            roles: { include: { role: true } },
+            factoryAccesses: true,
+          },
+        }),
+        tx.employee.findFirst({ where: { id: employeeId, tenantId: context.tenantId, deletedAt: null } }),
+        tx.user.findFirst({ where: { tenantId: context.tenantId, employeeId, NOT: { id: userId } } }),
+      ]);
+      if (!user || !employee) throw new NotFoundException('User yoki Employee topilmadi.');
+      if (linked) throw new ConflictException('Bu Employee boshqa Userga bog‘langan.');
+      const roleNames = user.roles.map((entry) => entry.role.name);
+      if (employee.workProfile === 'MECHANIC' && !roleNames.includes('Mechanic')) {
+        throw new BadRequestException('Mexanik profilini faqat Mechanic roliga bog‘lash mumkin.');
+      }
+      if (employee.workProfile === 'MECHANIC_MASTER' && !roleNames.includes('Mechanic Master')) {
+        throw new BadRequestException('Mexanik-master profilini faqat Mechanic Master roliga bog‘lash mumkin.');
+      }
+      if (!['MECHANIC', 'MECHANIC_MASTER', 'STAFF'].includes(employee.workProfile)) {
+        throw new BadRequestException('Bu xodim profili dastur accountiga bog‘lanmaydi.');
+      }
+      if (!user.factoryAccesses.some((access) => access.factoryId === employee.factoryId)) {
+        throw new BadRequestException('User xodim ishlaydigan factoryga ruxsatga ega emas.');
+      }
+      const updated = await tx.user.update({ where: { id: user.id }, data: { employeeId: employee.id } });
+      await this.auditService.createWithTransaction(tx, { tenantId: context.tenantId, factoryId: null, userId: context.userId, action: 'USER_EMPLOYEE_LINKED', entityType: 'User', entityId: user.id, metadata: { employeeId: employee.id } });
+      return { data: { id: updated.id, employee: { id: employee.id, name: employee.name, workProfile: employee.workProfile, factoryId: employee.factoryId } } };
     });
   }
 
@@ -687,6 +723,7 @@ export class OrganizationService {
     updatedAt: Date;
     roles: Array<{ role: { name: string } }>;
     factoryAccesses: Array<{ factory: { id: string; name: string } }>;
+    employee?: { id: string; name: string; workProfile: string; factoryId: string } | null;
   }) {
     return {
       id: user.id,
@@ -698,6 +735,8 @@ export class OrganizationService {
         id: access.factory.id,
         name: access.factory.name,
       })),
+      employee: user.employee ?? null,
+      employeeLinkStatus: user.employee ? 'LINKED' : 'UNLINKED',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

@@ -8,6 +8,7 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import type { Employee } from "@/lib/api/employees";
 import { productApi } from "@/lib/api/product";
+import { settingsApi } from "@/lib/api/settings";
 import { queryKeys } from "@/lib/api/query-keys";
 import { EmployeeDetailsDrawer } from "./components/employee-details-drawer";
 import { EmployeeFormDrawer } from "./components/employee-form-drawer";
@@ -29,6 +30,10 @@ export function EmployeesModule() {
     queryKey: queryKeys.product.stages(),
     queryFn: productApi.getStages,
   });
+  const shiftsQuery = useQuery({
+    queryKey: queryKeys.settings.workShifts(),
+    queryFn: settingsApi.getWorkShifts,
+  });
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const inactivateEmployee = useInactivateEmployee();
@@ -37,7 +42,7 @@ export function EmployeesModule() {
   const [employeeToInactivate, setEmployeeToInactivate] = useState<Employee | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
 
-  if (isPending || stagesQuery.isPending) {
+  if (isPending || stagesQuery.isPending || shiftsQuery.isPending) {
     return <LoadingState label="Xodimlar yuklanmoqda..." />;
   }
 
@@ -114,22 +119,33 @@ export function EmployeesModule() {
         stageOptions={(stagesQuery.data?.data ?? []).filter(
           (stage) => stage.name !== "Ombor",
         )}
+        shiftOptions={shiftsQuery.data?.data ?? []}
         isSubmitting={createEmployee.isPending || updateEmployee.isPending}
         errorMessage={formError}
         onOpenChange={(open) => {
           if (!open) setFormState(null);
         }}
-        onSubmit={async ({ name, stageIds }) => {
+        onSubmit={async ({ name, workProfile, compensationType, stageIds, workShiftId, email, password, roleName, monthlySalaryAmount }) => {
           setFeedback(null);
+          const account = email && password && roleName ? { email, password, roleName } : undefined;
+          const salaryChanged = formState?.mode !== "edit" || Number(formState.employee.salaryAgreement?.monthlyAmount ?? NaN) !== monthlySalaryAmount;
+          const payload = {
+            name,
+            workProfile,
+            compensationType,
+            stageIds: workProfile === "STAGE_WORKER" ? stageIds : [],
+            workShiftId: workShiftId || undefined,
+            account,
+            monthlySalaryAmount: compensationType === "SALARIED" && salaryChanged ? monthlySalaryAmount : undefined,
+          };
           if (formState?.mode === "edit") {
             await updateEmployee.mutateAsync({
               employeeId: formState.employee.id,
-              name,
-              stageIds,
+              ...payload,
             });
             setFeedback({ tone: "success", message: "Xodim ma’lumotlari yangilandi." });
           } else {
-            await createEmployee.mutateAsync({ name, stageIds });
+            await createEmployee.mutateAsync(payload);
             setFeedback({ tone: "success", message: "Yangi xodim yaratildi." });
           }
           setFormState(null);

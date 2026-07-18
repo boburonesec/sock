@@ -1,6 +1,7 @@
 import { BotApiClient } from './api-client';
 import { createEmployeeBot } from './bot';
 import { loadConfig } from './config';
+import { startNotificationDeliveryWorker } from './notification-worker';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
@@ -15,10 +16,10 @@ async function bootstrap(): Promise<void> {
     console.error('Telegram bot handler failed.', error);
   });
 
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
   await bot.launch();
+  const stopWorker = startNotificationDeliveryWorker(bot, apiClient);
+  process.once('SIGINT', () => { stopWorker(); bot.stop('SIGINT'); });
+  process.once('SIGTERM', () => { stopWorker(); bot.stop('SIGTERM'); });
   console.log('Paypoq OS Telegram bot started.');
 }
 

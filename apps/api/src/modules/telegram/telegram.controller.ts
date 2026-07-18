@@ -30,6 +30,11 @@ import {
 export class TelegramController {
   constructor(private readonly telegramService: TelegramService) {}
 
+  @Post('me')
+  createMyUserLinkToken(@CurrentContext() context: RequestContext) {
+    return this.telegramService.createUserLinkToken(context);
+  }
+
   @Post('employees/:employeeId')
   @RequirePermissions('employees.write')
   createEmployeeLinkToken(

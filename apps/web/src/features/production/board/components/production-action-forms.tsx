@@ -13,6 +13,7 @@ import type {
   CreateProductionBatchPayload,
   CreateStageMovementPayload,
   CreateWorkerActivityPayload,
+  StageInventory,
 } from "@/lib/api/production";
 import type { FinishedProductReceiptPayload } from "@/lib/api/warehouse";
 import type { ProductionAction } from "./production-action-types";
@@ -145,6 +146,7 @@ export interface StageOption {
 export interface EmployeeOption {
   id: string;
   label: string;
+  jobRole: "STAGE_WORKER" | "MECHANIC" | "MACHINE_OPERATOR";
   /** Biriktirilgan bosqich ID lari (filter uchun). */
   stageIds?: string[];
 }
@@ -160,6 +162,7 @@ interface ProductionActionFormProps {
   omborProductVariantOptions: ProductVariantOption[];
   stageOptions: StageOption[];
   employeeOptions: EmployeeOption[];
+  stageInventory: StageInventory[];
   warehouseZoneOptions: WarehouseZoneOption[];
   isCreateBatchPending: boolean;
   isMoveStagePending: boolean;
@@ -206,7 +209,9 @@ function CreateBatchForm({
     try {
       await onCreateBatch(values);
       reset();
-      onSuccess("Partiya yaratildi va birinchi bosqich qoldig‘i yangilandi.");
+      onSuccess(
+        "Ishlab chiqarish qabul qilindi va birinchi bosqich qoldig‘i yangilandi.",
+      );
     } catch {
       // The mutation error is rendered from parent state so the drawer remains open.
     }
@@ -245,6 +250,11 @@ function CreateBatchForm({
         </p>
       ) : null}
 
+      <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+        Bu compatibility uchun manual qabul. Mexanik/operator ishbay hisoblanishi
+        uchun Stanoklar bo‘limida production run outputini qabul qiling.
+      </p>
+
       <FormField
         label="Miqdor"
         htmlFor="batchQuantity"
@@ -281,9 +291,14 @@ function CreateBatchForm({
       <Button
         type="submit"
         className="w-full"
-        disabled={isCreateBatchPending || productVariantOptions.length === 0}
+        disabled={
+          isCreateBatchPending ||
+          productVariantOptions.length === 0
+        }
       >
-        {isCreateBatchPending ? "Yuborilmoqda..." : "Partiya yaratish"}
+        {isCreateBatchPending
+          ? "Yuborilmoqda..."
+          : "Manual qabul (legacy)"}
       </Button>
     </form>
   );
@@ -309,6 +324,7 @@ function MoveStageForm({
   productVariantOptions,
   stageOptions,
   employeeOptions,
+  stageInventory,
   isMoveStagePending,
   moveStageError,
   onMoveStage,
@@ -321,6 +337,8 @@ function MoveStageForm({
     reset,
     watch,
     setValue,
+    setError,
+    clearErrors,
   } = useForm<MoveStageValues>({
     resolver: zodResolver(moveStageSchema),
     defaultValues: {
@@ -335,6 +353,7 @@ function MoveStageForm({
   });
 
   const sourceStageId = watch("sourceStageId");
+  const productVariantId = watch("productVariantId");
   const quantity = Number(watch("quantity")) || 0;
   const selectedEmployeeIds = watch("employeeIds") ?? [];
   const workerQuantities = watch("workerQuantities") ?? {};
@@ -346,8 +365,25 @@ function MoveStageForm({
       employee.stageIds?.length &&
       employee.stageIds.includes(sourceStageId),
   );
+  const selectedInventory = stageInventory.find(
+    (item) =>
+      item.stage.id === sourceStageId &&
+      item.productVariant.id === productVariantId,
+  );
+  const availableQuantity = selectedInventory?.quantity ?? 0;
+  const hasInventorySelection = Boolean(sourceStageId && productVariantId);
+  const exceedsAvailableQuantity =
+    hasInventorySelection && quantity > availableQuantity;
 
   const submit = async (values: MoveStageValues) => {
+    if (values.quantity > availableQuantity) {
+      setError("quantity", {
+        type: "manual",
+        message: `Bu bosqichda faqat ${availableQuantity} dona mavjud.`,
+      });
+      return;
+    }
+
     try {
       const workerShares = values.employeeIds.map((employeeId) => ({
         employeeId,
@@ -399,6 +435,7 @@ function MoveStageForm({
     // Bosqich o‘zgarsa — tanlovni tozalash (boshqa bosqich ishchilari yaroqsiz).
     setValue("employeeIds", [], { shouldValidate: true });
     setValue("workerQuantities", {}, { shouldValidate: true });
+    clearErrors("quantity");
   }
 
   function onQuantityChange(raw: string) {
@@ -407,6 +444,7 @@ function MoveStageForm({
       shouldValidate: true,
       shouldDirty: true,
     });
+    clearErrors("quantity");
     if (
       Number.isFinite(nextQty) &&
       nextQty >= 1 &&
@@ -434,7 +472,9 @@ function MoveStageForm({
           defaultValue=""
           disabled={isMoveStagePending || productVariantOptions.length === 0}
           aria-invalid={Boolean(errors.productVariantId)}
-          {...register("productVariantId")}
+          {...register("productVariantId", {
+            onChange: () => clearErrors("quantity"),
+          })}
         >
           <option value="" disabled>
             Tanlang
@@ -497,6 +537,25 @@ function MoveStageForm({
         </FormField>
       </div>
 
+      {hasInventorySelection ? (
+        <div
+          role="status"
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            availableQuantity > 0
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-500/25 bg-amber-500/10 text-amber-300"
+          }`}
+        >
+          Tanlangan mahsulotdan bu bosqichda{" "}
+          <strong>{availableQuantity} dona</strong> mavjud.
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Mahsulot va «Qayerdan» bosqichini tanlang — mavjud qoldiq shu yerda
+          ko‘rinadi.
+        </p>
+      )}
+
       {!hasRequiredOptions ? (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
           Smena uchun: mahsulot, kamida 2 ta bosqich va kamida 1 ta faol ishchi kerak.
@@ -513,6 +572,7 @@ function MoveStageForm({
           id="moveQuantity"
           type="number"
           min="1"
+          max={hasInventorySelection ? availableQuantity : undefined}
           step="1"
           placeholder="Masalan: 500"
           disabled={isMoveStagePending}
@@ -647,7 +707,13 @@ function MoveStageForm({
       <Button
         type="submit"
         className="w-full"
-        disabled={isMoveStagePending || !hasRequiredOptions}
+        disabled={
+          isMoveStagePending ||
+          !hasRequiredOptions ||
+          !hasInventorySelection ||
+          availableQuantity < 1 ||
+          exceedsAvailableQuantity
+        }
       >
         {isMoveStagePending ? "Yuborilmoqda..." : "Smenani saqlash"}
       </Button>
@@ -659,6 +725,7 @@ function WorkerActivityForm({
   productVariantOptions,
   stageOptions,
   employeeOptions,
+  stageInventory,
   isWorkerActivityPending,
   workerActivityError,
   onCreateWorkerActivity,
@@ -678,6 +745,8 @@ function WorkerActivityForm({
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm<WorkerActivityValues>({
     resolver: zodResolver(workerActivitySchema),
     defaultValues: {
@@ -688,6 +757,19 @@ function WorkerActivityForm({
       note: "",
     },
   });
+
+  const stageId = watch("stageId");
+  const employeeId = watch("employeeId");
+  const productVariantId = watch("productVariantId");
+  const stageEmployees = employeeOptions.filter(
+    (employee) => stageId && employee.stageIds?.includes(stageId),
+  );
+  const selectedInventory = stageInventory.find(
+    (item) =>
+      item.stage.id === stageId && item.productVariant.id === productVariantId,
+  );
+  const hasInventorySelection = Boolean(stageId && productVariantId);
+  const availableQuantity = selectedInventory?.quantity ?? 0;
 
   const submit = async (values: WorkerActivityValues) => {
     try {
@@ -700,7 +782,7 @@ function WorkerActivityForm({
   };
 
   const hasRequiredOptions =
-    employeeOptions.length > 0 &&
+    (stageId ? stageEmployees.length > 0 : employeeOptions.length > 0) &&
     stageOptions.length > 0 &&
     productVariantOptions.length > 0;
 
@@ -714,15 +796,17 @@ function WorkerActivityForm({
       >
         <Select
           id="activityEmployeeId"
-          defaultValue=""
-          disabled={isWorkerActivityPending || employeeOptions.length === 0}
+          value={employeeId}
+          disabled={
+            isWorkerActivityPending || !stageId || stageEmployees.length === 0
+          }
           aria-invalid={Boolean(errors.employeeId)}
           {...register("employeeId")}
         >
           <option value="" disabled>
-            Tanlang
+            {stageId ? "Tanlang" : "Avval bosqichni tanlang"}
           </option>
-          {employeeOptions.map((option) => (
+          {stageEmployees.map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
             </option>
@@ -738,10 +822,16 @@ function WorkerActivityForm({
       >
         <Select
           id="activityStageId"
-          defaultValue=""
+          value={stageId}
           disabled={isWorkerActivityPending || stageOptions.length === 0}
           aria-invalid={Boolean(errors.stageId)}
-          {...register("stageId")}
+          onChange={(event) => {
+            setValue("stageId", event.target.value, {
+              shouldValidate: true,
+              shouldDirty: true,
+            });
+            setValue("employeeId", "", { shouldValidate: true });
+          }}
         >
           <option value="" disabled>
             Tanlang
@@ -753,6 +843,13 @@ function WorkerActivityForm({
           ))}
         </Select>
       </FormField>
+
+      {stageId && stageEmployees.length === 0 ? (
+        <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          Bu bosqichga biriktirilgan faol ishchi yo‘q. Avval Xodimlar bo‘limida
+          bosqich biriktiring.
+        </p>
+      ) : null}
 
       <FormField
         label="Mahsulot varianti"
@@ -777,6 +874,24 @@ function WorkerActivityForm({
           ))}
         </Select>
       </FormField>
+
+      {hasInventorySelection ? (
+        <div
+          role="status"
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            availableQuantity > 0
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-500/25 bg-amber-500/10 text-amber-300"
+          }`}
+        >
+          Tanlangan mahsulotdan bu bosqichda{" "}
+          <strong>{availableQuantity} dona</strong> mavjud.
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Bosqich va mahsulotni tanlang — mavjud qoldiq shu yerda ko‘rinadi.
+        </p>
+      )}
 
       {!hasRequiredOptions ? (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">

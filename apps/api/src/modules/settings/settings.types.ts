@@ -47,6 +47,17 @@ export interface SalaryRateResponse {
   productVariant: ProductVariantReferenceResponse | null;
 }
 
+export interface WorkShiftResponse {
+  id: string;
+  code: 'DAY' | 'NIGHT';
+  name: string;
+  startTime: string;
+  endTime: string;
+  premiumPerPiece: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CollectionResponse<T> {
   data: T[];
 }

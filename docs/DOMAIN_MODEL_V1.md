@@ -151,10 +151,43 @@ stage quantities, not batch counts.
 `ProductionBatch` is a traceability and audit grouping for a production intake.
 
 - The default batch quantity is 500, but it is configurable.
-- A batch identifies the product variant, received quantity, creator, and
-  creation context.
+- A batch identifies the product variant, received quantity, creator, mechanic,
+  machine operator, and creation context. New batches require exactly one
+  active employee in each workforce role; historical batches may have neither
+  reference because the old data cannot be reconstructed safely.
+- Mechanic and machine-operator references are audit/traceability context only.
+  They do not create `WorkerActivity` or payroll amounts.
 - A batch is **not** the primary reporting unit and must not replace
   StageInventory in operational reporting.
+- New machine output is owned by `ProductionRun`; the old mechanic/operator
+  foreign keys remain compatibility audit fields only.
+
+### Workforce identity and compensation
+
+`EmployeeWorkProfile` describes work (`STAGE_WORKER`, `MACHINE_OPERATOR`,
+`MECHANIC`, `MECHANIC_MASTER`, `STAFF`). `EmployeeCompensationType` describes
+pay (`PIECE_RATE`, `SALARIED`). RBAC `UserRole` describes application access.
+These axes must not be inferred from one another. `User.employeeId` is nullable
+and tenant-unique; legacy users may remain unlinked until Owner reconciliation.
+`EmployeeSalaryAgreement` versions monthly salary by effective dates.
+
+### Machine and ProductionRun
+
+`Machine` is manually managed factory equipment. `MachineMechanicAssignment`
+owns time-bounded machine/shift responsibility. `ProductionRun` snapshots the
+operator and resolved active mechanic. `ProductionRunIntake` is the idempotent
+transaction boundary for batch, first-stage inventory/movement and two
+role-specific `MACHINE_OUTPUT` activities. `MachinePieceRate` is effective-dated
+per product model and machine workforce role.
+
+### Maintenance and measurement quality
+
+`MaintenanceTask` is master-assigned repair/setup/inspection work and never
+changes payroll automatically. `ProductMeasurementSpecification` is versioned
+at product-model level and owns dynamic target/min/max metrics. Three
+factory-configurable `InspectionScheduleSlot` records exist per shift.
+`InspectionRound` snapshots the active run/spec; failed values create a
+`QualityIssue` with a 30-minute recheck. Only a master decision may HOLD a run.
 
 ### StageMovement
 
@@ -173,7 +206,7 @@ one production stage to another.
 employee.
 
 - It records employee, stage, product context, quantity, date, entering user,
-  and the historical salary rate used by payroll.
+  base salary rate, shift premium and effective historical rate used by payroll.
 - It contributes to payroll, but recording activity does not itself constitute
   a salary payment.
 
@@ -194,8 +227,26 @@ employee.
 operational staff.
 
 - It includes identity, role, department, and employment status context.
+- Its V1 primary job role is exactly one of `STAGE_WORKER`, `MECHANIC`, or
+  `MACHINE_OPERATOR`. Stage assignments remain independent from that role.
 - Employees are never hard-deleted. They are made inactive when they leave or
   should no longer receive new activity.
+- An active employee is assigned to one factory WorkShift; the assignment may
+  be changed, while existing WorkerActivity and AttendanceRecord snapshots stay unchanged.
+
+### WorkShift
+
+`WorkShift` is factory-configurable master data with exactly two business codes:
+`DAY` and `NIGHT`. It stores start/end minutes and a per-piece premium. Only the
+NIGHT premium is applied to new WorkerActivity records.
+
+### AttendanceRecord
+
+`AttendanceRecord` is one normalized employee work day with required check-in
+and optional check-out, plus a WorkShift snapshot. After the snapshotted shift
+end passes, a missing check-out is reported as `MISSING_CHECK_OUT`; no synthetic
+check-out time is written. A future Trunket adapter owns ingestion after its
+payload contract is known.
 
 ### SalaryRate
 
@@ -382,8 +433,8 @@ or overdue debt.
 
 ### TelegramNotification
 
-`TelegramNotification` represents a notification or read-only summary delivered
-through Telegram.
+`NotificationDelivery` is a durable Telegram outbox record with lease, retry,
+attempt and dedupe state. The in-app `Notification` remains source of truth.
 
 - Telegram is the worker self-service channel in the product direction.
 - It must expose only the linked employee's own read-only activity and payroll
@@ -422,17 +473,14 @@ notification type. It does not imply a workflow engine in V1.
    for traceability and audit.
 9. A production movement cannot create negative stage inventory.
 10. Defects do not automatically create penalties or payroll changes.
-11. Workers do not use the web application directly; Shift Receivers record
-    their activity.
+11. Stage workers and machine operators do not use web. Mechanics and staff may
+    use web only through a linked User account and RBAC permissions.
 
-## 13. Future IoT Extension
+## 13. Manual Machines and Future IoT Extension
 
-The following concepts are reserved for a future IoT integration. They are not
-part of V1 implementation and must not delay manual operational workflows.
-
-### Machine
-
-`Machine` represents a factory production machine or device.
+Manual Machine, assignment, production-run, maintenance and quality measurement
+workflows are V1. Sensor telemetry remains future scope and must not delay
+manual operational workflows.
 
 ### MachineTelemetry
 

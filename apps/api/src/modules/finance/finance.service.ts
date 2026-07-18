@@ -696,7 +696,7 @@ export class FinanceService {
 
       const { start, end } = this.getMonthRange(existingPeriod.month);
 
-      const [activities, adjustments] = await Promise.all([
+      const [activities, adjustments, salaryAgreements] = await Promise.all([
         tx.workerActivity.findMany({
           where: {
             tenantId,
@@ -740,12 +740,23 @@ export class FinanceService {
             requestedAt: true,
           },
         }),
+        tx.employeeSalaryAgreement.findMany({
+          where: {
+            tenantId,
+            factoryId,
+            effectiveFrom: { lt: end },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: start } }],
+            employee: { compensationType: 'SALARIED', deletedAt: null },
+          },
+          select: { id: true, employeeId: true, monthlyAmount: true, effectiveFrom: true, effectiveTo: true },
+        }),
       ]);
 
       const employeeIds = [
         ...new Set([
           ...activities.map((activity) => activity.employeeId),
           ...adjustments.map((adjustment) => adjustment.employeeId),
+          ...salaryAgreements.map((agreement) => agreement.employeeId),
         ]),
       ];
       const employees = await tx.employee.findMany({
@@ -779,11 +790,21 @@ export class FinanceService {
           (adjustment) => adjustment.employeeId === employeeId,
         );
 
-        const workedAmount = this.sumDecimal(
-          employeeActivities.map((activity) =>
-            activity.salaryRateAmount.mul(activity.quantity),
-          ),
+        const employeeAgreements = salaryAgreements.filter(
+          (agreement) => agreement.employeeId === employeeId,
         );
+        if (employeeAgreements.length > 1) {
+          throw new ConflictException(
+            `Xodim ${employeeId} uchun payroll oyida ustma-ust tushgan salary agreement mavjud.`,
+          );
+        }
+        const workedAmount = employeeAgreements[0]
+          ? employeeAgreements[0].monthlyAmount
+          : this.sumDecimal(
+              employeeActivities.map((activity) =>
+                activity.salaryRateAmount.mul(activity.quantity),
+              ),
+            );
         const bonusAmount = this.sumDecimal(
           employeeAdjustments
             .filter((adjustment) => adjustment.type === EmployeeAdjustmentType.BONUS)
@@ -829,6 +850,13 @@ export class FinanceService {
             finalAmount.eq(0) ? PayrollItemStatus.PAID : PayrollItemStatus.CALCULATED,
           calculationSnapshot: {
             rawFinalAmount: rawFinalAmount.toString(),
+            compensation: employeeAgreements[0]
+              ? {
+                  type: 'SALARIED',
+                  salaryAgreementId: employeeAgreements[0].id,
+                  monthlyAmount: employeeAgreements[0].monthlyAmount.toString(),
+                }
+              : { type: 'PIECE_RATE' },
             activities: employeeActivities.map((activity) => ({
               id: activity.id,
               quantity: activity.quantity,

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -73,7 +73,7 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
             <div>
               <button
                 type="button"
-                className="grid h-10 w-10 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground hover:bg-primary/90"
+                className="grid h-11 w-11 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground hover:bg-primary/90"
                 aria-label="Akkaunt oynasini ochish"
                 onClick={() => {
                   setAccountOpen(true);
@@ -116,6 +116,19 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
                       </div>
                     </div>
                   </section>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      router.push("/admin/profile");
+                    }}
+                  >
+                    <UserRound size={16} />
+                    Profil
+                  </Button>
 
                   <form className="space-y-4" onSubmit={handlePasswordSubmit}>
                     <FormField htmlFor="platform-current-password" label="Hozirgi parol" required>

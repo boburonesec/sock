@@ -3,12 +3,14 @@ import {
   ArrayMinSize,
   IsArray,
   IsInt,
+  IsEnum,
   IsOptional,
   IsString,
   Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { ProductionRunStatus } from '@prisma/client';
 
 function trimString(value: unknown): unknown {
   return typeof value === 'string' ? value.trim() : value;
@@ -30,6 +32,18 @@ export class CreateProductionBatchDto {
   @MinLength(1)
   productVariantId!: string;
 
+  @Transform(({ value }) => trimString(value))
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  mechanicEmployeeId?: string;
+
+  @Transform(({ value }) => trimString(value))
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  machineOperatorEmployeeId?: string;
+
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
@@ -40,6 +54,27 @@ export class CreateProductionBatchDto {
   @IsString()
   @MinLength(1)
   note?: string;
+}
+
+export class CreateProductionRunDto {
+  @IsString() @MinLength(1) machineId!: string;
+  @IsString() @MinLength(1) productVariantId!: string;
+  @IsString() @MinLength(1) operatorEmployeeId!: string;
+  @IsString() @MinLength(1) workShiftId!: string;
+  @IsOptional() @IsString() note?: string;
+}
+
+export class ChangeProductionRunStatusDto {
+  @IsEnum(ProductionRunStatus)
+  status!: ProductionRunStatus;
+}
+
+export class CreateProductionRunIntakeDto {
+  @Transform(({ value }) => Number(value)) @IsInt() @Min(1)
+  quantity!: number;
+  @IsString() @MinLength(8)
+  idempotencyKey!: string;
+  @IsOptional() @IsString() note?: string;
 }
 
 /** Optional per-worker quantity override (must sum to movement quantity). */

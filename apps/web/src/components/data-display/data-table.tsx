@@ -13,8 +13,8 @@ export function DataTable({
   label = "Ma’lumotlar jadvali",
 }: DataTableProps) {
   return (
-    <div className={cn("table-scroll", className)}>
-      <div className="panel overflow-x-auto">
+    <div className={cn("table-scroll min-w-0 w-full max-w-full", className)}>
+      <div className="panel w-full max-w-full overflow-x-auto">
         <table
           aria-label={label}
           className="w-full min-w-[560px] text-left text-sm"

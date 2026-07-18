@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { employeesApi } from "@/lib/api/employees";
+import type { EmployeePayload } from "@/lib/api/employees";
 import { queryKeys } from "@/lib/api/query-keys";
 
 export function useEmployees() {
@@ -26,15 +27,8 @@ export function useUpdateEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      employeeId,
-      name,
-      stageIds,
-    }: {
-      employeeId: string;
-      name: string;
-      stageIds?: string[];
-    }) => employeesApi.updateEmployee(employeeId, { name, stageIds }),
+    mutationFn: ({ employeeId, ...payload }: EmployeePayload & { employeeId: string }) =>
+      employeesApi.updateEmployee(employeeId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.employees.list() });
     },

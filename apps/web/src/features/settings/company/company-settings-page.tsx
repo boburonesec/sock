@@ -9,6 +9,7 @@ import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { employeesApi } from "@/lib/api/employees";
 import {
   organizationApi,
   type OrganizationFactory,
@@ -102,6 +103,7 @@ export function CompanySettingsPage() {
   });
   const [passwordForm, setPasswordForm] = useState({ password: "" });
   const [selectedFactoryIds, setSelectedFactoryIds] = useState<string[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
 
   const factoriesQuery = useQuery({
     queryKey: organizationKeys.factories,
@@ -112,6 +114,11 @@ export function CompanySettingsPage() {
   const usersQuery = useQuery({
     queryKey: organizationKeys.users,
     queryFn: organizationApi.getUsers,
+    enabled: isOwner,
+  });
+  const employeesQuery = useQuery({
+    queryKey: ["employees", "account-reconciliation"],
+    queryFn: employeesApi.getEmployees,
     enabled: isOwner,
   });
 
@@ -217,6 +224,22 @@ export function CompanySettingsPage() {
       await invalidateOrganization();
     },
   });
+  const linkEmployee = useMutation({
+    mutationFn: () => {
+      if (!selectedUser || !selectedEmployeeId) {
+        throw new Error("User va xodim tanlanishi shart.");
+      }
+      return organizationApi.linkUserEmployee(selectedUser.id, selectedEmployeeId);
+    },
+    onSuccess: async (response) => {
+      setSelectedUser((current) => current ? {
+        ...current,
+        employee: response.data.employee,
+        employeeLinkStatus: "LINKED",
+      } : current);
+      await invalidateOrganization();
+    },
+  });
 
   function submitFactory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -242,8 +265,10 @@ export function CompanySettingsPage() {
     setSelectedUser(user);
     setPasswordForm({ password: "" });
     setSelectedFactoryIds(user.factories.map((factory) => factory.id));
+    setSelectedEmployeeId(user.employee?.id ?? "");
     resetPassword.reset();
     updateFactoryAccess.reset();
+    linkEmployee.reset();
   }
 
   if (!isOwner) {
@@ -491,8 +516,10 @@ export function CompanySettingsPage() {
             setSelectedUser(null);
             setPasswordForm({ password: "" });
             setSelectedFactoryIds([]);
+            setSelectedEmployeeId("");
             resetPassword.reset();
             updateFactoryAccess.reset();
+            linkEmployee.reset();
           }
         }}
         title={selectedUser?.name ?? "Operator"}
@@ -510,7 +537,24 @@ export function CompanySettingsPage() {
               <p className="mt-1 text-muted-foreground">
                 Rol: {selectedUser.roles.map(formatRole).join(", ")}
               </p>
+              <p className="mt-1 text-muted-foreground">
+                Xodim profili: {selectedUser.employee?.name ?? "Xodim profiliga bog‘lanmagan"}
+              </p>
             </section>
+
+            {!selectedUser.employee ? (
+              <form className="space-y-3 rounded-xl border p-4" onSubmit={(event) => { event.preventDefault(); linkEmployee.mutate(); }}>
+                <FormField htmlFor="employee-link" label="Mavjud xodim profiliga bog‘lash" required>
+                  <select id="employee-link" className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm" value={selectedEmployeeId} onChange={(event) => setSelectedEmployeeId(event.target.value)}>
+                    <option value="">Xodimni tanlang</option>
+                    {(employeesQuery.data?.data ?? []).filter((employee) => !employee.account && ["STAFF", "MECHANIC", "MECHANIC_MASTER"].includes(employee.workProfile)).map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.workProfile}</option>)}
+                  </select>
+                </FormField>
+                <p className="text-xs text-muted-foreground">Yangi xodim profili «Xodimlar» bo‘limida yaratiladi.</p>
+                {linkEmployee.isError ? <p className="text-sm text-rose-300">Bog‘lash amalga oshmadi. Profil boshqa accountga biriktirilmaganini tekshiring.</p> : null}
+                <Button className="w-full" disabled={!selectedEmployeeId || linkEmployee.isPending}>{linkEmployee.isPending ? "Bog‘lanmoqda..." : "Xodim profiliga bog‘lash"}</Button>
+              </form>
+            ) : null}
 
             <form className="space-y-4" onSubmit={submitPassword}>
               <FormField htmlFor="reset-password" label="Yangi parol" required>

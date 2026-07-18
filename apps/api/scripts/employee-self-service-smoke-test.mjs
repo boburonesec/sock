@@ -206,6 +206,9 @@ async function createSmokeData() {
     where: { tenantId: tenant.id, deletedAt: null, product: { deletedAt: null } },
     orderBy: { createdAt: 'asc' },
   });
+  const workShift = await prisma.workShift.findFirstOrThrow({
+    where: { tenantId: tenant.id, factoryId: factory.id, code: 'DAY', deletedAt: null },
+  });
   const month = await findAvailablePayrollMonth(tenant.id, factory.id);
   const now = new Date();
   const passwordHash = await argon2.hash(password);
@@ -219,6 +222,7 @@ async function createSmokeData() {
         factoryId: factory.id,
         name: `Self Service Employee ${suffix}`,
         status: 'ACTIVE',
+        workShiftId: workShift.id,
       },
     }),
     prisma.employee.create({
@@ -227,6 +231,7 @@ async function createSmokeData() {
         factoryId: factory.id,
         name: `Other Employee ${suffix}`,
         status: 'ACTIVE',
+        workShiftId: workShift.id,
       },
     }),
   ]);
@@ -291,6 +296,7 @@ async function createSmokeData() {
         productionStageId: stage.id,
         productVariantId: productVariant.id,
         quantity: 11,
+        baseSalaryRateAmount: '120',
         salaryRateAmount: '120',
         activityDate: now,
         enteredByUserId: linkedUser.id,
@@ -304,6 +310,7 @@ async function createSmokeData() {
         productionStageId: stage.id,
         productVariantId: productVariant.id,
         quantity: 99,
+        baseSalaryRateAmount: '120',
         salaryRateAmount: '120',
         activityDate: now,
         enteredByUserId: linkedUser.id,

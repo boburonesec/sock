@@ -56,6 +56,8 @@ export interface TelegramHealth {
 }
 
 export const telegramApi = {
+  createMyUserLinkToken: () =>
+    apiClient<{ data: TelegramLinkTokenCreated }>("/telegram/link-tokens/me", { method: "POST" }),
   createEmployeeLinkToken: (employeeId: string) =>
     apiClient<{ data: TelegramLinkTokenCreated }>(
       `/telegram/link-tokens/employees/${employeeId}`,

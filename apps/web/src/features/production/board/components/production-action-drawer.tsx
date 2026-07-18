@@ -5,6 +5,7 @@ import type {
   CreateProductionBatchPayload,
   CreateStageMovementPayload,
   CreateWorkerActivityPayload,
+  StageInventory,
 } from "@/lib/api/production";
 import type { FinishedProductReceiptPayload } from "@/lib/api/warehouse";
 import {
@@ -17,7 +18,12 @@ import {
 import type { ProductionAction } from "./production-action-types";
 
 const actionContent: Record<ProductionAction, { title: string; description: string; icon: typeof Plus }> = {
-  "create-batch": { title: "Partiya yaratish", description: "Partiya yaratiladi va birinchi bosqich qoldig‘i tizim orqali yangilanadi.", icon: Plus },
+  "create-batch": {
+    title: "Ishlab chiqarishni qabul qilish",
+    description:
+      "Stanokdan chiqqan mahsulot partiya sifatida qayd etiladi va birinchi bosqich qoldig‘i yangilanadi.",
+    icon: Plus,
+  },
   "move-stage": {
     title: "Smena o‘tkazish",
     description:
@@ -25,8 +31,9 @@ const actionContent: Record<ProductionAction, { title: string; description: stri
     icon: ArrowRightLeft,
   },
   "add-activity": {
-    title: "Ishchi faolligi (eski)",
-    description: "Alohida faollik. Asosan smena o‘tkazishdan foydalaning.",
+    title: "Qo‘shimcha faollik",
+    description:
+      "Faqat tuzatish yoki ko‘chirishdan tashqari ish uchun. Oddiy oqimda smena o‘tkazishdan foydalaning.",
     icon: ClipboardPlus,
   },
   "register-defect": { title: "Brak qayd qilish", description: "Brakni tizim orqali audit qilinadigan yozuv sifatida qayd qiladi.", icon: AlertTriangle },
@@ -40,6 +47,7 @@ interface ProductionActionDrawerProps {
   omborProductVariantOptions: ProductVariantOption[];
   stageOptions: StageOption[];
   employeeOptions: EmployeeOption[];
+  stageInventory: StageInventory[];
   warehouseZoneOptions: WarehouseZoneOption[];
   isCreateBatchPending: boolean;
   isMoveStagePending: boolean;
@@ -68,6 +76,7 @@ export function ProductionActionDrawer({
   omborProductVariantOptions,
   stageOptions,
   employeeOptions,
+  stageInventory,
   warehouseZoneOptions,
   isCreateBatchPending,
   isMoveStagePending,
@@ -108,6 +117,7 @@ export function ProductionActionDrawer({
           omborProductVariantOptions={omborProductVariantOptions}
           stageOptions={stageOptions}
           employeeOptions={employeeOptions}
+          stageInventory={stageInventory}
           warehouseZoneOptions={warehouseZoneOptions}
           isCreateBatchPending={isCreateBatchPending}
           isMoveStagePending={isMoveStagePending}

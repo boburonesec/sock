@@ -12,6 +12,105 @@ enum EmployeeStatus {
   INACTIVE
 }
 
+enum EmployeeJobRole {
+  STAGE_WORKER
+  MECHANIC
+  MACHINE_OPERATOR
+}
+
+enum EmployeeWorkProfile {
+  STAGE_WORKER
+  MACHINE_OPERATOR
+  MECHANIC
+  MECHANIC_MASTER
+  STAFF
+}
+
+enum EmployeeCompensationType {
+  PIECE_RATE
+  SALARIED
+}
+
+enum MachineStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum MachineWorkRole {
+  MECHANIC
+  MACHINE_OPERATOR
+}
+
+enum ProductionRunStatus {
+  PLANNED
+  RUNNING
+  STOPPED
+  COMPLETED
+  HOLD
+  CANCELLED
+}
+
+enum WorkerActivitySource {
+  STAGE_MOVEMENT
+  MACHINE_OUTPUT
+  MANUAL_CORRECTION
+}
+
+enum MaintenanceTaskType {
+  REPAIR
+  SETUP
+  INSPECTION
+  OTHER
+}
+
+enum MaintenanceTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MaintenanceTaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MeasurementSpecificationStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum InspectionRoundStatus {
+  PENDING
+  IN_PROGRESS
+  PASSED
+  ATTENTION
+  MISSED
+}
+
+enum QualityIssueStatus {
+  ATTENTION
+  RECHECK_DUE
+  ESCALATED
+  RESOLVED
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum WorkShiftCode {
+  DAY
+  NIGHT
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -153,57 +252,74 @@ model Tenant {
   updatedAt          DateTime                 @updatedAt
   deletedAt          DateTime?
 
-  factories          Factory[]
-  warehouses         Warehouse[]
-  warehouseZones     WarehouseZone[]
-  users              User[]
-  roles              Role[]
-  rolePermissions    RolePermission[]
-  userRoles          UserRole[]
-  userFactoryAccess  UserFactoryAccess[]
-  userCredentials    UserCredential[]
-  refreshSessions    RefreshSession[]
-  products           Product[]
-  productVariants    ProductVariant[]
-  colors             Color[]
-  materials          Material[]
-  seasons            Season[]
-  productPrices      ProductPrice[]
-  productionStages   ProductionStage[]
-  salaryRates        SalaryRate[]
-  expenseCategories  ExpenseCategory[]
-  lowStockThresholds LowStockThreshold[]
-  employees          Employee[]
-  employeeStageAssignments EmployeeStageAssignment[]
-  stageInventories   StageInventory[]
-  productionBatches  ProductionBatch[]
-  stageMovements     StageMovement[]
-  workerActivities   WorkerActivity[]
-  defects            Defect[]
-  stocks             Stock[]
-  stockMovements     StockMovement[]
-  materialStocks     MaterialStock[]
-  auditLogs          AuditLog[]
-  clients            Client[]
-  salesOrders        SalesOrder[]
-  salesOrderItems    SalesOrderItem[]
-  clientPayments     ClientPayment[]
-  clientPaymentAllocations ClientPaymentAllocation[]
-  suppliers          Supplier[]
-  supplierPurchases  SupplierPurchase[]
-  supplierPurchaseItems SupplierPurchaseItem[]
-  supplierPayments   SupplierPayment[]
+  factories                  Factory[]
+  warehouses                 Warehouse[]
+  warehouseZones             WarehouseZone[]
+  users                      User[]
+  roles                      Role[]
+  rolePermissions            RolePermission[]
+  userRoles                  UserRole[]
+  userFactoryAccess          UserFactoryAccess[]
+  userCredentials            UserCredential[]
+  refreshSessions            RefreshSession[]
+  products                   Product[]
+  productVariants            ProductVariant[]
+  colors                     Color[]
+  materials                  Material[]
+  seasons                    Season[]
+  productPrices              ProductPrice[]
+  productionStages           ProductionStage[]
+  salaryRates                SalaryRate[]
+  expenseCategories          ExpenseCategory[]
+  lowStockThresholds         LowStockThreshold[]
+  employees                  Employee[]
+  workShifts                 WorkShift[]
+  attendanceRecords          AttendanceRecord[]
+  employeeStageAssignments   EmployeeStageAssignment[]
+  stageInventories           StageInventory[]
+  productionBatches          ProductionBatch[]
+  stageMovements             StageMovement[]
+  workerActivities           WorkerActivity[]
+  defects                    Defect[]
+  stocks                     Stock[]
+  stockMovements             StockMovement[]
+  materialStocks             MaterialStock[]
+  auditLogs                  AuditLog[]
+  clients                    Client[]
+  salesOrders                SalesOrder[]
+  salesOrderItems            SalesOrderItem[]
+  clientPayments             ClientPayment[]
+  clientPaymentAllocations   ClientPaymentAllocation[]
+  suppliers                  Supplier[]
+  supplierPurchases          SupplierPurchase[]
+  supplierPurchaseItems      SupplierPurchaseItem[]
+  supplierPayments           SupplierPayment[]
   supplierPaymentAllocations SupplierPaymentAllocation[]
-  expenses           Expense[]
-  expenseApprovals   ExpenseApproval[]
-  employeeAdjustments EmployeeAdjustment[]
-  payrollPeriods     PayrollPeriod[]
-  payrollItems       PayrollItem[]
-  payrollPayments    PayrollPayment[]
-  userAccessTokens   UserAccessToken[]
-  platformAuditLogs  PlatformAuditLog[]
-  telegramAccounts   TelegramAccount[]
-  telegramLinkTokens TelegramLinkToken[]
+  expenses                   Expense[]
+  expenseApprovals           ExpenseApproval[]
+  employeeAdjustments        EmployeeAdjustment[]
+  payrollPeriods             PayrollPeriod[]
+  payrollItems               PayrollItem[]
+  payrollPayments            PayrollPayment[]
+  userAccessTokens           UserAccessToken[]
+  platformAuditLogs          PlatformAuditLog[]
+  telegramAccounts           TelegramAccount[]
+  telegramLinkTokens         TelegramLinkToken[]
+  employeeSalaryAgreements   EmployeeSalaryAgreement[]
+  machines                   Machine[]
+  machineAssignments         MachineMechanicAssignment[]
+  productionRuns             ProductionRun[]
+  productionRunIntakes       ProductionRunIntake[]
+  machinePieceRates          MachinePieceRate[]
+  maintenanceTasks           MaintenanceTask[]
+  measurementSpecifications ProductMeasurementSpecification[]
+  measurementMetrics        ProductMeasurementMetric[]
+  inspectionSlots           InspectionScheduleSlot[]
+  inspectionRounds          InspectionRound[]
+  inspectionMeasurements    InspectionMeasurement[]
+  qualityIssues             QualityIssue[]
+  notifications             Notification[]
+  notificationDeliveries    NotificationDelivery[]
 
   @@index([status])
   @@index([subscriptionStatus])
@@ -213,36 +329,48 @@ model Tenant {
 }
 
 model Factory {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  warehouses         Warehouse[]
-  usersWithAccess    UserFactoryAccess[]
-  productionStages   ProductionStage[]
-  salaryRates        SalaryRate[]
-  employees          Employee[]
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  warehouses               Warehouse[]
+  usersWithAccess          UserFactoryAccess[]
+  productionStages         ProductionStage[]
+  salaryRates              SalaryRate[]
+  employees                Employee[]
+  workShifts               WorkShift[]
+  attendanceRecords        AttendanceRecord[]
   employeeStageAssignments EmployeeStageAssignment[]
-  stageInventories   StageInventory[]
-  productionBatches  ProductionBatch[]
-  stageMovements     StageMovement[]
-  workerActivities   WorkerActivity[]
-  defects            Defect[]
-  stocks             Stock[]
-  stockMovements     StockMovement[]
-  materialStocks     MaterialStock[]
-  auditLogs          AuditLog[]
-  platformAuditLogs  PlatformAuditLog[]
-  salesOrders        SalesOrder[]
-  supplierPurchases  SupplierPurchase[]
-  expenses           Expense[]
-  employeeAdjustments EmployeeAdjustment[]
-  payrollPeriods     PayrollPeriod[]
-  payrollItems       PayrollItem[]
+  stageInventories         StageInventory[]
+  productionBatches        ProductionBatch[]
+  stageMovements           StageMovement[]
+  workerActivities         WorkerActivity[]
+  defects                  Defect[]
+  stocks                   Stock[]
+  stockMovements           StockMovement[]
+  materialStocks           MaterialStock[]
+  auditLogs                AuditLog[]
+  platformAuditLogs        PlatformAuditLog[]
+  salesOrders              SalesOrder[]
+  supplierPurchases        SupplierPurchase[]
+  expenses                 Expense[]
+  employeeAdjustments      EmployeeAdjustment[]
+  payrollPeriods           PayrollPeriod[]
+  payrollItems             PayrollItem[]
+  employeeSalaryAgreements EmployeeSalaryAgreement[]
+  machines                 Machine[]
+  machineAssignments       MachineMechanicAssignment[]
+  productionRuns           ProductionRun[]
+  productionRunIntakes     ProductionRunIntake[]
+  machinePieceRates        MachinePieceRate[]
+  maintenanceTasks         MaintenanceTask[]
+  inspectionSlots          InspectionScheduleSlot[]
+  inspectionRounds         InspectionRound[]
+  qualityIssues            QualityIssue[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, name])
@@ -250,21 +378,21 @@ model Factory {
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   factoryId String
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory           Factory             @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  zones             WarehouseZone[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory            Factory             @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  zones              WarehouseZone[]
   lowStockThresholds LowStockThreshold[]
-  stocks            Stock[]
-  stockMovements    StockMovement[]
-  materialStocks    MaterialStock[]
+  stocks             Stock[]
+  stockMovements     StockMovement[]
+  materialStocks     MaterialStock[]
 
   @@unique([id, tenantId])
   @@unique([id, tenantId, factoryId])
@@ -273,17 +401,17 @@ model Warehouse {
 }
 
 model WarehouseZone {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
   warehouseId String
   name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  warehouse Warehouse @relation(fields: [warehouseId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  stocks    Stock[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  warehouse      Warehouse       @relation(fields: [warehouseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  stocks         Stock[]
   stockMovements StockMovement[]
   materialStocks MaterialStock[]
 
@@ -295,6 +423,7 @@ model WarehouseZone {
 model User {
   id          String     @id @default(cuid())
   tenantId    String
+  employeeId  String?
   name        String
   email       String
   status      UserStatus @default(ACTIVE)
@@ -303,38 +432,52 @@ model User {
   updatedAt   DateTime   @updatedAt
   deletedAt   DateTime?
 
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  credential      UserCredential?
-  refreshSessions RefreshSession[]
-  roles           UserRole[]
-  factoryAccesses UserFactoryAccess[]
-  createdBatches  ProductionBatch[] @relation("ProductionBatchCreator")
-  recordedStageMovements StageMovement[] @relation("StageMovementRecorder")
-  enteredWorkerActivities WorkerActivity[] @relation("WorkerActivityRecorder")
-  reportedDefects Defect[] @relation("DefectReporter")
-  recordedStockMovements StockMovement[] @relation("StockMovementRecorder")
-  auditLogs AuditLog[]
-  createdSalesOrders SalesOrder[] @relation("SalesOrderCreator")
-  recordedClientPayments ClientPayment[] @relation("ClientPaymentRecorder")
-  reversedClientPayments ClientPayment[] @relation("ClientPaymentReverser")
-  createdSupplierPurchases SupplierPurchase[] @relation("SupplierPurchaseCreator")
-  recordedSupplierPayments SupplierPayment[] @relation("SupplierPaymentRecorder")
-  requestedExpenses Expense[] @relation("ExpenseRequester")
-  approvedExpenses Expense[] @relation("ExpenseApprover")
-  paidExpenses Expense[] @relation("ExpensePayer")
-  expenseApprovals ExpenseApproval[] @relation("ExpenseApprovalActor")
+  tenant                       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  credential                   UserCredential?
+  refreshSessions              RefreshSession[]
+  roles                        UserRole[]
+  factoryAccesses              UserFactoryAccess[]
+  createdBatches               ProductionBatch[]    @relation("ProductionBatchCreator")
+  recordedStageMovements       StageMovement[]      @relation("StageMovementRecorder")
+  enteredWorkerActivities      WorkerActivity[]     @relation("WorkerActivityRecorder")
+  reportedDefects              Defect[]             @relation("DefectReporter")
+  recordedStockMovements       StockMovement[]      @relation("StockMovementRecorder")
+  auditLogs                    AuditLog[]
+  createdSalesOrders           SalesOrder[]         @relation("SalesOrderCreator")
+  recordedClientPayments       ClientPayment[]      @relation("ClientPaymentRecorder")
+  reversedClientPayments       ClientPayment[]      @relation("ClientPaymentReverser")
+  createdSupplierPurchases     SupplierPurchase[]   @relation("SupplierPurchaseCreator")
+  recordedSupplierPayments     SupplierPayment[]    @relation("SupplierPaymentRecorder")
+  requestedExpenses            Expense[]            @relation("ExpenseRequester")
+  approvedExpenses             Expense[]            @relation("ExpenseApprover")
+  paidExpenses                 Expense[]            @relation("ExpensePayer")
+  expenseApprovals             ExpenseApproval[]    @relation("ExpenseApprovalActor")
   requestedEmployeeAdjustments EmployeeAdjustment[] @relation("EmployeeAdjustmentRequester")
-  approvedEmployeeAdjustments EmployeeAdjustment[] @relation("EmployeeAdjustmentApprover")
-  paidEmployeeAdjustments EmployeeAdjustment[] @relation("EmployeeAdjustmentPayer")
-  payrollPayments PayrollPayment[] @relation("PayrollPaymentPayer")
-  accessTokens UserAccessToken[] @relation("UserAccessTokenUser")
-  createdAccessTokens UserAccessToken[] @relation("UserAccessTokenUserCreator")
-  telegramAccounts TelegramAccount[] @relation("TelegramAccountUser")
-  createdTelegramLinkTokens TelegramLinkToken[] @relation("TelegramLinkTokenCreator")
-  telegramLinkTokens TelegramLinkToken[] @relation("TelegramLinkTokenUser")
+  approvedEmployeeAdjustments  EmployeeAdjustment[] @relation("EmployeeAdjustmentApprover")
+  paidEmployeeAdjustments      EmployeeAdjustment[] @relation("EmployeeAdjustmentPayer")
+  payrollPayments              PayrollPayment[]     @relation("PayrollPaymentPayer")
+  accessTokens                 UserAccessToken[]    @relation("UserAccessTokenUser")
+  createdAccessTokens          UserAccessToken[]    @relation("UserAccessTokenUserCreator")
+  telegramAccounts             TelegramAccount[]    @relation("TelegramAccountUser")
+  createdTelegramLinkTokens    TelegramLinkToken[]  @relation("TelegramLinkTokenCreator")
+  telegramLinkTokens           TelegramLinkToken[]  @relation("TelegramLinkTokenUser")
+  employee                     Employee?            @relation(fields: [employeeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdSalaryAgreements      EmployeeSalaryAgreement[] @relation("EmployeeSalaryAgreementCreator")
+  assignedMachineAssignments   MachineMechanicAssignment[] @relation("MachineAssignmentCreator")
+  startedProductionRuns        ProductionRun[]      @relation("ProductionRunStarter")
+  endedProductionRuns          ProductionRun[]      @relation("ProductionRunEnder")
+  recordedProductionIntakes    ProductionRunIntake[] @relation("ProductionRunIntakeRecorder")
+  createdMaintenanceTasks      MaintenanceTask[]    @relation("MaintenanceTaskCreator")
+  completedMaintenanceTasks    MaintenanceTask[]    @relation("MaintenanceTaskCompleter")
+  createdMeasurementSpecs      ProductMeasurementSpecification[] @relation("MeasurementSpecCreator")
+  activatedMeasurementSpecs    ProductMeasurementSpecification[] @relation("MeasurementSpecActivator")
+  resolvedQualityIssues        QualityIssue[]       @relation("QualityIssueResolver")
+  notifications                Notification[]       @relation("NotificationRecipient")
 
   @@unique([id, tenantId])
   @@unique([tenantId, email])
+  @@unique([tenantId, employeeId])
+  @@unique([employeeId, tenantId])
   @@index([tenantId, status, deletedAt])
   @@index([tenantId, deletedAt])
 }
@@ -352,7 +495,7 @@ model PlatformAdmin {
   credential      PlatformAdminCredential?
   refreshSessions PlatformRefreshSession[]
   auditLogs       PlatformAuditLog[]
-  accessTokens    UserAccessToken[] @relation("UserAccessTokenPlatformCreator")
+  accessTokens    UserAccessToken[]        @relation("UserAccessTokenPlatformCreator")
 
   @@unique([email])
   @@index([status, deletedAt])
@@ -373,15 +516,15 @@ model PlatformAdminCredential {
 }
 
 model PlatformRefreshSession {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   platformAdminId String
   tokenHash       String
   userAgent       String?
   ipAddress       String?
   expiresAt       DateTime
   revokedAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   platformAdmin PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Restrict)
 
@@ -408,7 +551,7 @@ model UserCredential {
 }
 
 model RefreshSession {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   userId    String
   tokenHash String
@@ -416,8 +559,8 @@ model RefreshSession {
   ipAddress String?
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   user   User   @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Restrict)
@@ -429,12 +572,12 @@ model RefreshSession {
 }
 
 model Role {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -506,17 +649,19 @@ model UserFactoryAccess {
 }
 
 model Product {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
   code      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  variants  ProductVariant[]
-  prices    ProductPrice[]
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  variants ProductVariant[]
+  prices   ProductPrice[]
+  machinePieceRates          MachinePieceRate[]
+  measurementSpecifications ProductMeasurementSpecification[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, name])
@@ -525,31 +670,32 @@ model Product {
 }
 
 model ProductVariant {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   tenantId   String
   productId  String
   colorId    String
   materialId String
   seasonId   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  product     Product        @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  color       Color          @relation(fields: [colorId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  material    Material       @relation(fields: [materialId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  season      Season         @relation(fields: [seasonId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  prices      ProductPrice[]
-  salaryRates SalaryRate[]
-  stageInventories StageInventory[]
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product           Product           @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  color             Color             @relation(fields: [colorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  material          Material          @relation(fields: [materialId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  season            Season            @relation(fields: [seasonId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  prices            ProductPrice[]
+  salaryRates       SalaryRate[]
+  stageInventories  StageInventory[]
   productionBatches ProductionBatch[]
-  stageMovements StageMovement[]
-  workerActivities WorkerActivity[]
-  defects Defect[]
-  stocks Stock[]
-  stockMovements StockMovement[]
-  salesOrderItems SalesOrderItem[]
+  stageMovements    StageMovement[]
+  workerActivities  WorkerActivity[]
+  defects           Defect[]
+  stocks            Stock[]
+  stockMovements    StockMovement[]
+  salesOrderItems   SalesOrderItem[]
+  productionRuns    ProductionRun[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, productId, colorId, materialId, seasonId])
@@ -557,12 +703,12 @@ model ProductVariant {
 }
 
 model Color {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
   code      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -575,19 +721,19 @@ model Color {
 }
 
 model Material {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
   code      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  variants           ProductVariant[]
-  lowStockThresholds LowStockThreshold[]
-  materialStocks     MaterialStock[]
-  stockMovements     StockMovement[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  variants              ProductVariant[]
+  lowStockThresholds    LowStockThreshold[]
+  materialStocks        MaterialStock[]
+  stockMovements        StockMovement[]
   supplierPurchaseItems SupplierPurchaseItem[]
 
   @@unique([id, tenantId])
@@ -597,12 +743,12 @@ model Material {
 }
 
 model Season {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
   code      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -634,24 +780,24 @@ model ProductPrice {
 }
 
 model ProductionStage {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   factoryId String
   name      String
   sortOrder Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory     Factory      @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  salaryRates SalaryRate[]
-  stageInventories StageInventory[]
-  sourceMovements StageMovement[] @relation("StageMovementSource")
-  destinationMovements StageMovement[] @relation("StageMovementDestination")
-  workerActivities WorkerActivity[]
-  employeeAssignments EmployeeStageAssignment[]
-  defects Defect[]
+  tenant               Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory              Factory                   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  salaryRates          SalaryRate[]
+  stageInventories     StageInventory[]
+  sourceMovements      StageMovement[]           @relation("StageMovementSource")
+  destinationMovements StageMovement[]           @relation("StageMovementDestination")
+  workerActivities     WorkerActivity[]
+  employeeAssignments  EmployeeStageAssignment[]
+  defects              Defect[]
 
   @@unique([id, tenantId])
   @@unique([id, tenantId, factoryId])
@@ -661,35 +807,35 @@ model ProductionStage {
 }
 
 model SalaryRate {
-  id               String    @id @default(cuid())
-  tenantId         String
-  factoryId        String
+  id                String    @id @default(cuid())
+  tenantId          String
+  factoryId         String
   productionStageId String
-  productVariantId String?
-  amount           Decimal   @db.Decimal(14, 2)
-  effectiveFrom    DateTime
-  effectiveTo      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  deletedAt        DateTime?
+  productVariantId  String?
+  amount            Decimal   @db.Decimal(14, 2)
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
   tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   factory         Factory         @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
   productionStage ProductionStage @relation(fields: [productionStageId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   productVariant  ProductVariant? @relation(fields: [productVariantId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  // Partial unique for active stage-only rates is in SQL migration:
+  // SalaryRate_active_stage_unique (deletedAt/effectiveTo/productVariantId null).
 
   @@index([tenantId, factoryId, productionStageId, effectiveFrom])
   @@index([tenantId, productVariantId, effectiveFrom])
-  // Partial unique for active stage-only rates is in SQL migration:
-  // SalaryRate_active_stage_unique (deletedAt/effectiveTo/productVariantId null).
 }
 
 model ExpenseCategory {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -701,13 +847,13 @@ model ExpenseCategory {
 }
 
 model LowStockThreshold {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
   warehouseId String
   materialId  String
-  quantity    Decimal  @db.Decimal(14, 3)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  quantity    Decimal   @db.Decimal(14, 3)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -719,29 +865,104 @@ model LowStockThreshold {
 }
 
 model Employee {
-  id        String         @id @default(cuid())
-  tenantId  String
-  factoryId String
-  name      String
-  status    EmployeeStatus @default(ACTIVE)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  deletedAt DateTime?
+  id          String          @id @default(cuid())
+  tenantId    String
+  factoryId   String
+  workShiftId String?
+  name        String
+  status      EmployeeStatus @default(ACTIVE)
+  jobRole     EmployeeJobRole @default(STAGE_WORKER)
+  workProfile EmployeeWorkProfile @default(STAGE_WORKER)
+  compensationType EmployeeCompensationType @default(PIECE_RATE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory          Factory          @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  stageAssignments EmployeeStageAssignment[]
-  workerActivities WorkerActivity[]
-  defects          Defect[]
-  adjustments      EmployeeAdjustment[]
-  payrollItems     PayrollItem[]
-  telegramAccounts TelegramAccount[]
+  tenant             Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory            Factory                   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  workShift          WorkShift?                @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  stageAssignments   EmployeeStageAssignment[]
+  workerActivities   WorkerActivity[]
+  defects            Defect[]
+  adjustments        EmployeeAdjustment[]
+  payrollItems       PayrollItem[]
+  attendanceRecords  AttendanceRecord[]
+  telegramAccounts   TelegramAccount[]
   telegramLinkTokens TelegramLinkToken[]
+  mechanicBatches    ProductionBatch[] @relation("ProductionBatchMechanic")
+  operatorBatches    ProductionBatch[] @relation("ProductionBatchMachineOperator")
+  user                User?
+  salaryAgreements    EmployeeSalaryAgreement[]
+  mechanicAssignments MachineMechanicAssignment[]
+  operatorRuns        ProductionRun[] @relation("ProductionRunOperator")
+  mechanicRuns        ProductionRun[] @relation("ProductionRunMechanic")
+  maintenanceTasks    MaintenanceTask[] @relation("MaintenanceTaskAssignee")
+  inspectionRounds    InspectionRound[]
+  qualityIssues       QualityIssue[]
 
   @@unique([id, tenantId])
   @@unique([id, tenantId, factoryId])
   @@index([tenantId, factoryId, status])
+  @@index([tenantId, factoryId, workShiftId])
   @@index([tenantId, factoryId, deletedAt])
+}
+
+/// Factory-configurable day/night work shift. Times are minutes after midnight.
+model WorkShift {
+  id              String        @id @default(cuid())
+  tenantId        String
+  factoryId       String
+  code            WorkShiftCode
+  name            String
+  startMinute     Int
+  endMinute       Int
+  premiumPerPiece Decimal       @default(0) @db.Decimal(14, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory           Factory            @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  employees         Employee[]
+  workerActivities  WorkerActivity[]
+  attendanceRecords AttendanceRecord[]
+  machineAssignments MachineMechanicAssignment[]
+  productionRuns     ProductionRun[]
+  inspectionSlots    InspectionScheduleSlot[]
+
+  @@unique([id, tenantId, factoryId])
+  @@unique([tenantId, factoryId, code])
+  @@index([tenantId, factoryId, deletedAt])
+}
+
+/// Normalized daily attendance. A future Trunket adapter will create/update it.
+model AttendanceRecord {
+  id                String        @id @default(cuid())
+  tenantId          String
+  factoryId         String
+  employeeId        String
+  workShiftId       String
+  workDate          DateTime      @db.Date
+  checkInAt         DateTime
+  checkOutAt        DateTime?
+  shiftCode         WorkShiftCode
+  shiftName         String
+  shiftStartMinute  Int
+  shiftEndMinute    Int
+  externalReference String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory   Factory   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  employee  Employee  @relation(fields: [employeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  workShift WorkShift @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+
+  @@unique([tenantId, factoryId, employeeId, workDate])
+  @@index([tenantId, factoryId, workDate])
+  @@index([tenantId, factoryId, workShiftId, workDate])
+  @@index([tenantId, employeeId, workDate])
+  @@index([externalReference])
 }
 
 /// Ishbay xodim qaysi ishlab chiqarish bosqich(lar)ida ishlashi.
@@ -764,14 +985,14 @@ model EmployeeStageAssignment {
 }
 
 model StageInventory {
-  id               String   @id @default(cuid())
-  tenantId         String
-  factoryId        String
+  id                String   @id @default(cuid())
+  tenantId          String
+  factoryId         String
   productionStageId String
-  productVariantId String
-  quantity         Int
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  productVariantId  String
+  quantity          Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   factory         Factory         @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
@@ -784,39 +1005,49 @@ model StageInventory {
 }
 
 model ProductionBatch {
-  id               String   @id @default(cuid())
-  tenantId         String
-  factoryId        String
-  productVariantId String
-  quantity         Int
-  createdByUserId  String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  factoryId                 String
+  productVariantId          String
+  mechanicEmployeeId        String?
+  machineOperatorEmployeeId String?
+  productionRunId           String?
+  quantity                  Int
+  createdByUserId           String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
-  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory        Factory        @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  productVariant ProductVariant @relation(fields: [productVariantId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  createdBy      User           @relation("ProductionBatchCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  stageMovements StageMovement[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory         Factory          @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productVariant  ProductVariant   @relation(fields: [productVariantId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  mechanic        Employee?        @relation("ProductionBatchMechanic", fields: [mechanicEmployeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict, map: "ProductionBatch_mechanic_fkey")
+  machineOperator Employee?        @relation("ProductionBatchMachineOperator", fields: [machineOperatorEmployeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict, map: "ProductionBatch_machine_operator_fkey")
+  createdBy       User             @relation("ProductionBatchCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  stageMovements  StageMovement[]
+  productionRun   ProductionRun? @relation(fields: [productionRunId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  productionRunIntake ProductionRunIntake?
 
   @@unique([id, tenantId, factoryId])
   @@index([tenantId, factoryId, createdAt])
   @@index([tenantId, productVariantId])
+  @@index([tenantId, factoryId, mechanicEmployeeId], map: "ProductionBatch_mechanic_idx")
+  @@index([tenantId, factoryId, machineOperatorEmployeeId], map: "ProductionBatch_machine_operator_idx")
+  @@index([tenantId, factoryId, productionRunId])
 }
 
 model StageMovement {
-  id                String   @id @default(cuid())
-  tenantId          String
-  factoryId         String
-  sourceStageId     String
+  id                 String   @id @default(cuid())
+  tenantId           String
+  factoryId          String
+  sourceStageId      String
   destinationStageId String
-  productVariantId  String
-  productionBatchId String?
-  quantity          Int
-  recordedByUserId  String
-  occurredAt        DateTime
-  note              String?
-  createdAt         DateTime @default(now())
+  productVariantId   String
+  productionBatchId  String?
+  quantity           Int
+  recordedByUserId   String
+  occurredAt         DateTime
+  note               String?
+  createdAt          DateTime @default(now())
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   factory          Factory          @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
@@ -834,49 +1065,61 @@ model StageMovement {
 }
 
 model WorkerActivity {
-  id               String   @id @default(cuid())
-  tenantId         String
-  factoryId        String
-  employeeId       String
-  productionStageId String
-  productVariantId String
-  quantity         Int
-  salaryRateAmount Decimal  @db.Decimal(14, 2)
-  activityDate     DateTime
-  enteredByUserId  String
-  createdAt        DateTime @default(now())
+  id                   String         @id @default(cuid())
+  tenantId             String
+  factoryId            String
+  employeeId           String
+  productionStageId    String
+  productVariantId     String
+  workShiftId          String?
+  quantity             Int
+  baseSalaryRateAmount Decimal        @db.Decimal(14, 2)
+  shiftPremiumAmount   Decimal        @default(0) @db.Decimal(14, 2)
+  salaryRateAmount     Decimal        @db.Decimal(14, 2)
+  workShiftCode        WorkShiftCode?
+  activityDate         DateTime
+  enteredByUserId      String
+  createdAt            DateTime       @default(now())
+  source               WorkerActivitySource @default(STAGE_MOVEMENT)
+  productionRunIntakeId String?
+  machinePieceRateId    String?
 
   tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   factory         Factory         @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
   employee        Employee        @relation(fields: [employeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   productionStage ProductionStage @relation(fields: [productionStageId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   productVariant  ProductVariant  @relation(fields: [productVariantId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  workShift       WorkShift?      @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   enteredBy       User            @relation("WorkerActivityRecorder", fields: [enteredByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productionRunIntake ProductionRunIntake? @relation(fields: [productionRunIntakeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  machinePieceRate MachinePieceRate? @relation(fields: [machinePieceRateId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
   @@index([tenantId, factoryId, employeeId, activityDate])
   @@index([tenantId, factoryId, productionStageId, activityDate])
   @@index([tenantId, productVariantId])
+  @@index([tenantId, factoryId, workShiftId, activityDate])
+  @@unique([tenantId, productionRunIntakeId, employeeId])
 }
 
 model Defect {
-  id               String   @id @default(cuid())
-  tenantId         String
-  factoryId        String
-  employeeId       String?
+  id                String   @id @default(cuid())
+  tenantId          String
+  factoryId         String
+  employeeId        String?
   productionStageId String?
-  productVariantId String?
-  quantity         Int
-  reason           String
-  reportedByUserId String
-  detectedAt       DateTime
-  createdAt        DateTime @default(now())
+  productVariantId  String?
+  quantity          Int
+  reason            String
+  reportedByUserId  String
+  detectedAt        DateTime
+  createdAt         DateTime @default(now())
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   factory         Factory          @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
   employee        Employee?        @relation(fields: [employeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   productionStage ProductionStage? @relation(fields: [productionStageId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   productVariant  ProductVariant?  @relation(fields: [productVariantId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  reportedBy       User             @relation("DefectReporter", fields: [reportedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  reportedBy      User             @relation("DefectReporter", fields: [reportedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
   @@index([tenantId, factoryId, detectedAt])
   @@index([tenantId, factoryId, productionStageId, detectedAt])
@@ -1098,21 +1341,21 @@ model PlatformAuditLog {
 }
 
 model Client {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
   phone     String?
   address   String?
   notes     String?
-  status    String   @default("ACTIVE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("ACTIVE")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  orders   SalesOrder[]
-  payments ClientPayment[]
-  telegramAccounts TelegramAccount[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  orders             SalesOrder[]
+  payments           ClientPayment[]
+  telegramAccounts   TelegramAccount[]
   telegramLinkTokens TelegramLinkToken[]
 
   @@unique([id, tenantId])
@@ -1183,11 +1426,11 @@ model ClientPayment {
   reversalReason   String?
   createdAt        DateTime      @default(now())
 
-  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  client       Client                    @relation(fields: [clientId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  recordedBy   User?                     @relation("ClientPaymentRecorder", fields: [recordedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  reversedBy   User?                     @relation("ClientPaymentReverser", fields: [reversedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  allocations  ClientPaymentAllocation[]
+  tenant      Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  client      Client                    @relation(fields: [clientId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  recordedBy  User?                     @relation("ClientPaymentRecorder", fields: [recordedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  reversedBy  User?                     @relation("ClientPaymentReverser", fields: [reversedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  allocations ClientPaymentAllocation[]
 
   @@unique([id, tenantId])
   @@index([tenantId, paymentDate])
@@ -1213,14 +1456,14 @@ model ClientPaymentAllocation {
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   name      String
   phone     String?
   notes     String?
-  status    String   @default("ACTIVE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("ACTIVE")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -1246,10 +1489,10 @@ model SupplierPurchase {
   updatedAt       DateTime      @updatedAt
   cancelledAt     DateTime?
 
-  tenant      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory     Factory?                   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  supplier    Supplier                   @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  createdBy   User?                      @relation("SupplierPurchaseCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory     Factory?                    @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  supplier    Supplier                    @relation(fields: [supplierId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdBy   User?                       @relation("SupplierPurchaseCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
   items       SupplierPurchaseItem[]
   allocations SupplierPaymentAllocation[]
 
@@ -1359,7 +1602,7 @@ model ExpenseApproval {
   note        String?
   createdAt   DateTime @default(now())
 
-  tenant Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   expense Expense @relation(fields: [expenseId, tenantId], references: [id, tenantId], onDelete: Restrict)
   actor   User?   @relation("ExpenseApprovalActor", fields: [actorUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
@@ -1402,6 +1645,382 @@ model EmployeeAdjustment {
   @@index([tenantId, createdAt])
 }
 
+/// Effective-dated monthly salary. Piece-rate employees never use this table.
+model EmployeeSalaryAgreement {
+  id              String    @id @default(cuid())
+  tenantId        String
+  factoryId       String
+  employeeId      String
+  monthlyAmount   Decimal   @db.Decimal(14, 2)
+  effectiveFrom   DateTime  @db.Date
+  effectiveTo     DateTime? @db.Date
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory   Factory  @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  employee  Employee @relation(fields: [employeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  createdBy User?    @relation("EmployeeSalaryAgreementCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, factoryId, employeeId, effectiveFrom])
+}
+
+model Machine {
+  id        String        @id @default(cuid())
+  tenantId  String
+  factoryId String
+  code      String
+  name      String
+  status    MachineStatus @default(ACTIVE)
+  note      String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory     Factory                     @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  assignments MachineMechanicAssignment[]
+  runs        ProductionRun[]
+  tasks       MaintenanceTask[]
+  rounds      InspectionRound[]
+  qualityIssues QualityIssue[]
+
+  @@unique([id, tenantId, factoryId])
+  @@unique([tenantId, factoryId, code])
+  @@index([tenantId, factoryId, status, deletedAt])
+}
+
+model MachineMechanicAssignment {
+  id               String    @id @default(cuid())
+  tenantId         String
+  factoryId        String
+  machineId        String
+  mechanicId       String
+  workShiftId      String
+  validFrom        DateTime
+  validTo          DateTime?
+  assignedByUserId String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory    Factory   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  machine    Machine   @relation(fields: [machineId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  mechanic   Employee  @relation(fields: [mechanicId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  workShift  WorkShift @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  assignedBy User      @relation("MachineAssignmentCreator", fields: [assignedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, factoryId, machineId, workShiftId, validFrom, validTo])
+  @@index([tenantId, factoryId, mechanicId, validFrom, validTo])
+}
+
+model ProductionRun {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  factoryId          String
+  machineId          String
+  productVariantId   String
+  operatorEmployeeId String
+  mechanicEmployeeId String
+  workShiftId        String
+  status             ProductionRunStatus @default(PLANNED)
+  startedAt          DateTime?
+  endedAt            DateTime?
+  startedByUserId    String
+  endedByUserId      String?
+  note               String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory        Factory        @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  machine        Machine        @relation(fields: [machineId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  productVariant ProductVariant @relation(fields: [productVariantId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  operator       Employee       @relation("ProductionRunOperator", fields: [operatorEmployeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  mechanic       Employee       @relation("ProductionRunMechanic", fields: [mechanicEmployeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  workShift      WorkShift      @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  startedBy      User           @relation("ProductionRunStarter", fields: [startedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  endedBy        User?          @relation("ProductionRunEnder", fields: [endedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  intakes        ProductionRunIntake[]
+  batches        ProductionBatch[]
+  rounds         InspectionRound[]
+  qualityIssues  QualityIssue[]
+
+  @@unique([id, tenantId, factoryId])
+  @@index([tenantId, factoryId, machineId, status])
+  @@index([tenantId, factoryId, mechanicEmployeeId, status])
+}
+
+model MachinePieceRate {
+  id            String          @id @default(cuid())
+  tenantId      String
+  factoryId     String
+  productId     String
+  workRole      MachineWorkRole
+  amount        Decimal         @db.Decimal(14, 2)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory    Factory          @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  product    Product          @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  activities WorkerActivity[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, factoryId, productId, workRole, effectiveFrom])
+}
+
+model ProductionRunIntake {
+  id                String   @id @default(cuid())
+  tenantId          String
+  factoryId         String
+  productionRunId   String
+  productionBatchId String
+  quantity          Int
+  idempotencyKey    String
+  recordedByUserId  String
+  createdAt         DateTime @default(now())
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory       Factory         @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  productionRun ProductionRun   @relation(fields: [productionRunId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  batch         ProductionBatch @relation(fields: [productionBatchId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  recordedBy    User            @relation("ProductionRunIntakeRecorder", fields: [recordedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  activities    WorkerActivity[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, idempotencyKey])
+  @@unique([tenantId, productionBatchId])
+  @@unique([productionBatchId, tenantId, factoryId])
+  @@index([tenantId, factoryId, productionRunId, createdAt])
+}
+
+model MaintenanceTask {
+  id                String                  @id @default(cuid())
+  tenantId          String
+  factoryId         String
+  machineId         String
+  assigneeMechanicId String
+  type              MaintenanceTaskType
+  priority          MaintenanceTaskPriority @default(MEDIUM)
+  status            MaintenanceTaskStatus   @default(OPEN)
+  dueAt             DateTime?
+  description       String
+  resolution        String?
+  createdByUserId   String
+  completedByUserId String?
+  completedAt       DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory     Factory  @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  machine     Machine  @relation(fields: [machineId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  assignee    Employee @relation("MaintenanceTaskAssignee", fields: [assigneeMechanicId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  createdBy   User     @relation("MaintenanceTaskCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  completedBy User?    @relation("MaintenanceTaskCompleter", fields: [completedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, factoryId, assigneeMechanicId, status, dueAt])
+  @@index([tenantId, factoryId, machineId, status])
+}
+
+model ProductMeasurementSpecification {
+  id                String                         @id @default(cuid())
+  tenantId          String
+  productId         String
+  version           Int
+  status            MeasurementSpecificationStatus @default(DRAFT)
+  effectiveFrom     DateTime?
+  createdByUserId   String
+  activatedByUserId String?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product     Product @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdBy   User    @relation("MeasurementSpecCreator", fields: [createdByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  activatedBy User?   @relation("MeasurementSpecActivator", fields: [activatedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  metrics     ProductMeasurementMetric[]
+  rounds      InspectionRound[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, productId, version])
+  @@index([tenantId, productId, status, effectiveFrom])
+}
+
+model ProductMeasurementMetric {
+  id              String   @id @default(cuid())
+  tenantId        String
+  specificationId String
+  code            String
+  name            String
+  unit            String
+  target          Decimal  @db.Decimal(14, 3)
+  min             Decimal  @db.Decimal(14, 3)
+  max             Decimal  @db.Decimal(14, 3)
+  displayOrder    Int
+  createdAt       DateTime @default(now())
+
+  tenant        Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  specification ProductMeasurementSpecification @relation(fields: [specificationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  measurements InspectionMeasurement[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, specificationId, code])
+  @@unique([tenantId, specificationId, displayOrder])
+}
+
+model InspectionScheduleSlot {
+  id           String   @id @default(cuid())
+  tenantId     String
+  factoryId    String
+  workShiftId  String
+  slotNumber   Int
+  minuteOffset Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory   Factory   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  workShift WorkShift @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  rounds    InspectionRound[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, factoryId, workShiftId, slotNumber])
+}
+
+model InspectionRound {
+  id                 String                @id @default(cuid())
+  tenantId           String
+  factoryId          String
+  machineId          String
+  productionRunId    String
+  mechanicEmployeeId String
+  specificationId    String
+  scheduleSlotId     String
+  status             InspectionRoundStatus @default(PENDING)
+  scheduledAt        DateTime
+  startedAt          DateTime?
+  completedAt        DateTime?
+  dedupeKey          String
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  tenant        Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory       Factory                         @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  machine       Machine                         @relation(fields: [machineId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  productionRun ProductionRun                   @relation(fields: [productionRunId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  mechanic      Employee                        @relation(fields: [mechanicEmployeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  specification ProductMeasurementSpecification @relation(fields: [specificationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  scheduleSlot  InspectionScheduleSlot          @relation(fields: [scheduleSlotId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  measurements  InspectionMeasurement[]
+  qualityIssues QualityIssue[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, factoryId, mechanicEmployeeId, scheduledAt, status])
+}
+
+model InspectionMeasurement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  roundId   String
+  metricId  String
+  value     Decimal  @db.Decimal(14, 3)
+  target    Decimal  @db.Decimal(14, 3)
+  min       Decimal  @db.Decimal(14, 3)
+  max       Decimal  @db.Decimal(14, 3)
+  isWithinRange Boolean
+  measuredAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  round  InspectionRound          @relation(fields: [roundId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  metric ProductMeasurementMetric @relation(fields: [metricId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([tenantId, roundId, metricId])
+}
+
+model QualityIssue {
+  id                 String             @id @default(cuid())
+  tenantId           String
+  factoryId          String
+  inspectionRoundId  String
+  machineId          String
+  productionRunId    String
+  mechanicEmployeeId String
+  status             QualityIssueStatus @default(ATTENTION)
+  details            Json
+  recheckDueAt       DateTime
+  resolvedAt         DateTime?
+  resolvedByUserId   String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory       Factory         @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  inspectionRound InspectionRound @relation(fields: [inspectionRoundId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  machine       Machine         @relation(fields: [machineId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  productionRun ProductionRun   @relation(fields: [productionRunId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  mechanic      Employee        @relation(fields: [mechanicEmployeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  resolvedBy    User?           @relation("QualityIssueResolver", fields: [resolvedByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, factoryId, status, recheckDueAt])
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  tenantId        String
+  recipientUserId String
+  type            String
+  title           String
+  body            String
+  sourceType      String?
+  sourceId        String?
+  dedupeKey       String
+  readAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  recipient User   @relation("NotificationRecipient", fields: [recipientUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  deliveries NotificationDelivery[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, recipientUserId, readAt, createdAt])
+}
+
+model NotificationDelivery {
+  id            String                     @id @default(cuid())
+  tenantId      String
+  notificationId String
+  status        NotificationDeliveryStatus @default(PENDING)
+  telegramChatId String?
+  attemptCount  Int                        @default(0)
+  leaseUntil    DateTime?
+  nextAttemptAt DateTime                   @default(now())
+  lastError     String?
+  sentAt        DateTime?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  notification Notification @relation(fields: [notificationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, notificationId])
+  @@index([status, nextAttemptAt, leaseUntil])
+}
+
 model PayrollPeriod {
   id                   String              @id @default(cuid())
   tenantId             String
@@ -1420,10 +2039,10 @@ model PayrollPeriod {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
-  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory             Factory              @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  adjustments         EmployeeAdjustment[]
-  items               PayrollItem[]
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory     Factory              @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  adjustments EmployeeAdjustment[]
+  items       PayrollItem[]
 
   @@unique([id, tenantId, factoryId])
   @@unique([tenantId, factoryId, month])
@@ -1449,10 +2068,10 @@ model PayrollItem {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  factory       Factory       @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  payrollPeriod PayrollPeriod @relation(fields: [payrollPeriodId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
-  employee      Employee      @relation(fields: [employeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory       Factory          @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  payrollPeriod PayrollPeriod    @relation(fields: [payrollPeriodId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+  employee      Employee         @relation(fields: [employeeId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
   payments      PayrollPayment[]
 
   @@unique([id, tenantId])
@@ -1463,19 +2082,19 @@ model PayrollItem {
 }
 
 model PayrollPayment {
-  id               String        @id @default(cuid())
-  tenantId         String
-  payrollItemId    String
-  amount           Decimal       @db.Decimal(14, 2)
-  method           PaymentMethod
-  paidAt           DateTime
-  paidByUserId     String?
-  note             String?
-  createdAt        DateTime      @default(now())
+  id            String        @id @default(cuid())
+  tenantId      String
+  payrollItemId String
+  amount        Decimal       @db.Decimal(14, 2)
+  method        PaymentMethod
+  paidAt        DateTime
+  paidByUserId  String?
+  note          String?
+  createdAt     DateTime      @default(now())
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   payrollItem PayrollItem @relation(fields: [payrollItemId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  paidBy     User?       @relation("PayrollPaymentPayer", fields: [paidByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  paidBy      User?       @relation("PayrollPaymentPayer", fields: [paidByUserId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
   @@index([tenantId, payrollItemId])
   @@index([tenantId, paidAt])

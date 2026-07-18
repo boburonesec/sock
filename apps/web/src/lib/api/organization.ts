@@ -19,6 +19,13 @@ export interface OrganizationUser {
     id: string;
     name: string;
   }>;
+  employee: {
+    id: string;
+    name: string;
+    workProfile: string;
+    factoryId: string;
+  } | null;
+  employeeLinkStatus: "LINKED" | "UNLINKED";
   createdAt: ApiDateTime;
   updatedAt?: ApiDateTime;
 }
@@ -79,6 +86,15 @@ export const organizationApi = {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+      },
+    ),
+  linkUserEmployee: (userId: string, employeeId: string) =>
+    apiClient<{ data: { id: string; employee: NonNullable<OrganizationUser["employee"]> } }>(
+      `/organization/users/${userId}/employee`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId }),
       },
     ),
 };

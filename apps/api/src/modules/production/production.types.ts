@@ -36,6 +36,12 @@ export interface EmployeeReferenceResponse {
   id: string;
   name: string;
   status: 'ACTIVE' | 'INACTIVE';
+  jobRole?: 'STAGE_WORKER' | 'MECHANIC' | 'MACHINE_OPERATOR';
+}
+
+export interface BatchEmployeeReferenceResponse {
+  id: string;
+  name: string;
 }
 
 export interface UserReferenceResponse {
@@ -57,6 +63,8 @@ export interface ProductionBatchResponse {
   createdAt: Date;
   productVariant: ProductVariantReferenceResponse;
   createdBy: UserReferenceResponse;
+  mechanic: BatchEmployeeReferenceResponse | null;
+  machineOperator: BatchEmployeeReferenceResponse | null;
 }
 
 export interface StageMovementResponse {
@@ -70,6 +78,8 @@ export interface StageMovementResponse {
   productionBatch: {
     id: string;
     quantity: number;
+    mechanic: BatchEmployeeReferenceResponse | null;
+    machineOperator: BatchEmployeeReferenceResponse | null;
   } | null;
   recordedBy: UserReferenceResponse;
 }
@@ -102,7 +112,10 @@ export interface DefectCreationResponse {
 export interface WorkerActivityResponse {
   id: string;
   quantity: number;
+  baseSalaryRateAmount: string;
+  shiftPremiumAmount: string;
   salaryRateAmount: string;
+  workShiftCode: 'DAY' | 'NIGHT' | null;
   activityDate: Date;
   employee: EmployeeReferenceResponse;
   stage: ProductionStageReferenceResponse;

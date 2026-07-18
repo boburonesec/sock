@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/overlays/drawer";
 import { InfoCard } from "@/components/cards/info-card";
-import type { Employee } from "@/lib/api/employees";
+import {
+  employeeWorkProfileLabels,
+  type Employee,
+} from "@/lib/api/employees";
 import { telegramApi, type TelegramLinkTokenCreated } from "@/lib/api/telegram";
 import { TelegramLinkCodeCard } from "@/features/telegram/telegram-link-code-card";
 import { EmployeePayrollTab } from "./employee-payroll-tab";
@@ -52,6 +55,18 @@ export function EmployeeDetailsDrawer({
 
   return <Drawer open={Boolean(employee)} onOpenChange={onOpenChange} title={employee.name} description={`Holati: ${employee.status === "ACTIVE" ? "Faol" : "Nofaol"}`} className="max-w-5xl">
     <div className="space-y-5">
+      <InfoCard title="Lavozim">
+        <p className="text-sm text-muted-foreground">
+          {employeeWorkProfileLabels[employee.workProfile]}
+        </p>
+      </InfoCard>
+      <InfoCard title="Ish smenasi">
+        <p className="text-sm text-muted-foreground">
+          {employee.workShift
+            ? `${employee.workShift.name} · ${String(Math.floor(employee.workShift.startMinute / 60)).padStart(2, "0")}:${String(employee.workShift.startMinute % 60).padStart(2, "0")}–${String(Math.floor(employee.workShift.endMinute / 60)).padStart(2, "0")}:${String(employee.workShift.endMinute % 60).padStart(2, "0")}`
+            : "Smena tanlanmagan. Faollik yozishdan oldin tahrirlang."}
+        </p>
+      </InfoCard>
       <div className="flex flex-wrap gap-2"><Button variant="outline" className="h-9" onClick={() => onEdit(employee)}>Tahrirlash</Button><Button variant="outline" className="h-9 border-rose-500/40 text-rose-300 hover:bg-rose-500/10" disabled={isInactivating} onClick={() => onInactivate(employee)}>{isInactivating ? "Nofaol qilinmoqda..." : "Nofaol qilish"}</Button><Button disabled variant="outline" className="h-9">Bonus qo‘shish</Button><Button disabled variant="outline" className="h-9">Jarima qo‘shish</Button></div>
       <TelegramLinkCodeCard
         targetName={employee.name}

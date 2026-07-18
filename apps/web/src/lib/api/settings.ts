@@ -49,6 +49,22 @@ export interface SalaryRatePayload {
   amount: string;
 }
 
+export interface WorkShift {
+  id: string;
+  code: "DAY" | "NIGHT";
+  name: string;
+  startTime: string;
+  endTime: string;
+  premiumPerPiece: string;
+  createdAt: ApiDateTime;
+  updatedAt: ApiDateTime;
+}
+
+export type WorkShiftPayload = Pick<
+  WorkShift,
+  "code" | "name" | "startTime" | "endTime" | "premiumPerPiece"
+>;
+
 export interface SettingsRole {
   id: string;
   name: string;
@@ -83,6 +99,14 @@ export const settingsApi = {
     apiClient<ApiCollection<SettingsExpenseCategory>>("/settings/expense-categories"),
   getSalaryRates: () =>
     apiClient<ApiCollection<SalaryRate>>("/settings/salary-rates"),
+  getWorkShifts: () =>
+    apiClient<ApiCollection<WorkShift>>("/settings/work-shifts"),
+  upsertWorkShift: (payload: WorkShiftPayload) =>
+    apiClient<{ data: WorkShift }>(`/settings/work-shifts/${payload.code}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
   createSalaryRate: (payload: SalaryRatePayload) =>
     apiClient<{ data: SalaryRate }>("/settings/salary-rates", {
       method: "POST",

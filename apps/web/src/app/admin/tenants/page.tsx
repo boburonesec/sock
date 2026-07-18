@@ -108,9 +108,9 @@ export default function PlatformTenantsPage() {
   return (
     <PlatformAdminGate>
       <PlatformAdminShell>
-        <div className="mb-7 flex items-start justify-between gap-4">
+        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Korxonalar</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">Korxonalar</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Mijoz korxonalarini ochish va kuzatib borish
             </p>

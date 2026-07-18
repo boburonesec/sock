@@ -1,0 +1,26 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { machinesApi } from "@/lib/api/machines";
+import { useAuthStore } from "@/stores/auth-store";
+
+export function MechanicWorkspace() {
+  const qc = useQueryClient();
+  const tasks = useQuery({ queryKey: ["mechanic", "tasks"], queryFn: machinesApi.tasks });
+  const rounds = useQuery({ queryKey: ["mechanic", "rounds"], queryFn: machinesApi.rounds });
+  const issues = useQuery({ queryKey: ["mechanic", "issues"], queryFn: machinesApi.issues });
+  const [values, setValues] = useState<Record<string, string>>({});
+  const canHold = useAuthStore((state) => state.permissions).includes("production.write");
+  const submit = useMutation({ mutationFn: ({ id, metrics }: { id: string; metrics: Array<{ metricId: string; value: number }> }) => machinesApi.submitMeasurements(id, metrics), onSuccess: () => void qc.invalidateQueries({ queryKey: ["mechanic"] }) });
+  const recheck = useMutation({ mutationFn: ({ id, metrics }: { id: string; metrics: Array<{ metricId: string; value: number }> }) => machinesApi.recheckIssue(id, metrics), onSuccess: () => void qc.invalidateQueries({ queryKey: ["mechanic"] }) });
+  const updateTask = useMutation({ mutationFn: ({ id, status, resolution }: { id: string; status: string; resolution?: string }) => machinesApi.updateTask(id, { status, resolution }), onSuccess: () => void qc.invalidateQueries({ queryKey: ["mechanic", "tasks"] }) });
+  return <div className="space-y-6"><PageHeader title="Mexanik ish maydoni" description="Bugungi stanoklar, tasklar va uch martalik o‘lchov nazorati" />
+    <section><h2 className="mb-3 text-lg font-semibold">Tasklar</h2><div className="grid gap-3 md:grid-cols-2">{tasks.data?.data.map((t) => <article key={t.id} className="rounded-xl border p-4"><p className="font-medium">{t.machine.code} · {t.type}</p><p className="text-sm text-muted-foreground">{t.description}</p><p className="mt-2 text-xs">{t.priority} · {t.status}</p>{t.status === "OPEN" && <Button className="mt-3 w-full" variant="outline" onClick={() => updateTask.mutate({ id: t.id, status: "IN_PROGRESS" })}>Ishni boshlash</Button>}{t.status === "IN_PROGRESS" && <form className="mt-3 space-y-2" onSubmit={(event) => { event.preventDefault(); updateTask.mutate({ id: t.id, status: "COMPLETED", resolution: values[`task:${t.id}`] }); }}><Input required placeholder="Bajarilgan ish natijasi" value={values[`task:${t.id}`] ?? ""} onChange={(event) => setValues({ ...values, [`task:${t.id}`]: event.target.value })} /><Button className="w-full">Taskni yakunlash</Button></form>}{t.status === "COMPLETED" && t.resolution && <p className="mt-2 text-sm text-emerald-300">Natija: {t.resolution}</p>}</article>)}</div></section>
+    <section><h2 className="mb-3 text-lg font-semibold">Kutilayotgan o‘lchovlar</h2><div className="space-y-4">{rounds.data?.data.filter((r) => r.status === "PENDING" || r.status === "IN_PROGRESS").map((r) => <form key={r.id} className="rounded-xl border p-4" onSubmit={(e) => { e.preventDefault(); submit.mutate({ id: r.id, metrics: r.specification.metrics.map((m) => ({ metricId: m.id, value: Number(values[`${r.id}:${m.id}`]) })) }); }}><p className="font-medium">{r.machine.code} · {r.productionRun.productVariant.product.name}</p><p className="mb-3 text-sm text-muted-foreground">{new Date(r.scheduledAt).toLocaleString("uz-UZ")}</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{r.specification.metrics.map((m) => <label key={m.id} className="text-sm">{m.name} ({m.unit})<Input type="number" step="0.001" required value={values[`${r.id}:${m.id}`] ?? ""} onChange={(e) => setValues({ ...values, [`${r.id}:${m.id}`]: e.target.value })} /><span className="text-xs text-muted-foreground">Norma {m.min}–{m.max}, maqsad {m.target}</span></label>)}</div><Button className="mt-4">O‘lchovni saqlash</Button></form>)}</div></section>
+    <section><h2 className="mb-3 text-lg font-semibold">Attention</h2>{issues.data?.data.map((i) => <form key={i.id} className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4" onSubmit={(e) => { e.preventDefault(); recheck.mutate({ id: i.id, metrics: i.inspectionRound.specification.metrics.map((m) => ({ metricId: m.id, value: Number(values[`issue:${i.id}:${m.id}`]) })) }); }}><p className="font-medium">{i.machine.code} · qayta tekshiruv {new Date(i.recheckDueAt).toLocaleTimeString("uz-UZ")}</p><p className="mb-3 text-sm text-muted-foreground">Holat: {i.status}</p><div className="grid gap-2 sm:grid-cols-3">{i.inspectionRound.specification.metrics.map((m) => <label key={m.id} className="text-sm">{m.name} ({m.unit})<Input type="number" step="0.001" required value={values[`issue:${i.id}:${m.id}`] ?? ""} onChange={(e) => setValues({ ...values, [`issue:${i.id}:${m.id}`]: e.target.value })} /></label>)}</div><div className="mt-3 flex gap-2"><Button>Qayta o‘lchash</Button>{canHold && <Button type="button" variant="outline" onClick={() => machinesApi.holdIssueRun(i.id).then(() => void qc.invalidateQueries({ queryKey: ["mechanic"] }))}>Runni HOLD qilish</Button>}</div></form>)}</section>
+  </div>;
+}

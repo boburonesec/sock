@@ -1,4 +1,11 @@
-import { AlertTriangle, ArrowRightLeft, PackageCheck, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRightLeft,
+  ClipboardPlus,
+  Cog,
+  PackageCheck,
+} from "lucide-react";
+import Link from "next/link";
 import { InfoCard } from "@/components/cards/info-card";
 import { Button } from "@/components/ui/button";
 import type { ProductionAction } from "./production-action-types";
@@ -6,15 +13,19 @@ import type { ProductionAction } from "./production-action-types";
 const actions: {
   label: string;
   action: ProductionAction;
-  icon: typeof Plus;
+  icon: typeof Cog;
   /** warehouse.write required — physical ombor qabul */
   requiresWarehouseWrite?: boolean;
 }[] = [
-  { label: "Partiya yaratish", action: "create-batch", icon: Plus },
   {
     label: "Smena o‘tkazish (+ ishchilar)",
     action: "move-stage",
     icon: ArrowRightLeft,
+  },
+  {
+    label: "Qo‘shimcha faollik kiritish",
+    action: "add-activity",
+    icon: ClipboardPlus,
   },
   {
     label: "Brak qayd qilish",
@@ -49,6 +60,13 @@ export function QuickActionsPanel({
       description="Ishlab chiqarishdagi asosiy kiritish amallari"
     >
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <Link
+          href="/machines"
+          className="inline-flex min-h-11 w-full items-center justify-start gap-2 rounded-lg border bg-transparent px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <Cog size={18} className="shrink-0" />
+          <span className="min-w-0 flex-1">Stanok runini boshlash yoki output qabul qilish</span>
+        </Link>
         {visibleActions.map(({ label, action, icon: Icon }) => (
           <Button
             key={action}

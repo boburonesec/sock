@@ -200,7 +200,7 @@ export default function PlatformTenantDetailPage() {
             <section className="panel p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold">{tenant.name}</h1>
+                  <h1 className="break-words text-2xl font-bold sm:text-3xl">{tenant.name}</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {tenant.contactName || "Kontakt yo‘q"} · {tenant.contactPhone || "Telefon yo‘q"}
                   </p>
