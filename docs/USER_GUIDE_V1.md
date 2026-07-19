@@ -19,9 +19,10 @@ Screenshotlarni qayta olish:
 
 ```bash
 # API + Web ishlayotgan bo‘lsin
-pnpm demo:seed
-# playwright o‘rnatilgan bo‘lsin (masalan: npm i --prefix /tmp/paypoq-pw playwright)
-PLAYWRIGHT_PKG=/tmp/paypoq-pw node scripts/capture-user-guide-screenshots.mjs
+pnpm verify:acceptance-fixture
+pnpm playwright:install  # faqat qo‘llab-quvvatlanadigan Chromium engine
+pnpm test:ui-routes
+pnpm capture:user-guide
 ```
 
 ---
@@ -57,8 +58,12 @@ cp apps/web/.env.example apps/web/.env.local
 
 pnpm prisma:generate
 pnpm prisma:migrate:deploy
-pnpm prisma:seed
-pnpm demo:seed          # demo ma’lumot (skrinshotlardagi kabi)
+pnpm prisma:seed        # data yaratmaydigan normal startup baseline tekshiruvi
+# Shu nuqtada baseline smoke ishlaydi; business acceptance hali ishlamaydi.
+pnpm smoke:mvp
+
+pnpm verify:acceptance-fixture  # faqat demo/QA business fixture
+pnpm verify:acceptance          # full + deep business acceptance
 
 pnpm api:dev            # :3001
 pnpm dev                # :3000
@@ -138,6 +143,16 @@ Bu yerda fabrikalar holatini bir qarashda ko‘rasiz:
 Stage inventory, bottleneck va ishchi unumdorligiga e’tibor.
 
 ![Operatsiyalar dashboard](screenshots/03-dashboard-operations.png)
+
+### Bildirishnomalar
+
+**Yo‘l:** `/notifications`
+
+Bu sahifa persistent in-app inbox. O‘qilmagan xabarni `O‘qildi` tugmasi bilan
+belgilash mumkin; Telegram yetkazish muvaffaqiyatsiz bo‘lsa ham inbox source of
+truth bo‘lib qoladi. MVP’da machine task, quality recheck va inspection
+xabarlari yaratiladi. Low stock, order deadline, pending advance, generic
+defect, stalled batch va overdue debt avtomatik triggerlari future scope.
 
 ---
 

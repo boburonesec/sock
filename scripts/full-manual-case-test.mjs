@@ -28,6 +28,9 @@ function skip(name, detail = "") {
 }
 
 function loadTvToken() {
+  const configuredToken = process.env.FACTORY_TV_ACCESS_TOKEN?.trim();
+  if (configuredToken) return configuredToken;
+
   try {
     const env = readFileSync(path.join(ROOT, "apps/api/.env"), "utf8");
     return (env.match(/^FACTORY_TV_ACCESS_TOKEN=(.+)$/m) || [])[1]?.trim();
@@ -96,9 +99,31 @@ async function main() {
     owner = await login("owner@paypoq.local");
     ok("Owner login", owner.data?.user?.email || "");
   } catch (e) {
-    fail("Owner login", e.message);
-    printSummary();
-    process.exit(1);
+    console.error(
+      `SETUP ERROR: acceptance owner is unavailable (${e.message}). Run \`pnpm verify:acceptance-fixture\` after baseline seed, then rerun this suite.`,
+    );
+    process.exit(2);
+  }
+
+  {
+    const [productsResponse, stagesResponse, employeesResponse] = await Promise.all([
+      req("GET", "/product/products", { token: owner.token }),
+      req("GET", "/product/stages", { token: owner.token }),
+      req("GET", "/production/lookups/employees", { token: owner.token }),
+    ]);
+    const products = productsResponse.json?.data ?? [];
+    const stages = stagesResponse.json?.data ?? [];
+    const employees = employeesResponse.json?.data ?? [];
+    const hasVariant = products.some((product) => product.variants?.length > 0);
+    const hasAssignedWorker = employees.some(
+      (employee) => employee.stageIds?.length > 0 || employee.stages?.length > 0,
+    );
+    if (!hasVariant || stages.length < 2 || !hasAssignedWorker) {
+      console.error(
+        "SETUP ERROR: business acceptance fixture is missing. Run `pnpm verify:acceptance-fixture` after baseline seed, then rerun this suite.",
+      );
+      process.exit(2);
+    }
   }
 
   {
@@ -211,20 +236,27 @@ async function main() {
       .slice()
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map((s) => s.id);
-    const emps = await req("GET", "/employees", { token: owner.token });
+    const emps = await req("GET", "/production/lookups/employees", {
+      token: owner.token,
+    });
     const el = emps.json?.data || emps.json || [];
-    employeeId = (Array.isArray(el) ? el : [])[0]?.id;
+    employeeId = (Array.isArray(el) ? el : []).find((employee) =>
+      employee.stages?.some((stage) => stage.id === stageIds[0]),
+    )?.id;
 
-    if (!productVariantId || stageIds.length < 2) {
-      fail("Production prerequisites", `variant=${productVariantId} stages=${stageIds.length}`);
+    if (!productVariantId || stageIds.length < 2 || !employeeId) {
+      fail(
+        "Production prerequisites",
+        `variant=${productVariantId} stages=${stageIds.length} assignedWorker=${employeeId}`,
+      );
     } else {
-      ok("Production prerequisites", `variant + ${stageIds.length} stages`);
+      ok("Production prerequisites", `variant + ${stageIds.length} stages + assigned worker`);
     }
   } catch (e) {
     fail("Production prerequisites", e.message);
   }
 
-  if (productVariantId && stageIds.length >= 2) {
+  if (productVariantId && stageIds.length >= 2 && employeeId) {
     const batch = await req("POST", "/production/batches", {
       token: owner.token,
       body: { productVariantId, quantity: 50 },
@@ -239,6 +271,8 @@ async function main() {
         sourceStageId: stageIds[0],
         destinationStageId: stageIds[1],
         quantity: 20,
+        employeeIds: [employeeId],
+        workerShares: [{ employeeId, quantity: 20 }],
       },
     });
     if (move.status === 201 || move.status === 200) ok("Stage movement 20 units");
@@ -252,10 +286,62 @@ async function main() {
         sourceStageId: stageIds[0],
         destinationStageId: stageIds[1],
         quantity: 999999,
+        employeeIds: [employeeId],
+        workerShares: [{ employeeId, quantity: 999999 }],
       },
     });
     if (neg.status >= 400) ok("Negative stage inventory blocked", String(neg.status));
     else fail("Negative stage inventory blocked", String(neg.status));
+
+    const movementBase = {
+      productVariantId,
+      sourceStageId: stageIds[0],
+      destinationStageId: stageIds[1],
+      quantity: 5,
+    };
+    const invalidWorkerCases = [
+      ["Stage movement missing workers rejected", movementBase],
+      [
+        "Stage movement duplicate workers rejected",
+        {
+          ...movementBase,
+          employeeIds: [employeeId, employeeId],
+          workerShares: [{ employeeId, quantity: 5 }],
+        },
+      ],
+      [
+        "Stage movement zero worker quantity rejected",
+        {
+          ...movementBase,
+          employeeIds: [employeeId],
+          workerShares: [{ employeeId, quantity: 0 }],
+        },
+      ],
+      [
+        "Stage movement negative worker quantity rejected",
+        {
+          ...movementBase,
+          employeeIds: [employeeId],
+          workerShares: [{ employeeId, quantity: -1 }],
+        },
+      ],
+      [
+        "Stage movement mismatched worker total rejected",
+        {
+          ...movementBase,
+          employeeIds: [employeeId],
+          workerShares: [{ employeeId, quantity: 4 }],
+        },
+      ],
+    ];
+    for (const [name, body] of invalidWorkerCases) {
+      const rejected = await req("POST", "/production/stage-movements", {
+        token: owner.token,
+        body,
+      });
+      if (rejected.status === 400) ok(name, "400");
+      else fail(name, `${rejected.status}: ${JSON.stringify(rejected.json).slice(0, 180)}`);
+    }
 
     if (employeeId) {
       const act = await req("POST", "/production/worker-activities", {

@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
@@ -84,6 +84,7 @@ export function PaymentCreateDrawer({
   onOpenChange,
   onSubmit,
 }: PaymentCreateDrawerProps) {
+  const submissionRef = useRef(false);
   const {
     control,
     register,
@@ -110,6 +111,16 @@ export function PaymentCreateDrawer({
   const selectedClientId = watch("clientId");
   const watchedAllocations = watch("allocations");
   const paymentAmount = Number(watch("amount"));
+
+  const submitPayment = handleSubmit(async (values) => {
+    if (submissionRef.current) return;
+    submissionRef.current = true;
+    try {
+      await onSubmit(buildPayload(values));
+    } finally {
+      submissionRef.current = false;
+    }
+  });
 
   useEffect(() => {
     if (open) {
@@ -149,7 +160,7 @@ export function PaymentCreateDrawer({
     >
       <form
         className="space-y-5"
-        onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
+        onSubmit={submitPayment}
       >
         <div className="grid gap-4 md:grid-cols-2">
           <FormField

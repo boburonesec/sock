@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsInt,
   IsEnum,
@@ -124,6 +125,7 @@ export class CreateStageMovementDto {
   )
   @IsArray({ message: 'Ishchilar ro‘yxati yuborilishi kerak.' })
   @ArrayMinSize(1, { message: 'Kamida bitta ishchi tanlanishi shart.' })
+  @ArrayUnique({ message: 'Bir ishchini takroran tanlash mumkin emas.' })
   @IsString({ each: true, message: 'Ishchi identifikatori noto‘g‘ri.' })
   @MinLength(1, { each: true, message: 'Ishchi identifikatori bo‘sh bo‘lmasin.' })
   employeeIds!: string[];

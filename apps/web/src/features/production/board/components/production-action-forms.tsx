@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,12 @@ import type {
 } from "@/lib/api/production";
 import type { FinishedProductReceiptPayload } from "@/lib/api/warehouse";
 import type { ProductionAction } from "./production-action-types";
+import {
+  DEFAULT_STAGE_MOVEMENT_BATCH_SIZE,
+  getInitialStageMovementQuantity,
+} from "./stage-movement-quantity";
+
+const EMPTY_EMPLOYEE_IDS: string[] = [];
 
 const createBatchSchema = z.object({
   productVariantId: z.string().min(1, "Mahsulot varianti tanlanishi kerak."),
@@ -345,7 +352,7 @@ function MoveStageForm({
       sourceStageId: "",
       destinationStageId: "",
       productVariantId: "",
-      quantity: 500,
+      quantity: 0,
       employeeIds: [],
       workerQuantities: {},
       note: "",
@@ -355,8 +362,11 @@ function MoveStageForm({
   const sourceStageId = watch("sourceStageId");
   const productVariantId = watch("productVariantId");
   const quantity = Number(watch("quantity")) || 0;
-  const selectedEmployeeIds = watch("employeeIds") ?? [];
+  const selectedEmployeeIds = watch("employeeIds") ?? EMPTY_EMPLOYEE_IDS;
   const workerQuantities = watch("workerQuantities") ?? {};
+  const initializedSelectionRef = useRef("");
+  const workerSharesAreAutomaticRef = useRef(true);
+  const moveSubmissionRef = useRef(false);
 
   // Faqat manba bosqichga biriktirilgan ishchilar (backend ham shu qoidani talab qiladi).
   const stageEmployees = employeeOptions.filter(
@@ -375,7 +385,39 @@ function MoveStageForm({
   const exceedsAvailableQuantity =
     hasInventorySelection && quantity > availableQuantity;
 
+  useEffect(() => {
+    if (!hasInventorySelection) return;
+
+    const selectionKey = `${sourceStageId}:${productVariantId}`;
+    if (initializedSelectionRef.current === selectionKey) return;
+
+    initializedSelectionRef.current = selectionKey;
+    const initialQuantity = getInitialStageMovementQuantity(
+      DEFAULT_STAGE_MOVEMENT_BATCH_SIZE,
+      availableQuantity,
+    );
+    setValue("quantity", initialQuantity, {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+    if (workerSharesAreAutomaticRef.current) {
+      setValue(
+        "workerQuantities",
+        equalSplitQuantities(initialQuantity, selectedEmployeeIds),
+        { shouldDirty: false, shouldValidate: true },
+      );
+    }
+  }, [
+    availableQuantity,
+    hasInventorySelection,
+    productVariantId,
+    selectedEmployeeIds,
+    setValue,
+    sourceStageId,
+  ]);
+
   const submit = async (values: MoveStageValues) => {
+    if (moveSubmissionRef.current) return;
     if (values.quantity > availableQuantity) {
       setError("quantity", {
         type: "manual",
@@ -384,6 +426,7 @@ function MoveStageForm({
       return;
     }
 
+    moveSubmissionRef.current = true;
     try {
       const workerShares = values.employeeIds.map((employeeId) => ({
         employeeId,
@@ -404,6 +447,8 @@ function MoveStageForm({
       );
     } catch {
       // The mutation error is rendered from parent state so the drawer remains open.
+    } finally {
+      moveSubmissionRef.current = false;
     }
   };
 
@@ -413,6 +458,7 @@ function MoveStageForm({
     (sourceStageId ? stageEmployees.length > 0 : employeeOptions.length > 0);
 
   function applyEqualSplit(employeeIds: string[], total: number) {
+    workerSharesAreAutomaticRef.current = true;
     setValue("workerQuantities", equalSplitQuantities(total, employeeIds), {
       shouldValidate: true,
       shouldDirty: true,
@@ -424,7 +470,19 @@ function MoveStageForm({
       ? selectedEmployeeIds.filter((id) => id !== employeeId)
       : [...selectedEmployeeIds, employeeId];
     setValue("employeeIds", next, { shouldValidate: true, shouldDirty: true });
-    applyEqualSplit(next, quantity > 0 ? quantity : 1);
+    if (workerSharesAreAutomaticRef.current) {
+      applyEqualSplit(next, quantity);
+    } else {
+      const nextQuantities = Object.fromEntries(
+        next
+          .filter((id) => workerQuantities[id] !== undefined)
+          .map((id) => [id, workerQuantities[id]]),
+      );
+      setValue("workerQuantities", nextQuantities, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
   }
 
   function onSourceStageChange(nextStageId: string) {
@@ -435,6 +493,8 @@ function MoveStageForm({
     // Bosqich o‘zgarsa — tanlovni tozalash (boshqa bosqich ishchilari yaroqsiz).
     setValue("employeeIds", [], { shouldValidate: true });
     setValue("workerQuantities", {}, { shouldValidate: true });
+    initializedSelectionRef.current = "";
+    workerSharesAreAutomaticRef.current = true;
     clearErrors("quantity");
   }
 
@@ -446,6 +506,7 @@ function MoveStageForm({
     });
     clearErrors("quantity");
     if (
+      workerSharesAreAutomaticRef.current &&
       Number.isFinite(nextQty) &&
       nextQty >= 1 &&
       selectedEmployeeIds.length > 0
@@ -638,6 +699,7 @@ function MoveStageForm({
                           ...workerQuantities,
                           [employee.id]: Number(event.target.value),
                         };
+                        workerSharesAreAutomaticRef.current = false;
                         setValue("workerQuantities", next, {
                           shouldValidate: true,
                           shouldDirty: true,
@@ -761,6 +823,7 @@ function WorkerActivityForm({
   const stageId = watch("stageId");
   const employeeId = watch("employeeId");
   const productVariantId = watch("productVariantId");
+  const activitySubmissionRef = useRef(false);
   const stageEmployees = employeeOptions.filter(
     (employee) => stageId && employee.stageIds?.includes(stageId),
   );
@@ -772,12 +835,16 @@ function WorkerActivityForm({
   const availableQuantity = selectedInventory?.quantity ?? 0;
 
   const submit = async (values: WorkerActivityValues) => {
+    if (activitySubmissionRef.current) return;
+    activitySubmissionRef.current = true;
     try {
       await onCreateWorkerActivity(values);
       reset();
       onSuccess("Ishchi faolligi qayd qilindi.");
     } catch {
       // The mutation error is rendered from parent state so the drawer remains open.
+    } finally {
+      activitySubmissionRef.current = false;
     }
   };
 

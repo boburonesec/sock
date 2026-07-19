@@ -60,6 +60,12 @@ curl http://localhost:3001/health
 ### Avtomatik yordamchi (o‘rnini bosmaydi)
 
 ```bash
+# Fresh DB: migrations → data-free baseline → baseline smoke → acceptance fixture
+pnpm prisma:migrate:deploy
+pnpm prisma:seed
+curl -fsS http://localhost:3001/health
+pnpm verify:acceptance-fixture
+
 # API smoke (business chain)
 MVP_SMOKE_BASE_URL=http://localhost:3001 pnpm smoke:mvp
 
@@ -67,13 +73,29 @@ MVP_SMOKE_BASE_URL=http://localhost:3001 pnpm smoke:mvp
 node scripts/full-manual-case-test.mjs
 
 # UI route + mobile viewport
-PLAYWRIGHT_PKG=/tmp/paypoq-pw node scripts/ui-route-case-test.mjs
+pnpm playwright:install
+pnpm test:ui-routes
 
 # Business-rule deep check (sonlar, bloklar)
 node scripts/business-rules-deep-test.mjs
 ```
 
 > Avtomatik test = **yordam**. Qabul = **sizning walkthrough belgilashingiz**.
+
+### Notification MVP contract
+
+1. Mexanikka task bering va `/notifications` inbox’da persistent xabar
+   yaratilganini tekshiring.
+2. O‘qilmagan xabarni `O‘qildi` deb belgilang; reload’dan keyin `readAt` holati
+   saqlanishi kerak.
+3. Telegram outbox delivery yozuvi lease/attempt/retry/dedupe holati bilan
+   mavjud bo‘lishi kerak; Telegram uzilishi inbox’ni yo‘qotmasligi kerak.
+4. Quality recheck due hamda inspection upcoming/summary xabarlari tasdiqlanadi.
+
+Low stock, order deadline, pending advance, generic defect, stalled batch va
+overdue debt notification triggerlari bu MVP acceptance’iga kirmaydi. Ularni
+PASS deb belgilamang va generic defect qaydini quality recheck produceri bilan
+aralashtirmang.
 
 ---
 
@@ -490,7 +512,7 @@ Tasdiqlangan business qoidalar (API sonlari bilan):
 - Unpaid delivery blok  
 - Over-allocation blok  
 - Delivered pay reverse blok; return dan keyin reverse OK  
-- Supplier purchase → debt; material stock auto emas (NOTE: manual confirm)  
+- Supplier purchase → debt; material stock faqat alohida material-receipt amali bilan oshadi (contract NOTE, pass emas)
 - RBAC: seller/shift/warehouse write cheklovlari  
 - TV token majburiy  
 - Unauth API 401  

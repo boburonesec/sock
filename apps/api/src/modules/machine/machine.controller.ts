@@ -5,7 +5,7 @@ import { RequirePermissions } from '../identity/authorization/require-permission
 import { CurrentContext } from '../identity/request-context/current-context.decorator';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import {
-  ConfigureInspectionSlotDto,
+  ConfigureInspectionSlotsDto,
   CreateMachineAssignmentDto,
   CreateMachineDto,
   CreateMachinePieceRateDto,
@@ -41,7 +41,7 @@ export class MachineController {
 
   @Post('products/:productId/specifications') @RequirePermissions('quality.write') specification(@CurrentContext() c: RequestContext, @Param('productId') id: string, @Body() d: CreateMeasurementSpecificationDto) { return this.service.createSpecification(c, id, d); }
   @Post('specifications/:id/activate') @RequirePermissions('quality.write') activate(@CurrentContext() c: RequestContext, @Param('id') id: string) { return this.service.activateSpecification(c, id); }
-  @Post('inspection-slots') @RequirePermissions('quality.write') slot(@CurrentContext() c: RequestContext, @Body() d: ConfigureInspectionSlotDto) { return this.service.configureSlot(c, d); }
+  @Post('inspection-slots') @RequirePermissions('quality.write') slots(@CurrentContext() c: RequestContext, @Body() d: ConfigureInspectionSlotsDto) { return this.service.configureSlots(c, d); }
   @Get('inspection-rounds/mine') @RequirePermissions('quality.view') rounds(@CurrentContext() c: RequestContext) { return this.service.myRounds(c); }
   @Post('inspection-rounds/:id/measurements') @RequirePermissions('quality.write') inspect(@CurrentContext() c: RequestContext, @Param('id') id: string, @Body() d: SubmitInspectionDto) { return this.service.submitMeasurements(c, id, d); }
   @Get('quality-issues') @RequirePermissions('quality.view') issues(@CurrentContext() c: RequestContext) { return this.service.listIssues(c); }

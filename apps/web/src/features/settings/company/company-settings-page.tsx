@@ -23,6 +23,8 @@ const organizationKeys = {
   users: ["organization", "users"] as const,
 };
 
+const EMPTY_FACTORIES: OrganizationFactory[] = [];
+
 type CompanyTab = "factories" | "users";
 
 const accountRoleOptions: Array<{
@@ -122,7 +124,7 @@ export function CompanySettingsPage() {
     enabled: isOwner,
   });
 
-  const factories = factoriesQuery.data?.data ?? [];
+  const factories = factoriesQuery.data?.data ?? EMPTY_FACTORIES;
   const users = usersQuery.data?.data ?? [];
   const selectedFactory = useMemo(
     () => factories.find((factory) => factory.id === selectedFactoryId) ?? factories[0] ?? null,

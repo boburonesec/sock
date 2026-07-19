@@ -110,19 +110,19 @@ right architecture. The missing work is operational/platform maturity.
 
 ## Product Phase Decision
 
-Recommended next product phase:
+Historical recommendation before the narrow notification MVP shipped:
 
 ```text
 Push Notifications, but only after production hardening blockers are addressed.
 ```
 
-Reason:
+Current contract note:
 
-- Notifications directly support factory operations.
-- Low stock, pending advances, overdue orders, defects, and stuck production are
-  already core product concepts.
-- Push can be added without backend rewrite if designed as a narrow
-  NotificationModule expansion.
+- The persistent inbox, durable Telegram outbox, and machine-task,
+  quality-recheck and inspection producers are now implemented.
+- Low stock, pending advance, order deadline, generic defect, stalled batch and
+  overdue debt producers remain explicit future scope; this document does not
+  promise them for the current MVP.
 
 Do not start next:
 

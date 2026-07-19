@@ -230,13 +230,19 @@ Pilot/staging-style database uchun:
 pnpm prisma:migrate:deploy
 ```
 
-Demo/baseline seed:
+Data yaratmaydigan baseline seed:
 
 ```bash
 pnpm prisma:seed
 ```
 
-Seed quyidagilarni yaratadi:
+Business acceptance fixture alohida ishga tushiriladi:
+
+```bash
+pnpm verify:acceptance-fixture
+```
+
+Acceptance fixture quyidagilarni yaratadi:
 
 - Demo tenant
 - Main Factory

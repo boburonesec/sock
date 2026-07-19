@@ -343,12 +343,16 @@ export function PayrollModule() {
 
       <ConfirmDialog
         open={isCloseConfirmOpen}
+        isPending={closeMutation.isPending}
+        errorMessage={closeMutation.isError ? actionError : null}
         onOpenChange={setIsCloseConfirmOpen}
         title="Ish haqi davrini yopish"
         description="Yopilgandan keyin bu davr o‘zgarmas bo‘ladi: qayta hisoblash va to‘lov kiritish bloklanadi."
         confirmLabel="Yopish"
-        onConfirm={() => {
-          if (selectedPeriod) closeMutation.mutate(selectedPeriod.id);
+        onConfirm={async () => {
+          if (selectedPeriod) {
+            await closeMutation.mutateAsync(selectedPeriod.id);
+          }
         }}
       />
     </div>

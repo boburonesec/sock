@@ -24,6 +24,7 @@
     "prisma:migrate:deploy": "pnpm --filter @paypoq/api prisma:migrate:deploy",
     "prisma:studio": "pnpm --filter @paypoq/api prisma:studio",
     "prisma:seed": "pnpm --filter @paypoq/api prisma:seed",
+    "acceptance:seed": "pnpm --filter @paypoq/api acceptance:seed",
     "demo:reset": "pnpm --filter @paypoq/api demo:reset",
     "demo:seed": "pnpm --filter @paypoq/api demo:seed",
     "demo:prepare": "pnpm --filter @paypoq/api demo:prepare",
@@ -32,10 +33,23 @@
     "backup:db": "bash scripts/backup-db.sh",
     "restore:db": "bash scripts/restore-db.sh",
     "deploy:smoke": "bash scripts/deploy-smoke.sh",
-    "smoke:mvp": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/mvp-smoke-test.mjs",
-    "smoke:platform-auth": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && pnpm --filter @paypoq/api smoke:platform-auth",
-    "smoke:organization": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:migrate:deploy && pnpm --filter @paypoq/api prisma:seed && pnpm --filter @paypoq/api smoke:organization",
-    "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:seed && node apps/api/scripts/telegram-smoke-test.mjs",
+    "test:factory-tv-secret": "node scripts/factory-tv-secret-boundary-test.mjs",
+    "test:notification-contract": "node scripts/notification-contract-test.mjs",
+    "playwright:install": "playwright install chromium",
+    "test:ui-routes": "node scripts/ui-route-case-test.mjs",
+    "test:ui-transactions": "node scripts/ui-transactional-mutation-test.mjs",
+    "test:ui-stage-stock": "node scripts/ui-stage-stock-browser-test.mjs",
+    "test:https-auth": "node scripts/https-auth-browser-test.mjs",
+    "capture:user-guide": "node scripts/capture-user-guide-screenshots.mjs",
+    "verify:acceptance-fixture": "pnpm acceptance:seed",
+    "verify:acceptance": "node scripts/full-manual-case-test.mjs && node scripts/business-rules-deep-test.mjs",
+    "smoke:mvp": "pnpm --filter @paypoq/api build && pnpm acceptance:seed && node apps/api/scripts/mvp-smoke-test.mjs",
+    "smoke:platform-auth": "pnpm --filter @paypoq/api build && pnpm acceptance:seed && pnpm --filter @paypoq/api smoke:platform-auth",
+    "smoke:organization": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:migrate:deploy && pnpm acceptance:seed && pnpm --filter @paypoq/api smoke:organization",
+    "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm acceptance:seed && node apps/api/scripts/telegram-smoke-test.mjs",
     "smoke:employee-self-service": "pnpm --filter @paypoq/api build && node apps/api/scripts/employee-self-service-smoke-test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.51.1"
   }
 }

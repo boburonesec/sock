@@ -76,6 +76,8 @@ type VariantFormState =
   | { mode: "create"; product: Product; variant: null }
   | { mode: "edit"; product: Product; variant: ProductVariantReference };
 
+const EMPTY_PRODUCTS: Product[] = [];
+
 export function ProductCatalogPage() {
   const queryClient = useQueryClient();
   const productsQuery = useQuery({
@@ -143,7 +145,7 @@ export function ProductCatalogPage() {
     onSuccess: () => invalidateProducts(queryClient),
   });
 
-  const products = productsQuery.data?.data ?? [];
+  const products = productsQuery.data?.data ?? EMPTY_PRODUCTS;
   const colors = colorsQuery.data?.data ?? [];
   const materials = materialsQuery.data?.data ?? [];
   const seasons = seasonsQuery.data?.data ?? [];
@@ -158,11 +160,14 @@ export function ProductCatalogPage() {
     materialsQuery.error ??
     seasonsQuery.error;
 
+  const selectedProductId = selectedProduct?.id;
   useEffect(() => {
-    if (!selectedProduct) return;
-    const nextSelected = products.find((product) => product.id === selectedProduct.id) ?? null;
-    setSelectedProduct(nextSelected);
-  }, [products, selectedProduct]);
+    if (!selectedProductId) return;
+
+    setSelectedProduct(
+      products.find((product) => product.id === selectedProductId) ?? null,
+    );
+  }, [products, selectedProductId]);
 
   return (
     <div>

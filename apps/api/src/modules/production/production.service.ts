@@ -410,7 +410,9 @@ export class ProductionService {
       });
 
       if (sourceUpdate.count !== 1) {
-        throw new ConflictException('Source stage does not have enough quantity.');
+        throw new ConflictException(
+          'Manba bosqichidagi qoldiq o‘zgargan yoki miqdor yetarli emas. Ma’lumotni yangilab, qayta urinib ko‘ring.',
+        );
       }
 
       const sourceStageInventoryAfter = await tx.stageInventory.findUniqueOrThrow({
@@ -1383,8 +1385,12 @@ export class ProductionService {
             'Har bir ishchi miqdori butun va kamida 1 bo‘lishi kerak.',
           );
         }
-        const previous = result.get(employeeId) ?? 0;
-        result.set(employeeId, previous + share.quantity);
+        if (result.has(employeeId)) {
+          throw new BadRequestException(
+            'Bir ishchi uchun workerShares ichida faqat bitta miqdor yuborilishi mumkin.',
+          );
+        }
+        result.set(employeeId, share.quantity);
         sum += share.quantity;
       }
 

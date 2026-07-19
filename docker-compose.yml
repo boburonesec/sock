@@ -91,7 +91,8 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN is required}
+      BOT_MODE: ${BOT_MODE:-polling}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       API_BASE_URL: ${API_BASE_URL:-http://api:3001}
       BOT_INTERNAL_API_KEY: ${BOT_INTERNAL_API_KEY:?BOT_INTERNAL_API_KEY is required}
 

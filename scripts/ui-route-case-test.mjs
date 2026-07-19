@@ -1,20 +1,12 @@
 /**
- * UI route + mobile viewport smoke.
- * PLAYWRIGHT_PKG=/tmp/paypoq-pw node scripts/ui-route-case-test.mjs
+ * UI route + responsive critical-control smoke.
+ * Repository contract: pnpm playwright:install && pnpm test:ui-routes
  */
 import { createRequire } from "node:module";
 import path from "node:path";
 
-const require = createRequire(
-  process.env.PLAYWRIGHT_PKG
-    ? path.join(process.env.PLAYWRIGHT_PKG, "package.json")
-    : path.join(process.cwd(), "package.json"),
-);
-const { chromium } = require(
-  process.env.PLAYWRIGHT_PKG
-    ? path.join(process.env.PLAYWRIGHT_PKG, "node_modules", "playwright")
-    : "playwright",
-);
+const require = createRequire(path.join(process.cwd(), "package.json"));
+const { chromium } = require("playwright");
 
 const BASE = process.env.WEB_BASE_URL || "http://localhost:3000";
 const results = [];
@@ -57,6 +49,25 @@ const ROUTES = [
 ];
 
 async function login(page) {
+  const loginDiagnostics = [];
+  const onResponse = (response) => {
+    if (response.url().includes("/auth/")) {
+      loginDiagnostics.push(`${response.status()} ${response.url()}`);
+    }
+  };
+  const onRequestFailed = (request) => {
+    if (request.url().includes("/auth/")) {
+      loginDiagnostics.push(`FAILED ${request.url()}: ${request.failure()?.errorText}`);
+    }
+  };
+  const onConsole = (message) => {
+    if (message.type() === "error") loginDiagnostics.push(`CONSOLE ${message.text()}`);
+  };
+  const onPageError = (error) => loginDiagnostics.push(`PAGE ${error.message}`);
+  page.on("response", onResponse);
+  page.on("requestfailed", onRequestFailed);
+  page.on("console", onConsole);
+  page.on("pageerror", onPageError);
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#email", { timeout: 15000 });
   // Let session bootstrap (refresh 401) settle
@@ -68,15 +79,83 @@ async function login(page) {
   const deadline = Date.now() + 25000;
   while (Date.now() < deadline) {
     const url = page.url();
-    if (url.includes("/dashboard")) return;
+    if (url.includes("/dashboard")) {
+      page.off("response", onResponse);
+      page.off("requestfailed", onRequestFailed);
+      page.off("console", onConsole);
+      page.off("pageerror", onPageError);
+      return;
+    }
     // surface login error if shown
     const err = page.locator("text=Email/parol noto");
     if (await err.count()) {
-      throw new Error("Login form showed error");
+      throw new Error(`Login form showed error (${loginDiagnostics.join(", ") || "no auth response"})`);
     }
     await page.waitForTimeout(250);
   }
-  throw new Error(`Login did not reach dashboard. url=${page.url()}`);
+  throw new Error(`Login did not reach dashboard. url=${page.url()} (${loginDiagnostics.join(", ")})`);
+}
+
+async function verifyNoDocumentOverflow(page, label) {
+  const overflow = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  if (overflow.scrollWidth <= overflow.clientWidth + 2) {
+    ok(`${label} no document overflow`, `${overflow.scrollWidth}<=${overflow.clientWidth}`);
+  } else {
+    fail(`${label} no document overflow`, `${overflow.scrollWidth}>${overflow.clientWidth}`);
+  }
+}
+
+async function verifyCriticalControls(page, label) {
+  await page.goto(`${BASE}/production`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(700);
+  for (const actionName of [
+    "Smena o‘tkazish (+ ishchilar)",
+    "Qo‘shimcha faollik kiritish",
+    "Brak qayd qilish",
+    "Omborga qabul qilish",
+  ]) {
+    const button = page.getByRole("button", { name: actionName });
+    const visible = await button.waitFor({ state: "visible", timeout: 10_000 }).then(() => true).catch(() => false);
+    if (visible) {
+      await button.click();
+      const dialog = page.getByRole("dialog");
+      if (await dialog.isVisible().catch(() => false)) ok(`${label} ${actionName} reachable`);
+      else fail(`${label} ${actionName} reachable`, "drawer did not open");
+      await page.goto(`${BASE}/production`, { waitUntil: "domcontentloaded" });
+      await page
+        .getByRole("button", { name: "Smena o‘tkazish (+ ishchilar)" })
+        .waitFor({ state: "visible", timeout: 10_000 });
+    } else {
+      fail(`${label} ${actionName} reachable`, `control missing at ${page.url()}`);
+    }
+  }
+  await verifyNoDocumentOverflow(page, `${label} production`);
+
+  for (const [route, control] of [
+    ["/warehouse/materials", "Material qabul qilish"],
+    ["/sales/orders", "Buyurtma yaratish"],
+    ["/sales/payments", "To‘lov qayd qilish"],
+    ["/finance/payroll", "Davr yaratish"],
+  ]) {
+    await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(600);
+    const button = page.getByRole("button", { name: control }).first();
+    const visible = await button.waitFor({ state: "visible", timeout: 10_000 }).then(() => true).catch(() => false);
+    if (visible) {
+      await button.click();
+      const dialog = page.getByRole("dialog");
+      if (await dialog.isVisible().catch(() => false)) ok(`${label} ${control} reachable`);
+      else fail(`${label} ${control} reachable`, "drawer did not open");
+    } else {
+      fail(`${label} ${control} reachable`, `control missing at ${page.url()}`);
+    }
+    await verifyNoDocumentOverflow(page, `${label} ${route}`);
+  }
+  await page.goto(`${BASE}/dashboard/executive`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: /Menyuni ochish/i }).waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
 }
 
 async function main() {
@@ -98,6 +177,7 @@ async function main() {
 
     await login(page);
     ok("Desktop owner login redirects to dashboard");
+    await verifyCriticalControls(page, "1440px");
 
     for (const route of ROUTES) {
       const res = await page.goto(`${BASE}${route}`, {
@@ -131,6 +211,7 @@ async function main() {
 
     await login(page);
     ok("Mobile login works");
+    await verifyCriticalControls(page, "390px");
 
     // hamburger should open sidebar
     const menuBtn = page.getByRole("button", { name: /Menyuni ochish/i });
@@ -161,15 +242,21 @@ async function main() {
     else fail("Mobile production quick actions visible");
 
     // open action drawer
-    const batchBtn = page.getByRole("button", { name: /Partiya yaratish/i });
-    if (await batchBtn.count()) {
-      await batchBtn.first().click();
+    const movementBtn = page.getByRole("button", {
+      name: "Smena o‘tkazish (+ ishchilar)",
+    });
+    if ((await movementBtn.count()) === 1) {
+      await movementBtn.click();
       await page.waitForTimeout(500);
-      const dialog = page.getByRole("dialog");
-      if (await dialog.count()) ok("Mobile production drawer opens");
-      else fail("Mobile production drawer opens");
+      const dialog = page.getByRole("dialog", { name: "Smena o‘tkazish" });
+      const workerGuidance = dialog.getByText("Kim ishladi? (shu bosqich ishchilari)");
+      if ((await dialog.count()) === 1 && (await workerGuidance.count()) === 1) {
+        ok("Mobile workforce-aware production drawer opens");
+      } else {
+        fail("Mobile workforce-aware production drawer opens");
+      }
     } else {
-      fail("Mobile production drawer opens", "no button");
+      fail("Mobile workforce-aware production drawer opens", "button missing or duplicate");
     }
 
     // sales orders table scroll container
@@ -200,6 +287,24 @@ async function main() {
     if (await page.locator("#email").count()) ok("Mobile admin login page");
     else fail("Mobile admin login page");
 
+    await context.close();
+  }
+
+  for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 768, height: 1024 },
+  ]) {
+    const context = await browser.newContext({
+      viewport,
+      isMobile: viewport.width === 320,
+      hasTouch: viewport.width === 320,
+      colorScheme: "dark",
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(20000);
+    await login(page);
+    ok(`${viewport.width}px login works`);
+    await verifyCriticalControls(page, `${viewport.width}px`);
     await context.close();
   }
 

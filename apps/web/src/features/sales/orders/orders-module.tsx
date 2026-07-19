@@ -316,19 +316,29 @@ export function OrdersModule() {
 
       <ConfirmDialog
         open={Boolean(returnTarget)}
+        isPending={returnDelivery.isPending}
+        errorMessage={
+          returnDelivery.error instanceof Error
+            ? returnDelivery.error.message
+            : null
+        }
         onOpenChange={(open) => {
           if (!open) setReturnTarget(null);
         }}
         title="Yetkazuvni qaytarish"
         description="Mahsulot Finished Products zonasiga qaytadi. Mijoz to‘lovi avtomatik bekor qilinmaydi."
         confirmLabel="Qaytarish"
-        onConfirm={() => {
-          if (returnTarget) returnDelivery.mutate(returnTarget.id);
+        onConfirm={async () => {
+          if (returnTarget) await returnDelivery.mutateAsync(returnTarget.id);
         }}
       />
 
       <ConfirmDialog
         open={Boolean(cancelTarget)}
+        isPending={cancelOrder.isPending}
+        errorMessage={
+          cancelOrder.error instanceof Error ? cancelOrder.error.message : null
+        }
         onOpenChange={(open) => {
           if (!open) setCancelTarget(null);
         }}
@@ -336,8 +346,8 @@ export function OrdersModule() {
         description="Faqat yetkazilmagan buyurtma bekor qilinadi. Agar mijoz to‘lovi bog‘langan bo‘lsa, avval to‘lovni reverse qiling."
         confirmLabel="Bekor qilish"
         destructive
-        onConfirm={() => {
-          if (cancelTarget) cancelOrder.mutate(cancelTarget.id);
+        onConfirm={async () => {
+          if (cancelTarget) await cancelOrder.mutateAsync(cancelTarget.id);
         }}
       />
     </div>

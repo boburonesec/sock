@@ -22,10 +22,7 @@ function resolveApiBaseUrl(): string {
 }
 
 function resolveFactoryTvToken(): string {
-  const token =
-    process.env.FACTORY_TV_ACCESS_TOKEN?.trim() ||
-    // Legacy fallback for older deploys; prefer server-only FACTORY_TV_ACCESS_TOKEN.
-    process.env.NEXT_PUBLIC_FACTORY_TV_ACCESS_TOKEN?.trim();
+  const token = process.env.FACTORY_TV_ACCESS_TOKEN?.trim();
 
   if (!token) {
     throw new Error(

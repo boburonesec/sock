@@ -19,7 +19,6 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @paypoq/api prisma:generate
 RUN pnpm --filter @paypoq/api build
 
 FROM base AS prod-deps
@@ -40,6 +39,7 @@ RUN apt-get update -y \
   && groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs paypoq
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json

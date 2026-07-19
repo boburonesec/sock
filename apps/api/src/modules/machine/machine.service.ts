@@ -15,7 +15,7 @@ import { RequestContext } from '../identity/request-context/request-context.type
 import { requireActiveFactoryId } from '../identity/request-context/request-context.utils';
 import { NotificationService } from '../notification/notification.service';
 import {
-  ConfigureInspectionSlotDto,
+  ConfigureInspectionSlotsDto,
   CreateMachineAssignmentDto,
   CreateMachineDto,
   CreateMachinePieceRateDto,
@@ -39,7 +39,7 @@ export class MachineService {
     const factoryId = requireActiveFactoryId(c);
     const [employees, shifts, products] = await Promise.all([
       this.prisma.employee.findMany({ where: { tenantId: c.tenantId, factoryId, status: 'ACTIVE', deletedAt: null, workProfile: { in: ['MECHANIC', 'MACHINE_OPERATOR'] } }, select: { id: true, name: true, workProfile: true, workShiftId: true }, orderBy: { name: 'asc' } }),
-      this.prisma.workShift.findMany({ where: { tenantId: c.tenantId, factoryId, deletedAt: null }, select: { id: true, name: true, code: true } }),
+      this.prisma.workShift.findMany({ where: { tenantId: c.tenantId, factoryId, deletedAt: null }, select: { id: true, name: true, code: true, inspectionSlots: { select: { slotNumber: true, minuteOffset: true }, orderBy: { slotNumber: 'asc' } } } }),
       this.prisma.product.findMany({ where: { tenantId: c.tenantId, deletedAt: null }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     ]);
     return { data: { employees, shifts, products } };
@@ -166,12 +166,28 @@ export class MachineService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }) };
   }
 
-  async configureSlot(c: RequestContext, d: ConfigureInspectionSlotDto) {
+  async configureSlots(c: RequestContext, d: ConfigureInspectionSlotsDto) {
     const factoryId = requireActiveFactoryId(c);
-    if (d.slotNumber > 3) throw new BadRequestException('Har smenada faqat 1, 2, 3 slot mavjud.');
-    const shift = await this.prisma.workShift.findFirst({ where: { id: d.workShiftId, tenantId: c.tenantId, factoryId, deletedAt: null } });
-    if (!shift) throw new BadRequestException('Smena topilmadi.');
-    return { data: await this.prisma.inspectionScheduleSlot.upsert({ where: { tenantId_factoryId_workShiftId_slotNumber: { tenantId: c.tenantId, factoryId, workShiftId: d.workShiftId, slotNumber: d.slotNumber } }, create: { tenantId: c.tenantId, factoryId, ...d }, update: { minuteOffset: d.minuteOffset } }) };
+    const slotNumbers = d.slots.map((slot) => slot.slotNumber);
+    if (new Set(slotNumbers).size !== 3 || slotNumbers.some((number) => ![1, 2, 3].includes(number))) {
+      throw new BadRequestException('To‘liq konfiguratsiyada 1, 2 va 3-slotning har biri bir martadan bo‘lishi kerak.');
+    }
+
+    return { data: await this.prisma.$transaction(async (tx) => {
+      const shift = await tx.workShift.findFirst({ where: { id: d.workShiftId, tenantId: c.tenantId, factoryId, deletedAt: null } });
+      if (!shift) throw new BadRequestException('Smena topilmadi yoki faol fabrikaga tegishli emas.');
+      for (const slot of d.slots) {
+        await tx.inspectionScheduleSlot.upsert({
+          where: { tenantId_factoryId_workShiftId_slotNumber: { tenantId: c.tenantId, factoryId, workShiftId: d.workShiftId, slotNumber: slot.slotNumber } },
+          create: { tenantId: c.tenantId, factoryId, workShiftId: d.workShiftId, slotNumber: slot.slotNumber, minuteOffset: slot.minuteOffset },
+          update: { minuteOffset: slot.minuteOffset },
+        });
+      }
+      return tx.inspectionScheduleSlot.findMany({
+        where: { tenantId: c.tenantId, factoryId, workShiftId: d.workShiftId },
+        orderBy: { slotNumber: 'asc' },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }) };
   }
 
   async myRounds(c: RequestContext) {

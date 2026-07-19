@@ -427,9 +427,12 @@ Expense, including the approver, decision time, and reason where applicable.
 
 ### Notification
 
-`Notification` represents an operational alert delivered or available to a
-user, such as low stock, a stalled production stage, a defect, pending approval,
-or overdue debt.
+`Notification` is a persistent in-app inbox item for one tenant user. V1
+producers are machine task assignment/overdue, quality recheck due, and
+inspection upcoming/summary events. `readAt` stores read/unread state.
+
+Low stock, order deadline, pending advance, generic defect, stalled batch and
+overdue debt producers are future scope and are not implied by this entity.
 
 ### TelegramNotification
 
@@ -442,8 +445,8 @@ attempt and dedupe state. The in-app `Notification` remains source of truth.
 
 ### NotificationRule
 
-`NotificationRule` defines the configured condition and audience for a future
-notification type. It does not imply a workflow engine in V1.
+`NotificationRule` is a future concept for configured conditions and audiences;
+it is not implemented in V1 and does not imply a workflow engine.
 
 ## 11. Audit Domain
 

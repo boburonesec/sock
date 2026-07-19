@@ -106,7 +106,7 @@ Ombor: Warehouse Operator va Manager (`warehouse.view` / `warehouse.write`).
 | --- | --- | --- |
 | `/login` | Tenant operator login | **Shipped** |
 | `/profile` | Operator akkaunt | **Shipped** |
-| `/notifications` | Placeholder shell | **Shipped shell** — avtomatik feed yo‘q |
+| `/notifications` | Persistent in-app inbox, read/unread | **Shipped** — machine task, quality recheck va inspection triggerlari; future triggerlar alohida scope |
 | `/audit` | Audit log | **Shipped** — faqat `audit.view` (default: Owner; Manager’da **yo‘q**) |
 | `/tv` | Factory TV (login yo‘q; server-side token via `/api/factory-tv/summary`) | **Shipped** |
 | `/admin/*` | Platform super-admin (alohida login) | **Shipped** |

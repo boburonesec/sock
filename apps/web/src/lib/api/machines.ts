@@ -10,7 +10,7 @@ export interface InspectionRound { id: string; status: string; scheduledAt: stri
 export interface QualityIssue { id: string; status: string; recheckDueAt: string; details: unknown; machine: Machine; mechanic: { id: string; name: string }; productionRun: { id: string; status: string }; inspectionRound: { specification: { metrics: Array<{ id: string; name: string; unit: string; target: string; min: string; max: string }> } } }
 
 export const machinesApi = {
-  lookups: () => apiClient<{ data: { employees: Array<{ id: string; name: string; workProfile: "MECHANIC" | "MACHINE_OPERATOR"; workShiftId: string | null }>; shifts: Array<{ id: string; name: string; code: string }>; products: Array<{ id: string; name: string }> } }>("/machines/lookups"),
+  lookups: () => apiClient<{ data: { employees: Array<{ id: string; name: string; workProfile: "MECHANIC" | "MACHINE_OPERATOR"; workShiftId: string | null }>; shifts: Array<{ id: string; name: string; code: string; inspectionSlots: Array<{ slotNumber: number; minuteOffset: number }> }>; products: Array<{ id: string; name: string }> } }>("/machines/lookups"),
   list: () => apiClient<ApiCollection<Machine>>("/machines"),
   create: (payload: { code: string; name: string; note?: string }) => apiClient<{ data: Machine }>("/machines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
   assignments: () => apiClient<ApiCollection<unknown>>("/machines/assignments/active"),
@@ -28,5 +28,5 @@ export const machinesApi = {
   holdIssueRun: (id: string) => apiClient<{ data: unknown }>(`/machines/quality-issues/${id}/hold`, { method: "POST" }),
   createSpecification: (productId: string, metrics: Array<{ code: string; name: string; unit: string; target: number; min: number; max: number; displayOrder: number }>) => apiClient<{ data: { id: string } }>(`/machines/products/${productId}/specifications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ metrics }) }),
   activateSpecification: (id: string) => apiClient<{ data: unknown }>(`/machines/specifications/${id}/activate`, { method: "POST" }),
-  configureInspectionSlot: (payload: { workShiftId: string; slotNumber: number; minuteOffset: number }) => apiClient<{ data: unknown }>("/machines/inspection-slots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
+  configureInspectionSlots: (payload: { workShiftId: string; slots: Array<{ slotNumber: number; minuteOffset: number }> }) => apiClient<{ data: Array<{ id: string; workShiftId: string; slotNumber: number; minuteOffset: number }> }>("/machines/inspection-slots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
 };

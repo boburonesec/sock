@@ -7,20 +7,10 @@
 import { createRequire } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
-// Allow external playwright install (e.g. npm i --prefix /tmp/paypoq-pw playwright)
-const require = createRequire(
-  process.env.PLAYWRIGHT_PKG
-    ? path.join(process.env.PLAYWRIGHT_PKG, "package.json")
-    : path.join(process.cwd(), "package.json"),
-);
-const { chromium } = require(
-  process.env.PLAYWRIGHT_PKG
-    ? path.join(process.env.PLAYWRIGHT_PKG, "node_modules", "playwright")
-    : "playwright",
-);
-void pathToFileURL;
+const require = createRequire(import.meta.url);
+const { chromium } = require("playwright");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");

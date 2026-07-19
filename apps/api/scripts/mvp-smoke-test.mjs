@@ -367,6 +367,7 @@ async function createEmployeeAndSalaryRate(variantId) {
 }
 
 async function runProductionChain({
+  context,
   employee,
   mechanic,
   machineOperator,
@@ -405,9 +406,23 @@ async function runProductionChain({
     ] },
   })).data;
   await request(`/machines/specifications/${specification.id}/activate`, { method: 'POST' });
-  for (const [index, minuteOffset] of [0, 120, 240].entries()) {
-    await request('/machines/inspection-slots', { method: 'POST', body: { workShiftId: dayShift.id, slotNumber: index + 1, minuteOffset } });
-  }
+  const slotPayload = { workShiftId: dayShift.id, slots: [0, 120, 240].map((minuteOffset, index) => ({ slotNumber: index + 1, minuteOffset })) };
+  const configuredSlots = (await request('/machines/inspection-slots', { method: 'POST', body: slotPayload })).data;
+  assert(configuredSlots.length === 3, 'complete slot configuration should return three authoritative slots');
+  const retriedSlots = (await request('/machines/inspection-slots', { method: 'POST', body: slotPayload })).data;
+  assert(retriedSlots.map((slot) => slot.minuteOffset).join(',') === '0,120,240', 'retrying the same final slot configuration should be idempotent');
+  await expectStatus('/machines/inspection-slots', 400, { method: 'POST', body: { workShiftId: dayShift.id, slots: [{ slotNumber: 1, minuteOffset: 5 }, { slotNumber: 1, minuteOffset: 10 }, { slotNumber: 3, minuteOffset: 15 }] } });
+  await expectStatus('/machines/inspection-slots', 400, { method: 'POST', body: { workShiftId: dayShift.id, slots: [{ slotNumber: 1, minuteOffset: 5 }, { slotNumber: 2, minuteOffset: -1 }, { slotNumber: 3, minuteOffset: 15 }] } });
+  const slotsAfterRejectedPayload = await prisma.inspectionScheduleSlot.findMany({ where: { tenantId: context.tenantId, factoryId: context.activeFactoryId, workShiftId: dayShift.id }, orderBy: { slotNumber: 'asc' } });
+  assert(slotsAfterRejectedPayload.map((slot) => slot.minuteOffset).join(',') === '0,120,240', 'invalid complete configuration must not expose partial slot state');
+  const foreignFactory = await prisma.factory.create({ data: { tenantId: context.tenantId, name: `Foreign Factory ${suffix}` } });
+  const foreignFactoryShift = await prisma.workShift.create({ data: { tenantId: context.tenantId, factoryId: foreignFactory.id, code: 'DAY', name: 'Foreign DAY', startMinute: 480, endMinute: 1200 } });
+  await expectStatus('/machines/inspection-slots', 400, { method: 'POST', body: { ...slotPayload, workShiftId: foreignFactoryShift.id } });
+  const foreignTenant = await prisma.tenant.create({ data: { name: `Foreign Tenant ${suffix}` } });
+  const foreignTenantFactory = await prisma.factory.create({ data: { tenantId: foreignTenant.id, name: `Foreign Tenant Factory ${suffix}` } });
+  const foreignTenantShift = await prisma.workShift.create({ data: { tenantId: foreignTenant.id, factoryId: foreignTenantFactory.id, code: 'DAY', name: 'Foreign tenant DAY', startMinute: 480, endMinute: 1200 } });
+  await expectStatus('/machines/inspection-slots', 400, { method: 'POST', body: { ...slotPayload, workShiftId: foreignTenantShift.id } });
+  assert(await prisma.inspectionScheduleSlot.count({ where: { workShiftId: { in: [foreignFactoryShift.id, foreignTenantShift.id] } } }) === 0, 'cross-factory and cross-tenant slot attempts must not persist data');
   const runRounds = (await request('/machines/inspection-rounds/mine')).data.filter((round) => round.productionRun.id === run.id);
   assert(runRounds.length === 3, 'active run should have exactly three shift inspection rounds');
   const metrics = runRounds[0].specification.metrics;
@@ -1004,6 +1019,7 @@ async function runSmokeSuite() {
   const productSetup = await createProductSetup();
   const employeeSetup = await createEmployeeAndSalaryRate(productSetup.variant.id);
   const production = await runProductionChain({
+    context,
     ...employeeSetup,
     variant: productSetup.variant,
     product: productSetup.product,

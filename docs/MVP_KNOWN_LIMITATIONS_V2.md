@@ -84,9 +84,13 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 
 - No generated report files, Excel, or PDF export
 - No dedicated `/reports/*` sub-pages; `/reports` is a hub of links to operational screens
-- Notification center is a placeholder shell (use domain screens for low stock /
-  advances)
-- `NotificationModule` is an empty boundary module (no push/email/in-app feed yet)
+- Notification MVP includes a persistent read/unread inbox and a durable
+  Telegram outbox with lease, retry and deduplication. Implemented producers are
+  machine tasks, quality rechecks and inspection notifications.
+- Low stock, order deadline, pending advance, generic defect, stalled batch and
+  overdue debt notification producers are future scope. Continue using their
+  domain screens until each producer is explicitly implemented.
+- Email, browser/mobile push and configurable notification rules are not in MVP.
 
 ### QA / automation drift (watch)
 

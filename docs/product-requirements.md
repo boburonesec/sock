@@ -69,7 +69,8 @@ Mahsulot oqimi:
 - Ombor zonalari va joylashuvlari qo‘llab-quvvatlanadi.
 - Kirim, chiqim, ishlab chiqarishga berish va qaytarish — alohida harakat turlari.
 - Tayyor mahsulot Qadoqlash bosqichidan Omborga o‘tganda ombor qoldig‘iga qo‘shiladi.
-- Kam qoldiq uchun minimal limit va bildirishnoma bo‘ladi.
+- Kam qoldiq uchun minimal limit va operatsion ko‘rsatkich bo‘ladi. Avtomatik
+  low-stock notification trigger keyingi bosqich scope’ida.
 
 ## 6. Sales Module
 
@@ -122,12 +123,15 @@ Persistent in-app inbox notificationlarning source of truth’idir. Telegram
 delivery durable outbox orqali leased claim, retry va dedupe bilan ishlaydi.
 Linked `USER` Telegram chatigagina proactive xabar yuboriladi.
 
-- Past ombor qoldig‘i.
-- Buyurtma muddati yaqinlashishi yoki o‘tib ketishi.
-- Avans tasdiqlash kutayotgani.
-- Nuqson qaydi.
-- Bosqichda uzoq turib qolgan partiya.
-- Muddati o‘tgan mijoz yoki yetkazib beruvchi qarzi.
+MVP trigger producerlari:
+
+- mexanikka task berilishi yoki task muddati o‘tishi;
+- quality recheck vaqti kelishi;
+- inspection round yaqinlashishi va round summary.
+
+MVP’da emas, future scope: low stock, order deadline, pending advance, generic
+defect, stalled batch va overdue debt trigger producerlari. Mavjud domain
+ekranlari bu holatlarni ko‘rsatishi mumkin, lekin notification va’da qilinmaydi.
 
 ## 12. Permissions
 

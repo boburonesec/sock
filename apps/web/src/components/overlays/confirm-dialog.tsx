@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
@@ -9,7 +10,9 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
+  isPending?: boolean;
+  errorMessage?: string | null;
   destructive?: boolean;
 }
 
@@ -21,13 +24,30 @@ export function ConfirmDialog({
   confirmLabel = "Tasdiqlash",
   cancelLabel = "Bekor qilish",
   onConfirm,
+  isPending = false,
+  errorMessage,
   destructive = false,
 }: ConfirmDialogProps) {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const confirmingRef = useRef(false);
+  const interactionLocked = isPending || isConfirming;
+
   if (!open) return null;
 
-  const confirm = () => {
-    onConfirm();
-    onOpenChange(false);
+  const confirm = async () => {
+    if (interactionLocked || confirmingRef.current) return;
+
+    confirmingRef.current = true;
+    setIsConfirming(true);
+    try {
+      await onConfirm();
+      onOpenChange(false);
+    } catch {
+      // The owning mutation renders its API error and keeps the dialog open.
+    } finally {
+      confirmingRef.current = false;
+      setIsConfirming(false);
+    }
   };
 
   return (
@@ -37,6 +57,7 @@ export function ConfirmDialog({
         type="button"
         aria-label="Dialog yopish"
         className="absolute inset-0 z-0"
+        disabled={interactionLocked}
         onClick={() => onOpenChange(false)}
       />
       <section
@@ -49,11 +70,17 @@ export function ConfirmDialog({
           {title}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+        {errorMessage ? (
+          <p role="alert" className="mt-3 text-sm text-rose-400">
+            {errorMessage}
+          </p>
+        ) : null}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"
             className="w-full sm:w-auto"
+            disabled={interactionLocked}
             onClick={() => onOpenChange(false)}
           >
             {cancelLabel}
@@ -65,9 +92,10 @@ export function ConfirmDialog({
                 ? "w-full bg-rose-600 hover:bg-rose-700 sm:w-auto"
                 : "w-full sm:w-auto"
             }
-            onClick={confirm}
+            disabled={interactionLocked}
+            onClick={() => void confirm()}
           >
-            {confirmLabel}
+            {interactionLocked ? "Bajarilmoqda..." : confirmLabel}
           </Button>
         </div>
       </section>

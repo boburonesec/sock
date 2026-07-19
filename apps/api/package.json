@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "pnpm prisma:generate && tsc -p tsconfig.build.json",
     "start": "node dist/src/main.js",
     "start:dev": "node --watch -r ts-node/register -r tsconfig-paths/register src/main.ts",
     "start:prod": "node dist/src/main.js",
@@ -14,8 +14,9 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
     "demo:reset": "node scripts/demo-reset.mjs",
+    "acceptance:seed": "NODE_ENV=test node -r ts-node/register prisma/seed.ts && pnpm demo:seed",
     "demo:seed": "ALLOW_DEMO_SEED=true node -r ts-node/register prisma/demo-seed.ts",
-    "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm demo:seed",
+    "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm acceptance:seed",
     "empty:seed": "node -r ts-node/register prisma/empty-seed.ts",
     "smoke:platform-auth": "node scripts/platform-auth-smoke-test.mjs",
     "smoke:organization": "node scripts/organization-smoke-test.mjs"

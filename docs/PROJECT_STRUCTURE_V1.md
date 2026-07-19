@@ -107,14 +107,17 @@ apps/api/src/modules/
 └── warehouse/
 ```
 
-Placeholder/thin modules:
+Thin modules:
 
 ```text
 factory/
-notification/
 payroll/     # payroll logic currently lives under finance
 tenant/
 ```
+
+`notification/` is an implemented narrow module: persistent in-app inbox plus
+durable Telegram outbox and the approved machine-task, quality-recheck and
+inspection producers. It is not a generic workflow or push platform.
 
 ### Yangi backend module qo‘shish qoidasi
 

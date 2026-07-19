@@ -98,7 +98,15 @@ function sumStageTotals(summary, stageId) {
 async function main() {
   console.log(`\n=== Business rules deep test @ ${BASE} ===\n`);
 
-  const owner = await login("owner@paypoq.local");
+  let owner;
+  try {
+    owner = await login("owner@paypoq.local");
+  } catch (error) {
+    console.error(
+      `SETUP ERROR: acceptance owner is unavailable (${error.message}). Run \`pnpm verify:acceptance-fixture\` after baseline seed, then rerun this suite.`,
+    );
+    process.exit(2);
+  }
   const t = owner.token;
 
   // Load catalog
@@ -123,13 +131,18 @@ async function main() {
   const stage1 = stages[1]?.id;
   const ombor = stages.find((s) => /ombor/i.test(s.name))?.id || stages.at(-1)?.id;
 
-  const employees = dataOf((await raw("GET", "/employees", { token: t })).json);
-  const employeeId = (Array.isArray(employees) ? employees : []).find(
-    (e) => e.status === "ACTIVE" || !e.status,
+  const employees = dataOf(
+    (await raw("GET", "/production/lookups/employees", { token: t })).json,
+  );
+  const employeeId = (Array.isArray(employees) ? employees : []).find((employee) =>
+    employee.stages?.some((stage) => stage.id === stage0),
   )?.id;
 
-  if (!variantId || !stage0 || !stage1) {
-    fail("Prerequisites", "need variant + stages");
+  if (!variantId || !stage0 || !stage1 || !employeeId) {
+    fail(
+      "Prerequisites",
+      "SETUP ERROR: acceptance fixture missing; run `pnpm verify:acceptance-fixture` after baseline seed",
+    );
     return finish();
   }
   pass("Prerequisites", `variant=${variantId.slice(0, 8)}… stages=${stages.length}`);
@@ -171,6 +184,8 @@ async function main() {
           sourceStageId: stage0,
           destinationStageId: stage1,
           quantity: moveQty,
+          employeeIds: [employeeId],
+          workerShares: [{ employeeId, quantity: moveQty }],
         },
       });
       if (!move.ok) {
@@ -204,12 +219,64 @@ async function main() {
           sourceStageId: stage0,
           destinationStageId: stage1,
           quantity: 9_999_999,
+          employeeIds: [employeeId],
+          workerShares: [{ employeeId, quantity: 9_999_999 }],
         },
       });
       if (over.status >= 400) {
         pass("BR-01 over-qty move blocked", String(over.status));
       } else {
         fail("BR-01 over-qty move blocked", "accepted over-qty");
+      }
+
+      const movementBase = {
+        productVariantId: variantId,
+        sourceStageId: stage0,
+        destinationStageId: stage1,
+        quantity: 5,
+      };
+      const invalidWorkerCases = [
+        ["BR-01 missing workers blocked", movementBase],
+        [
+          "BR-01 duplicate workers blocked",
+          {
+            ...movementBase,
+            employeeIds: [employeeId, employeeId],
+            workerShares: [{ employeeId, quantity: 5 }],
+          },
+        ],
+        [
+          "BR-01 zero worker quantity blocked",
+          {
+            ...movementBase,
+            employeeIds: [employeeId],
+            workerShares: [{ employeeId, quantity: 0 }],
+          },
+        ],
+        [
+          "BR-01 negative worker quantity blocked",
+          {
+            ...movementBase,
+            employeeIds: [employeeId],
+            workerShares: [{ employeeId, quantity: -1 }],
+          },
+        ],
+        [
+          "BR-01 mismatched worker total blocked",
+          {
+            ...movementBase,
+            employeeIds: [employeeId],
+            workerShares: [{ employeeId, quantity: 4 }],
+          },
+        ],
+      ];
+      for (const [name, body] of invalidWorkerCases) {
+        const rejected = await raw("POST", "/production/stage-movements", {
+          token: t,
+          body,
+        });
+        if (rejected.status === 400) pass(name, "400");
+        else fail(name, `${rejected.status}: ${JSON.stringify(rejected.json).slice(0, 160)}`);
       }
     }
   }
@@ -538,9 +605,9 @@ async function main() {
       const matAfter = dataOf(
         (await raw("GET", "/warehouse/material-stock", { token: t })).json,
       );
-      // stock should not auto-jump from purchase alone in a wild way; soft check
+      // Contract note only: stock receipt is a separate action, so this remains a NOTE.
       note(
-        "BR-04 purchase does not auto-receive material (manual check)",
+        "BR-04 purchase creates debt; stock changes only via material receipt",
         `material rows before=${matBeforeN} after=${Array.isArray(matAfter) ? matAfter.length : "?"}`,
       );
 
@@ -590,10 +657,12 @@ async function main() {
 
   // ---------- BR-06 Factory TV auth ----------
   {
-    let tvToken = null;
+    let tvToken = process.env.FACTORY_TV_ACCESS_TOKEN?.trim() || null;
     try {
-      const env = readFileSync(path.join(ROOT, "apps/api/.env"), "utf8");
-      tvToken = (env.match(/^FACTORY_TV_ACCESS_TOKEN=(.+)$/m) || [])[1]?.trim();
+      if (!tvToken) {
+        const env = readFileSync(path.join(ROOT, "apps/api/.env"), "utf8");
+        tvToken = (env.match(/^FACTORY_TV_ACCESS_TOKEN=(.+)$/m) || [])[1]?.trim();
+      }
     } catch {
       /* ignore */
     }
@@ -638,14 +707,28 @@ async function main() {
 
   // ---------- BR-08 Payroll period uses month + calculate ----------
   {
-    const month = `2088-${String((Date.now() % 9) + 1).padStart(2, "0")}`;
-    const period = await raw("POST", "/finance/payroll-periods", {
-      token: t,
-      body: { month },
-    });
+    let period = null;
+    let month = null;
+    for (let offset = 0; offset < 120; offset += 1) {
+      const year = 2080 + Math.floor(offset / 12);
+      const candidate = `${year}-${String((offset % 12) + 1).padStart(2, "0")}`;
+      const attempt = await raw("POST", "/finance/payroll-periods", {
+        token: t,
+        body: { month: candidate },
+      });
+      if (attempt.status === 409) continue;
+      period = attempt;
+      month = candidate;
+      break;
+    }
+    if (!period) {
+      fail("BR-08 create payroll period", "no isolated month available");
+      return finish();
+    }
     if (!period.ok) {
       fail("BR-08 create payroll period", JSON.stringify(period.json).slice(0, 150));
     } else {
+      pass("BR-08 isolated payroll period created", month);
       const id = dataOf(period.json).id;
       const calc = await raw("POST", `/finance/payroll-periods/${id}/calculate`, {
         token: t,

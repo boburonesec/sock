@@ -8,6 +8,7 @@ import { validationExceptionFactory } from './common/pipes/validation-exception.
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('app.corsOrigin', 'http://localhost:3000');
 

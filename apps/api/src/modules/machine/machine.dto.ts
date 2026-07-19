@@ -8,6 +8,8 @@ import {
 } from '@prisma/client';
 import {
   IsArray,
+  ArrayMaxSize,
+  ArrayMinSize,
   IsDateString,
   IsEnum,
   IsInt,
@@ -73,10 +75,19 @@ export class CreateMeasurementSpecificationDto {
   metrics!: MeasurementMetricDto[];
 }
 
-export class ConfigureInspectionSlotDto {
-  @IsString() workShiftId!: string;
+export class InspectionSlotDefinitionDto {
   @IsInt() @Min(1) slotNumber!: number;
   @IsInt() @Min(0) minuteOffset!: number;
+}
+
+export class ConfigureInspectionSlotsDto {
+  @IsString() workShiftId!: string;
+  @IsArray()
+  @ArrayMinSize(3)
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => InspectionSlotDefinitionDto)
+  slots!: InspectionSlotDefinitionDto[];
 }
 
 export class MeasurementValueDto {
