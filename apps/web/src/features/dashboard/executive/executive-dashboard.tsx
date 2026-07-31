@@ -69,7 +69,7 @@ export function ExecutiveDashboard() {
     {
       label: "Oylik sotuv",
       value: `${summary.kpis.monthlySales} so‘m`,
-      description: "Joriy oy, Asia/Tashkent",
+      description: "Joriy oy",
       accent: "primary" as const,
     },
     {

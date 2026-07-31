@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { NotificationDeliveryStatus, Prisma, QualityIssueStatus } from '@prisma/client';
+import { NotificationDeliveryStatus, Prisma, QualityIssueStatus } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import { AcknowledgeDeliveryDto } from './notification.dto';

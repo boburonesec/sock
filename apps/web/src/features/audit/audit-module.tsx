@@ -14,14 +14,8 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { auditApi } from "@/lib/api/audit";
 import { queryKeys } from "@/lib/api/query-keys";
-import { formatAuditAction } from "@/lib/status-labels";
-
-function formatWhen(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { formatDateTimeForUser } from "@/lib/format";
+import { formatAuditAction, formatAuditEntityType } from "@/lib/status-labels";
 
 function formatAction(action: string): string {
   return formatAuditAction(action);
@@ -68,9 +62,9 @@ export function AuditModule() {
           <DataTableRow>
             <DataTableHeader>Vaqt</DataTableHeader>
             <DataTableHeader>Amal</DataTableHeader>
-            <DataTableHeader>Obyekt</DataTableHeader>
+            <DataTableHeader>Bo‘lim</DataTableHeader>
             <DataTableHeader>Operator</DataTableHeader>
-            <DataTableHeader>ID</DataTableHeader>
+            <DataTableHeader>Yozuv raqami</DataTableHeader>
           </DataTableRow>
         </DataTableHead>
         <tbody>
@@ -78,12 +72,12 @@ export function AuditModule() {
             logs.map((log) => (
               <DataTableRow key={log.id}>
                 <DataTableCell className="whitespace-nowrap text-xs sm:text-sm">
-                  {formatWhen(log.createdAt)}
+                  {formatDateTimeForUser(log.createdAt)}
                 </DataTableCell>
                 <DataTableCell className="font-semibold">
                   {formatAction(log.action)}
                 </DataTableCell>
-                <DataTableCell>{log.entityType}</DataTableCell>
+                <DataTableCell>{formatAuditEntityType(log.entityType)}</DataTableCell>
                 <DataTableCell>
                   {log.user?.name ?? "—"}
                   {log.user?.email ? (

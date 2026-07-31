@@ -2,10 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
+import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,7 @@ interface SupplierPaymentDrawerProps {
   initialSupplierId?: string | null;
   errorMessage?: string | null;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: CreateSupplierPaymentPayload) => Promise<void>;
+  onSubmit: (payload: CreateSupplierPaymentPayload, idempotencyKey: string) => Promise<void>;
 }
 
 export function SupplierPaymentDrawer({
@@ -86,6 +87,9 @@ export function SupplierPaymentDrawer({
   onOpenChange,
   onSubmit,
 }: SupplierPaymentDrawerProps) {
+  const [pendingPayload, setPendingPayload] = useState<CreateSupplierPaymentPayload | null>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
+  const submittedPayloadRef = useRef<string | null>(null);
   const {
     control,
     register,
@@ -114,6 +118,9 @@ export function SupplierPaymentDrawer({
 
   useEffect(() => {
     if (open) {
+      setPendingPayload(null);
+      idempotencyKeyRef.current = crypto.randomUUID();
+      submittedPayloadRef.current = null;
       reset({
         supplierId: initialSupplierId ?? "",
         amount: "",
@@ -130,7 +137,8 @@ export function SupplierPaymentDrawer({
       purchases.filter(
         (purchase) =>
           purchase.supplier.id === selectedSupplierId &&
-          purchase.cancelledAt === null,
+          purchase.cancelledAt === null &&
+          purchase.paymentStatus !== "PAID",
       ),
     [purchases, selectedSupplierId],
   );
@@ -139,8 +147,11 @@ export function SupplierPaymentDrawer({
     0,
   );
   const formDisabled = isSubmitting || isOptionsLoading;
+  const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
+  const reviewPurchases = pendingPayload?.allocations.map((allocation) => purchases.find((purchase) => purchase.id === allocation.purchaseId)?.purchaseNumber ?? "Noma’lum xarid").join(", ") ?? "";
 
   return (
+    <>
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
@@ -150,8 +161,9 @@ export function SupplierPaymentDrawer({
     >
       <form
         className="space-y-5"
-        onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
+        onSubmit={handleSubmit((values) => setPendingPayload(buildPayload(values)))}
       >
+        {initialSupplierId && selectedSupplier ? <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2"><p className="text-xs text-muted-foreground">Tanlangan yetkazib beruvchi</p><p className="font-semibold">{selectedSupplier.name}</p></div> : null}
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             htmlFor="supplierPaymentSupplier"
@@ -161,7 +173,7 @@ export function SupplierPaymentDrawer({
           >
             <Select
               id="supplierPaymentSupplier"
-              disabled={formDisabled}
+              disabled={formDisabled || Boolean(initialSupplierId)}
               aria-invalid={Boolean(errors.supplierId)}
               {...register("supplierId")}
             >
@@ -335,12 +347,37 @@ export function SupplierPaymentDrawer({
           className="w-full"
           disabled={formDisabled || suppliers.length === 0 || purchases.length === 0}
         >
-          {isSubmitting ? "To‘lov saqlanmoqda..." : "To‘lov qayd qilish"}
+          {isSubmitting ? "To‘lov saqlanmoqda..." : "To‘lovni tekshirish"}
         </Button>
       </form>
     </Drawer>
+    <ConfirmDialog
+      open={Boolean(pendingPayload)}
+      onOpenChange={(nextOpen) => { if (!nextOpen && !isSubmitting) setPendingPayload(null); }}
+      title="Yetkazib beruvchi to‘lovini tasdiqlash"
+      description={pendingPayload && selectedSupplier ? `${selectedSupplier.name} · ${pendingPayload.amount} so‘m · ${paymentMethodLabel(pendingPayload.method)} · ${pendingPayload.paymentDate ?? "bugun"}. Taqsimot: ${reviewPurchases}. Tasdiqlansa qarz ${pendingPayload.amount} so‘mga kamayadi; ortiqcha to‘lov yoki taqsimlanmagan kreditga ruxsat yo‘q.` : "To‘lov ma’lumotlarini tekshiring."}
+      confirmLabel="To‘lovni tasdiqlash"
+      isPending={isSubmitting}
+      errorMessage={errorMessage}
+      onConfirm={async () => {
+        if (!pendingPayload || !idempotencyKeyRef.current) return;
+        const serializedPayload = JSON.stringify(pendingPayload);
+        if (
+          submittedPayloadRef.current !== null &&
+          submittedPayloadRef.current !== serializedPayload
+        ) {
+          idempotencyKeyRef.current = crypto.randomUUID();
+        }
+        submittedPayloadRef.current = serializedPayload;
+        await onSubmit(pendingPayload, idempotencyKeyRef.current);
+        setPendingPayload(null);
+      }}
+    />
+    </>
   );
 }
+
+function paymentMethodLabel(method: CreateSupplierPaymentPayload["method"]): string { if (method === "CASH") return "Naqd"; if (method === "TRANSFER") return "O‘tkazma"; return "Boshqa"; }
 
 function buildPayload(values: PaymentFormValues): CreateSupplierPaymentPayload {
   return {

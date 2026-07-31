@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrismaClient } from './prisma-client.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const apiRoot = path.resolve(path.dirname(scriptPath), '..');
@@ -19,7 +19,7 @@ const botInternalApiKey =
   'local-development-bot-internal-api-key-change-me';
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const checks = [];
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 
 let accessToken = '';
 let serverProcess = null;

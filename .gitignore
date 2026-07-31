@@ -29,6 +29,7 @@ pnpm-debug.log*
 
 # generated caches
 *.tsbuildinfo
+apps/api/src/generated/prisma/
 
 # database dumps (never commit)
 backups/

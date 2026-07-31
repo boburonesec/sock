@@ -5,8 +5,8 @@ import type { ExecutiveSummary } from "@/lib/api/dashboard";
 
 export function ProductionOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
   const items = [
-    { label: "Aktiv xodimlar", value: `${kpis.activeEmployees} ta` },
-    { label: "Aktiv buyurtmalar", value: `${kpis.activeOrders} ta` },
+    { label: "Faol xodimlar", value: `${kpis.activeEmployees} ta` },
+    { label: "Faol buyurtmalar", value: `${kpis.activeOrders} ta` },
     { label: "Mahsulot modellari", value: `${kpis.totalProducts} ta` },
     { label: "Past qoldiq", value: `${kpis.lowStockMaterials} ta` },
   ];
@@ -14,7 +14,7 @@ export function ProductionOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] })
   return (
     <InfoCard
       title="Operatsion ko‘rinish"
-      description="Tizim executive summary qiymatlari"
+      description="Kundalik ish uchun asosiy ko‘rsatkichlar"
       action={
         <Link
           href="/dashboard/operations"

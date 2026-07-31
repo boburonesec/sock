@@ -14,7 +14,7 @@ import {
   SalesOrderStatus,
   TelegramAccountStatus,
   TelegramAccountType,
-} from '@prisma/client';
+} from '../../prisma/client';
 import { createHmac, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';

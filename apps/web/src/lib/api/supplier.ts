@@ -123,10 +123,13 @@ export const supplierApi = {
     }),
   getPayments: () =>
     apiClient<ApiCollection<SupplierPayment>>("/supplier/payments"),
-  createPayment: (payload: CreateSupplierPaymentPayload) =>
+  createPayment: (payload: CreateSupplierPaymentPayload, idempotencyKey: string) =>
     apiClient<{ data: SupplierPayment }>("/supplier/payments", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
       body: JSON.stringify(payload),
     }),
   getDebts: () =>

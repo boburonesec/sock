@@ -4,7 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import argon2 from 'argon2';
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrismaClient } from './prisma-client.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const apiRoot = path.resolve(path.dirname(scriptPath), '..');
@@ -17,7 +17,7 @@ const shouldStartServer = !process.env.EMPLOYEE_SELF_SERVICE_SMOKE_BASE_URL;
 const keepServer = process.env.EMPLOYEE_SELF_SERVICE_SMOKE_KEEP_SERVER === '1';
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const password = 'ChangeMe123!';
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 const checks = [];
 
 let serverProcess = null;

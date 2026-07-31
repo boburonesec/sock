@@ -6,7 +6,7 @@ export interface Machine {
   assignments: Array<{ id: string; mechanic: { id: string; name: string }; workShift: { id: string; name: string } }>;
 }
 export interface MaintenanceTask { id: string; type: string; priority: string; status: string; description: string; resolution: string | null; dueAt: string | null; machine: Machine; assignee: { id: string; name: string } }
-export interface InspectionRound { id: string; status: string; scheduledAt: string; machine: Machine; productionRun: { productVariant: { product: { name: string } } }; specification: { metrics: Array<{ id: string; name: string; code: string; unit: string; target: string; min: string; max: string }> }; measurements: unknown[] }
+export interface InspectionRound { id: string; status: string; scheduledAt: string; machine: Machine; productionRun: { id: string; status: string; productVariant: { product: { name: string } } }; specification: { metrics: Array<{ id: string; name: string; code: string; unit: string; target: string; min: string; max: string }> }; measurements: unknown[] }
 export interface QualityIssue { id: string; status: string; recheckDueAt: string; details: unknown; machine: Machine; mechanic: { id: string; name: string }; productionRun: { id: string; status: string }; inspectionRound: { specification: { metrics: Array<{ id: string; name: string; unit: string; target: string; min: string; max: string }> } } }
 
 export const machinesApi = {

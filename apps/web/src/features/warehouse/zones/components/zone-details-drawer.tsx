@@ -79,7 +79,7 @@ export function ZoneDetailsDrawer({
           <InfoCard title="Mahsulot miqdori">
             <p className="text-xl font-bold">{zone.productQuantity}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Tizim zone summary qiymati.
+              Zonadagi tayyor mahsulotlar jami.
             </p>
           </InfoCard>
         </div>

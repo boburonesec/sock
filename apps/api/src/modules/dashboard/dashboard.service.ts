@@ -7,7 +7,7 @@ import {
   PayrollPeriodStatus,
   Prisma,
   SalesOrderStatus,
-} from '@prisma/client';
+} from '../../prisma/client';
 import { DevContextService } from '../../common/dev-context/dev-context.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestContext } from '../identity/request-context/request-context.types';

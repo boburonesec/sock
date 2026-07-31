@@ -1,4 +1,4 @@
-import { TelegramAccountType } from '@prisma/client';
+import { TelegramAccountType } from '../../prisma/client';
 
 export interface TelegramLinkTokenCreatedResponse {
   id: string;

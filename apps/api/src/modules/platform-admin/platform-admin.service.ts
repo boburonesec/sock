@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, TenantBranchMode, TenantStatus } from '@prisma/client';
+import { Prisma, TenantBranchMode, TenantStatus } from '../../prisma/client';
 import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';

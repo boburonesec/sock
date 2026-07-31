@@ -67,7 +67,7 @@ export function EmployeeDetailsDrawer({
             : "Smena tanlanmagan. Faollik yozishdan oldin tahrirlang."}
         </p>
       </InfoCard>
-      <div className="flex flex-wrap gap-2"><Button variant="outline" className="h-9" onClick={() => onEdit(employee)}>Tahrirlash</Button><Button variant="outline" className="h-9 border-rose-500/40 text-rose-300 hover:bg-rose-500/10" disabled={isInactivating} onClick={() => onInactivate(employee)}>{isInactivating ? "Nofaol qilinmoqda..." : "Nofaol qilish"}</Button><Button disabled variant="outline" className="h-9">Bonus qo‘shish</Button><Button disabled variant="outline" className="h-9">Jarima qo‘shish</Button></div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button variant="outline" className="h-11 sm:h-9" onClick={() => onEdit(employee)}>Ma’lumotlarni tahrirlash</Button><Button variant="outline" className="h-11 border-rose-500/40 text-rose-300 hover:bg-rose-500/10 sm:h-9" disabled={isInactivating} onClick={() => onInactivate(employee)}>{isInactivating ? "Nofaol qilinmoqda..." : "Xodimni nofaol qilish"}</Button></div>
       <TelegramLinkCodeCard
         targetName={employee.name}
         linkToken={linkToken}

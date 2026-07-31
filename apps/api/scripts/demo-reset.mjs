@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrismaClient } from './prisma-client.mjs';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 
 function assertResetAllowed() {
   const nodeEnv = process.env.NODE_ENV ?? 'development';

@@ -3,7 +3,7 @@ import { InfoCard } from "@/components/cards/info-card";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { WarehouseStockSummary } from "@/lib/api/warehouse";
-import { labelStatus, zoneStatusLabel } from "@/lib/status-labels";
+import { formatWarehouseZoneName, labelStatus, zoneStatusLabel } from "@/lib/status-labels";
 
 type ZoneSummary = WarehouseStockSummary["zoneSummaries"][number];
 
@@ -24,7 +24,7 @@ export function ZonesOverview({
     return (
       <EmptyState
         title="Ombor zonalari mavjud emas"
-        description="Tizim zone summary qaytargach, zonalar shu yerda ko‘rinadi."
+        description="Zonalar yaratilgach, ularning qoldig‘i shu yerda ko‘rinadi."
       />
     );
   }
@@ -37,14 +37,14 @@ export function ZonesOverview({
           onClick={() => onSelect(zone)}
           className="text-left"
         >
-          <InfoCard title={zone.zoneName} className="h-full transition hover:bg-muted/40">
+          <InfoCard title={formatWarehouseZoneName(zone.zoneName)} className="h-full transition hover:bg-muted/40">
             <div className="flex items-start gap-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
                 <MapPin size={18} />
               </span>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {zone.warehouseName}
+                  {formatWarehouseZoneName(zone.warehouseName)}
                 </p>
                 <p className="mt-3 font-semibold">
                   {zone.productQuantity} dona

@@ -8,6 +8,8 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { PageSection } from "@/components/layout/page-section";
 import type { ExecutiveSummary } from "@/lib/api/dashboard";
+import { formatDateTimeForUser } from "@/lib/format";
+import { formatVisibleStatusText } from "@/lib/status-labels";
 
 type RecentActivityItem = ExecutiveSummary["recentActivity"][number];
 
@@ -15,13 +17,6 @@ const typeLabels: Record<RecentActivityItem["type"], string> = {
   ORDER: "Buyurtma",
   EXPENSE: "Xarajat",
 };
-
-const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
   return (
@@ -50,8 +45,8 @@ export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
               <DataTableRow key={`${item.type}-${item.id}`}>
                 <DataTableCell>{typeLabels[item.type]}</DataTableCell>
                 <DataTableCell className="font-semibold">{item.title}</DataTableCell>
-                <DataTableCell>{item.description}</DataTableCell>
-                <DataTableCell>{dateFormatter.format(new Date(item.occurredAt))}</DataTableCell>
+                <DataTableCell>{formatVisibleStatusText(item.description)}</DataTableCell>
+                <DataTableCell className="whitespace-nowrap">{formatDateTimeForUser(item.occurredAt)}</DataTableCell>
               </DataTableRow>
             ))
           )}

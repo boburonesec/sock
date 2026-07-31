@@ -70,7 +70,7 @@ export function DeliveryConfirmDrawer({
         }}
       >
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-          Mahsulot <strong>Finished Products</strong> omboridan chiqadi. Mijoz
+          Mahsulot <strong>Tayyor mahsulot</strong> zonasidan chiqadi. Mijoz
           to‘lovi shart emas — qarz alohida yuritiladi. Bu amal buyurtmani
           «yetkazilgan» qiladi.
         </p>

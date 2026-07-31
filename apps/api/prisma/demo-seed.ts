@@ -17,9 +17,9 @@
  * - Advances: REQUESTED (manager pending) / APPROVED / PAID (owner+manager path)
  * - Payroll: previous month CLOSED, current month CALCULATED + partial pay
  */
-import { Prisma, PrismaClient } from '@prisma/client';
+import { createPrismaClient, Prisma } from '../src/prisma/client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const DEMO_TENANT_ID = 'seed-demo-paypoq-factory';
 
@@ -311,10 +311,20 @@ async function main(): Promise<void> {
     })),
   });
 
-  // --- Stage inventory (current WIP) ---
-  await prisma.stageInventory.deleteMany({
-    where: { tenantId, factoryId: factory.id },
+  // --- Production fixture cleanup ---
+  // Keep the destructive half atomic and delete the real FK graph from leaves
+  // to roots. ProductionRunIntake owns intake-linked activities and restricts
+  // deletion of its batch, so this order is required when the seed is rerun
+  // after machine smoke tests have created intake data.
+  await prisma.$transaction(async (tx) => {
+    await tx.workerActivity.deleteMany({ where: { tenantId, factoryId: factory.id } });
+    await tx.productionRunIntake.deleteMany({ where: { tenantId, factoryId: factory.id } });
+    await tx.stageMovement.deleteMany({ where: { tenantId, factoryId: factory.id } });
+    await tx.productionBatch.deleteMany({ where: { tenantId, factoryId: factory.id } });
+    await tx.stageInventory.deleteMany({ where: { tenantId, factoryId: factory.id } });
   });
+
+  // --- Stage inventory (current WIP) ---
   await prisma.stageInventory.createMany({
     data: [
       inv(tenantId, factory.id, stageByName, 'Averlog', classicBlack.id, 480),
@@ -326,9 +336,6 @@ async function main(): Promise<void> {
   });
 
   // --- Production batches + movements ---
-  await prisma.stageMovement.deleteMany({ where: { tenantId, factoryId: factory.id } });
-  await prisma.productionBatch.deleteMany({ where: { tenantId, factoryId: factory.id } });
-
   const batchPrev = await prisma.productionBatch.create({
     data: {
       tenantId,
@@ -364,7 +371,6 @@ async function main(): Promise<void> {
   });
 
   // --- Worker activities: previous + current month ---
-  await prisma.workerActivity.deleteMany({ where: { tenantId, factoryId: factory.id } });
   await prisma.workerActivity.createMany({
     data: [
       // Previous month (closed payroll basis)
@@ -472,15 +478,19 @@ async function main(): Promise<void> {
   });
 
   // --- Sales ---
-  await prisma.clientPaymentAllocation.deleteMany({
-    where: { payment: { tenantId } },
+  await prisma.$transaction(async (tx) => {
+    await tx.telegramLinkToken.deleteMany({ where: { tenantId } });
+    await tx.telegramAccount.deleteMany({ where: { tenantId } });
+    await tx.clientPaymentAllocation.deleteMany({
+      where: { payment: { tenantId } },
+    });
+    await tx.clientPayment.deleteMany({ where: { tenantId } });
+    await tx.salesOrderItem.deleteMany({
+      where: { order: { tenantId } },
+    });
+    await tx.salesOrder.deleteMany({ where: { tenantId } });
+    await tx.client.deleteMany({ where: { tenantId } });
   });
-  await prisma.clientPayment.deleteMany({ where: { tenantId } });
-  await prisma.salesOrderItem.deleteMany({
-    where: { order: { tenantId } },
-  });
-  await prisma.salesOrder.deleteMany({ where: { tenantId } });
-  await prisma.client.deleteMany({ where: { tenantId } });
 
   const clientAndijon = await prisma.client.create({
     data: {

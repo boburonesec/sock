@@ -7,7 +7,7 @@ export default function EmployeesPage() {
     <>
       <PageHeader
         title="Xodimlar"
-        description="Barcha xodimlar reyestri: ish profili, haq turi, bosqich va kerak bo‘lsa dastur accounti"
+        description="Barcha xodimlar: ish turi, haq turi, bosqich va kerak bo‘lsa dastur hisobi"
       />
       <ModuleNavigation
         items={[

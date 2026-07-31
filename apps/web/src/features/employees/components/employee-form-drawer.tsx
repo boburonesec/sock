@@ -14,6 +14,7 @@ import {
   type Employee,
   type EmployeeWorkProfile,
 } from "@/lib/api/employees";
+import { formatRoleName } from "@/lib/status-labels";
 
 const employeeFormSchema = z.object({
   name: z
@@ -254,15 +255,15 @@ export function EmployeeFormDrawer({
 
         {needsAccount && !employee?.account && (
           <div className="space-y-3 rounded-lg border p-3">
-            <p className="text-sm font-medium">Dastur accounti</p>
+            <p className="text-sm font-medium">Dastur hisobi</p>
             <FormField htmlFor="employeeEmail" label="Email" error={errors.email?.message}><Input id="employeeEmail" type="email" {...register("email")} /></FormField>
             <FormField htmlFor="employeePassword" label="Vaqtinchalik parol" error={errors.password?.message}><Input id="employeePassword" type="password" {...register("password")} /></FormField>
             <FormField htmlFor="employeeRole" label="Dastur roli" error={errors.roleName?.message}>
               <Select id="employeeRole" {...register("roleName")}>
                 <option value="">Rolni tanlang</option>
-                {workProfile === "MECHANIC" && <option value="Mechanic">Mechanic</option>}
-                {workProfile === "MECHANIC_MASTER" && <option value="Mechanic Master">Mechanic Master</option>}
-                {workProfile === "STAFF" && ["Manager", "Accountant", "Seller", "Warehouse Operator", "Shift Receiver"].map((role) => <option key={role} value={role}>{role}</option>)}
+                {workProfile === "MECHANIC" && <option value="Mechanic">Mexanik</option>}
+                {workProfile === "MECHANIC_MASTER" && <option value="Mechanic Master">Mexanik-master</option>}
+                {workProfile === "STAFF" && ["Manager", "Accountant", "Seller", "Warehouse Operator", "Shift Receiver"].map((role) => <option key={role} value={role}>{formatRoleName(role)}</option>)}
               </Select>
             </FormField>
           </div>

@@ -169,7 +169,7 @@ export function StockOverviewModule() {
 
       <PageSection
         title="Tayyor mahsulotlar qoldig‘i"
-        description="Mahsulot variantlari va zonalar bo‘yicha joriy qoldiq."
+        description="Mahsulot turi va ombor zonasi bo‘yicha hozirgi qoldiq."
       >
         <div className="mb-4 flex flex-wrap justify-end gap-2">
           <Link

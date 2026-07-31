@@ -186,7 +186,7 @@ export function ProductionBoard() {
       accent: "success" as const,
     },
     {
-      label: "Aktiv ishchilar",
+      label: "Faol ishchilar",
       value: `${formatNumber(Number(summary.kpis.activeWorkers))} nafar`,
       description: "Bugungi kiritilgan faollik",
       accent: "neutral" as const,

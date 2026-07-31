@@ -23,7 +23,7 @@ import {
   type SupplierDebt,
   type SupplierPayload,
 } from "@/lib/api/supplier";
-import { SupplierDetailsDrawer } from "./components/supplier-details-drawer";
+import { SupplierDetailsPanel } from "./components/supplier-details-drawer";
 import { SupplierFormDrawer } from "./components/supplier-form-drawer";
 import { SupplierPaymentDrawer } from "./components/supplier-payment-drawer";
 import { SupplierPurchaseDrawer } from "./components/supplier-purchase-drawer";
@@ -36,7 +36,7 @@ type SupplierFormState =
 
 export function SuppliersModule() {
   const queryClient = useQueryClient();
-  const [selectedDebt, setSelectedDebt] = useState<SupplierDebt | null>(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [formState, setFormState] = useState<SupplierFormState | null>(null);
   const [supplierToArchive, setSupplierToArchive] = useState<Supplier | null>(
     null,
@@ -78,7 +78,8 @@ export function SuppliersModule() {
     onSuccess: () => invalidateSupplierQueries(queryClient),
   });
   const createPayment = useMutation({
-    mutationFn: supplierApi.createPayment,
+    mutationFn: ({ payload, idempotencyKey }: { payload: CreateSupplierPaymentPayload; idempotencyKey: string }) =>
+      supplierApi.createPayment(payload, idempotencyKey),
     onSuccess: () => invalidateSupplierQueries(queryClient),
   });
 
@@ -138,6 +139,7 @@ export function SuppliersModule() {
   const purchases = purchasesQuery.data?.data ?? [];
   const payments = paymentsQuery.data?.data ?? [];
   const materials = materialsQuery.data?.data ?? [];
+  const selectedDebt = debts.find((debt) => debt.supplier.id === selectedSupplierId) ?? debts[0] ?? null;
   const formError =
     createSupplier.error instanceof Error
       ? createSupplier.error.message
@@ -165,18 +167,19 @@ export function SuppliersModule() {
       ) : null}
 
       <PageSection>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Yetkazib beruvchilar</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Avval yetkazib beruvchini tanlang, keyin uning xarid va to‘lovlarini boshqaring.</p>
+          </div>
+          <Button onClick={() => { setFeedback(null); createSupplier.reset(); updateSupplier.reset(); setFormState({ mode: "create", supplier: null }); }}>Yangi yetkazib beruvchi</Button>
+        </div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <KpiCard
             label="Yetkazib beruvchilar"
             value={`${suppliers.length} ta`}
             description="tizim qaytargan yetkazib beruvchi yozuvlari"
             accent="primary"
-          />
-          <KpiCard
-            label="Yetkazib beruvchi qarzi"
-            value={`${debts.length} ta`}
-            description="Tizim hisoblagan qarz yozuvlari"
-            accent="warning"
           />
           <KpiCard
             label="Xarid yozuvlari"
@@ -194,79 +197,25 @@ export function SuppliersModule() {
       </PageSection>
 
       <PageSection
-        title="Yetkazib beruvchi qarzdorligi"
-        description="Qarz qiymatlari tizim hisob-kitob orqali qaytariladi."
+        title="Yetkazib beruvchi ish maydoni"
+        description="Ro‘yxatdan yetkazib beruvchini tanlang. Moliyaviy amallar faqat tanlangan yetkazib beruvchi uchun ochiladi."
       >
-        <div className="mb-4 flex justify-end">
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              onClick={() => {
-                setFeedback(null);
-                createSupplier.reset();
-                updateSupplier.reset();
-                setFormState({ mode: "create", supplier: null });
-              }}
-            >
-              Yetkazib beruvchi qo‘shish
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFeedback(null);
-                createPurchase.reset();
-                setPurchaseInitialSupplierId(null);
-                setIsPurchaseDrawerOpen(true);
-              }}
-            >
-              Xarid qayd qilish
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFeedback(null);
-                createPayment.reset();
-                setPaymentInitialSupplierId(null);
-                setIsPaymentDrawerOpen(true);
-              }}
-            >
-              To‘lov qayd qilish
-            </Button>
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.6fr)]">
+          <div className="min-w-0">
+            <SuppliersTable debts={debts} selectedSupplierId={selectedDebt?.supplier.id ?? null} onSelect={(debt) => { setFeedback(null); setSelectedSupplierId(debt.supplier.id); }} />
           </div>
+          <SupplierDetailsPanel
+            debt={selectedDebt}
+            purchases={purchases}
+            payments={payments}
+            isArchiving={archiveSupplier.isPending}
+            onCreatePurchase={(supplierId) => { setFeedback(null); createPurchase.reset(); setPurchaseInitialSupplierId(supplierId); setIsPurchaseDrawerOpen(true); }}
+            onCreatePayment={(supplierId) => { setFeedback(null); createPayment.reset(); setPaymentInitialSupplierId(supplierId); setIsPaymentDrawerOpen(true); }}
+            onEdit={(supplier) => { setFeedback(null); createSupplier.reset(); updateSupplier.reset(); setFormState({ mode: "edit", supplier }); }}
+            onArchive={(supplier) => { setFeedback(null); setSupplierToArchive(supplier); }}
+          />
         </div>
-        <SuppliersTable debts={debts} onSelect={setSelectedDebt} />
       </PageSection>
-
-      <SupplierDetailsDrawer
-        debt={selectedDebt}
-        purchases={purchases}
-        payments={payments}
-        isArchiving={archiveSupplier.isPending}
-        onOpenChange={(open) => {
-          if (!open) setSelectedDebt(null);
-        }}
-        onCreatePurchase={(supplierId) => {
-          setFeedback(null);
-          createPurchase.reset();
-          setPurchaseInitialSupplierId(supplierId);
-          setIsPurchaseDrawerOpen(true);
-        }}
-        onCreatePayment={(supplierId) => {
-          setFeedback(null);
-          createPayment.reset();
-          setPaymentInitialSupplierId(supplierId);
-          setIsPaymentDrawerOpen(true);
-        }}
-        onEdit={(supplier) => {
-          setFeedback(null);
-          createSupplier.reset();
-          updateSupplier.reset();
-          setFormState({ mode: "edit", supplier });
-        }}
-        onArchive={(supplier) => {
-          setFeedback(null);
-          setSupplierToArchive(supplier);
-        }}
-      />
 
       <SupplierFormDrawer
         open={Boolean(formState)}
@@ -298,7 +247,7 @@ export function SuppliersModule() {
           }
 
           setFormState(null);
-          setSelectedDebt(null);
+          setSelectedSupplierId(null);
         }}
       />
 
@@ -319,7 +268,7 @@ export function SuppliersModule() {
             message: "Yetkazib beruvchi xaridi qayd qilindi.",
           });
           setIsPurchaseDrawerOpen(false);
-          setSelectedDebt(null);
+          setSelectedSupplierId(payload.supplierId);
         }}
       />
 
@@ -332,15 +281,15 @@ export function SuppliersModule() {
         isOptionsLoading={false}
         errorMessage={paymentError}
         onOpenChange={(open) => setIsPaymentDrawerOpen(open)}
-        onSubmit={async (payload: CreateSupplierPaymentPayload) => {
+        onSubmit={async (payload: CreateSupplierPaymentPayload, idempotencyKey: string) => {
           setFeedback(null);
-          await createPayment.mutateAsync(payload);
+          await createPayment.mutateAsync({ payload, idempotencyKey });
           setFeedback({
             tone: "success",
             message: "Yetkazib beruvchi to‘lovi qayd qilindi va xaridlarga taqsimlandi.",
           });
           setIsPaymentDrawerOpen(false);
-          setSelectedDebt(null);
+          setSelectedSupplierId(payload.supplierId);
         }}
       />
 
@@ -368,7 +317,7 @@ export function SuppliersModule() {
                 tone: "success",
                 message: `${supplierName} arxivlandi.`,
               });
-              setSelectedDebt(null);
+              setSelectedSupplierId(null);
               setSupplierToArchive(null);
             },
             onError: (mutationError) => {

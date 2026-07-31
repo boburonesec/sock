@@ -8,9 +8,11 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/layout/page-section";
+import { StatusBadge } from "@/components/data-display/status-badge";
 import { employeesApi } from "@/lib/api/employees";
 import { financeApi, type PayPayrollPeriodPayload } from "@/lib/api/finance";
 import { queryKeys } from "@/lib/api/query-keys";
+import { labelStatus, payrollPeriodStatusLabel } from "@/lib/status-labels";
 import {
   PayrollAdjustmentDrawer,
   type PayrollAdjustmentKind,
@@ -28,6 +30,7 @@ export function PayrollModule() {
     useState<PayrollAdjustmentKind | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
+  const [isCalculateConfirmOpen, setIsCalculateConfirmOpen] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -41,6 +44,9 @@ export function PayrollModule() {
     periods.find((period) => period.id === selectedPeriodId) ?? periods[0] ?? null;
   const itemsQuery = usePayrollPeriodItems(selectedPeriod?.id ?? null);
   const items = itemsQuery.data?.data ?? [];
+  const canCalculate = Boolean(selectedPeriod && ["DRAFT", "CALCULATED"].includes(selectedPeriod.status));
+  const canPay = Boolean(selectedPeriod && ["CALCULATED", "PARTIALLY_PAID"].includes(selectedPeriod.status) && items.some((item) => Number(item.remainingAmount) > 0));
+  const canClose = Boolean(selectedPeriod && ["CALCULATED", "PAID"].includes(selectedPeriod.status));
 
   const invalidatePayroll = async () => {
     await Promise.all([
@@ -156,30 +162,13 @@ export function PayrollModule() {
   return (
     <div className="space-y-8">
       <PageSection>
-        <div className="mb-4 flex flex-wrap gap-2">
-          <Button type="button" onClick={() => setIsCreatePeriodOpen(true)}>
-            Davr yaratish
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setAdjustmentKind("advance")}
-          >
-            Avans qo‘shish
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setAdjustmentKind("bonus")}
-          >
-            Bonus qo‘shish
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setAdjustmentKind("penalty")}
-          >
-            Jarima qo‘shish
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Ish haqi davrlari</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Davrni tanlang va shu davr bo‘yicha keyingi ishni bajaring.</p>
+          </div>
+          <Button type="button" className="shrink-0" onClick={() => { createPeriodMutation.reset(); setActionError(null); setIsCreatePeriodOpen(true); }}>
+            Yangi davr
           </Button>
         </div>
 
@@ -194,17 +183,11 @@ export function PayrollModule() {
           </p>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           <KpiCard
-            label="Ish haqi davrlari"
-            value={`${periods.length} ta`}
-            description="Saqlangan ish haqi davrlari"
-            accent="primary"
-          />
-          <KpiCard
-            label="Tanlangan status"
-            value={selectedPeriod?.status ?? "—"}
-            description="Tanlangan davr holati"
+            label="Tanlangan davr"
+            value={selectedPeriod ? formatMonth(selectedPeriod.month) : "—"}
+            description={`${periods.length} ta saqlangan davr`}
             accent="neutral"
           />
           <KpiCard
@@ -223,8 +206,8 @@ export function PayrollModule() {
       </PageSection>
 
       <PageSection
-        title="Ish haqi davrlari"
-        description="Davrni tanlab, xodimlar kesimidagi tafsilotlarni ko‘ring"
+        title="Davrlar tarixi"
+        description="Boshqa davrni ko‘rish uchun qatorni tanlang. Tarix joriy ish maydonidan alohida saqlanadi."
       >
         <PayrollPeriodsTable
           periods={periods}
@@ -241,45 +224,25 @@ export function PayrollModule() {
         }
         description="Barcha qiymatlar tizimdan olinadi; ekran hisob-kitob qilmaydi."
       >
-        <div className="mb-4 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            disabled={
-              !selectedPeriod ||
-              !["DRAFT", "CALCULATED"].includes(selectedPeriod.status) ||
-              calculateMutation.isPending
-            }
-            onClick={() =>
-              selectedPeriod && calculateMutation.mutate(selectedPeriod.id)
-            }
-          >
-            {calculateMutation.isPending ? "Hisoblanmoqda..." : "Ish haqini hisoblash"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={
-              !selectedPeriod ||
-              !["CALCULATED", "PARTIALLY_PAID"].includes(selectedPeriod.status) ||
-              items.length === 0
-            }
-            onClick={() => setIsPaymentOpen(true)}
-          >
-            To‘lov qilish
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={
-              !selectedPeriod ||
-              !["CALCULATED", "PAID"].includes(selectedPeriod.status) ||
-              closeMutation.isPending
-            }
-            onClick={() => setIsCloseConfirmOpen(true)}
-          >
-            Davrni yopish
-          </Button>
+        {selectedPeriod ? <div className="mb-5 rounded-xl border border-border/70 bg-card/50 p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-semibold">{formatMonth(selectedPeriod.month)}</p>
+                <StatusBadge tone={selectedPeriod.status === "CLOSED" || selectedPeriod.status === "PAID" ? "success" : selectedPeriod.status === "PARTIALLY_PAID" ? "warning" : selectedPeriod.status === "CALCULATED" ? "info" : "neutral"}>
+                  {labelStatus(payrollPeriodStatusLabel, selectedPeriod.status)}
+                </StatusBadge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{getNextStep(selectedPeriod.status, selectedPeriod.totalRemainingAmount)}</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {canCalculate ? <Button type="button" disabled={calculateMutation.isPending} onClick={() => { calculateMutation.reset(); setActionError(null); setIsCalculateConfirmOpen(true); }}>{selectedPeriod.status === "CALCULATED" ? "Qayta hisoblash" : "Ish haqini hisoblash"}</Button> : null}
+              {canPay ? <Button type="button" onClick={() => { payMutation.reset(); setActionError(null); setIsPaymentOpen(true); }}>Xodimga to‘lov</Button> : null}
+              {canClose ? <Button type="button" variant="outline" disabled={closeMutation.isPending} onClick={() => { closeMutation.reset(); setActionError(null); setIsCloseConfirmOpen(true); }}>Davrni yopish</Button> : null}
+            </div>
+          </div>
         </div>
+        : null}
 
         {itemsQuery.isPending && selectedPeriod ? (
           <LoadingState label="Ish haqi tafsilotlari yuklanmoqda..." />
@@ -304,6 +267,17 @@ export function PayrollModule() {
         ) : (
           <PayrollDetailsTable details={items} />
         )}
+      </PageSection>
+
+      <PageSection title="Keyingi hisob uchun tuzatishlar" description="Avans, bonus va jarima tanlangan davrga qo‘lda bog‘lanmaydi. Tizim ularni kiritilgan sana bo‘yicha mos ish haqi hisobiga qo‘shadi.">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(["advance", "bonus", "penalty"] as const).map((kind) => (
+            <button key={kind} type="button" className="min-h-12 rounded-xl border border-border/70 bg-card/40 px-4 py-3 text-left transition hover:border-primary/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => { adjustmentMutation.reset(); setActionError(null); setAdjustmentKind(kind); }}>
+              <span className="block font-semibold">{kind === "advance" ? "Avans" : kind === "bonus" ? "Bonus" : "Jarima"} qo‘shish</span>
+              <span className="mt-1 block text-sm text-muted-foreground">Xodim uchun yangi yozuv</span>
+            </button>
+          ))}
+        </div>
       </PageSection>
 
       <PayrollPeriodDrawer
@@ -332,6 +306,7 @@ export function PayrollModule() {
 
       <PayrollPaymentDrawer
         open={isPaymentOpen}
+        periodLabel={selectedPeriod ? formatMonth(selectedPeriod.month) : ""}
         items={items}
         isSubmitting={payMutation.isPending}
         errorMessage={payMutation.isError ? actionError : null}
@@ -342,13 +317,25 @@ export function PayrollModule() {
       />
 
       <ConfirmDialog
+        open={isCalculateConfirmOpen}
+        isPending={calculateMutation.isPending}
+        errorMessage={calculateMutation.isError ? actionError : null}
+        onOpenChange={setIsCalculateConfirmOpen}
+        title={selectedPeriod?.status === "CALCULATED" ? "Ish haqini qayta hisoblash" : "Ish haqini hisoblash"}
+        description={selectedPeriod ? `${formatMonth(selectedPeriod.month)} davri hisoblanadi.${selectedPeriod.status === "CALCULATED" ? " Hozirgi xodimlar kesimidagi hisob natijalari yangidan tuziladi." : ""}` : "Davr tanlanmagan."}
+        confirmLabel={selectedPeriod?.status === "CALCULATED" ? "Qayta hisoblash" : "Hisoblash"}
+        onConfirm={async () => { if (selectedPeriod) await calculateMutation.mutateAsync(selectedPeriod.id); }}
+      />
+
+      <ConfirmDialog
         open={isCloseConfirmOpen}
         isPending={closeMutation.isPending}
         errorMessage={closeMutation.isError ? actionError : null}
         onOpenChange={setIsCloseConfirmOpen}
         title="Ish haqi davrini yopish"
-        description="Yopilgandan keyin bu davr o‘zgarmas bo‘ladi: qayta hisoblash va to‘lov kiritish bloklanadi."
+        description={selectedPeriod ? `${formatMonth(selectedPeriod.month)} davri yopiladi. Qoldiq: ${selectedPeriod.totalRemainingAmount} so‘m. Yopilgandan keyin qayta hisoblash va to‘lov kiritish bloklanadi.` : "Davr tanlanmagan."}
         confirmLabel="Yopish"
+        destructive
         onConfirm={async () => {
           if (selectedPeriod) {
             await closeMutation.mutateAsync(selectedPeriod.id);
@@ -357,6 +344,14 @@ export function PayrollModule() {
       />
     </div>
   );
+}
+
+function getNextStep(status: string, remainingAmount: string): string {
+  if (status === "DRAFT") return "Keyingi qadam: xodimlar ish haqini hisoblash.";
+  if (status === "CALCULATED") return Number(remainingAmount) > 0 ? "Natijani tekshiring va xodimlar to‘lovini kiriting yoki davrni yopish qarorini tasdiqlang." : "Natijani tekshiring va davrni yoping.";
+  if (status === "PARTIALLY_PAID") return "Keyingi qadam: qolgan xodimlar to‘lovini davom ettirish.";
+  if (status === "PAID") return "Barcha to‘lovlar kiritilgan. Davrni yopish mumkin.";
+  return "Bu davr yopilgan va faqat ko‘rish uchun mavjud.";
 }
 
 function formatMonth(value: string): string {

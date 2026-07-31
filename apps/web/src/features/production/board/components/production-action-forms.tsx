@@ -252,14 +252,14 @@ function CreateBatchForm({
 
       {productVariantOptions.length === 0 ? (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-          Product catalog’da active variant yo‘q. Avval Sozlamalar → Mahsulotlar
-          sahifasida product va variant yarating.
+          Faol mahsulot turi yo‘q. Avval Sozlamalar → Mahsulotlar
+          sahifasida mahsulot va uning turini yarating.
         </p>
       ) : null}
 
       <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-        Bu compatibility uchun manual qabul. Mexanik/operator ishbay hisoblanishi
-        uchun Stanoklar bo‘limida production run outputini qabul qiling.
+        Bu eski partiyalar uchun qo‘lda qabul qilish. Mexanik va operatorning
+        ishbay haqini hisoblash uchun Stanoklar bo‘limida tayyor mahsulotni qabul qiling.
       </p>
 
       <FormField
@@ -1159,8 +1159,8 @@ function DefectForm({
       </FormField>
 
       <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-        V1 da brak faqat qayd qilinadi: payroll, jarima va stage inventory
-        avtomatik o‘zgarmaydi.
+        Nuqson hozircha faqat qayd qilinadi. Ish haqi, jarima va bosqichdagi
+        qoldiq avtomatik o‘zgarmaydi.
       </p>
 
       {defectError ? (
@@ -1292,7 +1292,7 @@ function FinishedProductReceiptForm({
           disabled={isFinishedProductReceiptPending}
           {...register("warehouseZoneId")}
         >
-          <option value="">Finished Products avtomatik</option>
+          <option value="">Tayyor mahsulot zonasi avtomatik</option>
           {warehouseZoneOptions.map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}

@@ -1,10 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
+import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ type FormValues = z.infer<typeof schema>;
 
 interface PayrollPaymentDrawerProps {
   open: boolean;
+  periodLabel: string;
   items: PayrollItem[];
   isSubmitting: boolean;
   errorMessage?: string | null;
@@ -37,12 +39,14 @@ interface PayrollPaymentDrawerProps {
 
 export function PayrollPaymentDrawer({
   open,
+  periodLabel,
   items,
   isSubmitting,
   errorMessage,
   onOpenChange,
   onSubmit,
 }: PayrollPaymentDrawerProps) {
+  const [pendingPayload, setPendingPayload] = useState<PayPayrollPeriodPayload | null>(null);
   const payableItems = items.filter((item) => Number(item.remainingAmount) > 0);
   const {
     register,
@@ -67,6 +71,7 @@ export function PayrollPaymentDrawer({
 
   useEffect(() => {
     if (open) {
+      setPendingPayload(null);
       reset({
         payrollItemId: "",
         amount: "",
@@ -83,7 +88,10 @@ export function PayrollPaymentDrawer({
     }
   }, [selectedItem, setValue]);
 
+  const paymentEmployee = payableItems.find((item) => item.id === pendingPayload?.payrollItemId);
+
   return (
+    <>
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
@@ -93,7 +101,7 @@ export function PayrollPaymentDrawer({
       <form
         className="space-y-4"
         onSubmit={handleSubmit((values) =>
-          onSubmit({
+          setPendingPayload({
             payrollItemId: values.payrollItemId,
             amount: values.amount,
             method: values.method,
@@ -182,11 +190,32 @@ export function PayrollPaymentDrawer({
           className="w-full"
           disabled={isSubmitting || payableItems.length === 0}
         >
-          {isSubmitting ? "To‘lanmoqda..." : "To‘lov qilish"}
+          {isSubmitting ? "To‘lanmoqda..." : "To‘lovni tekshirish"}
         </Button>
       </form>
     </Drawer>
+    <ConfirmDialog
+      open={Boolean(pendingPayload)}
+      onOpenChange={(nextOpen) => { if (!nextOpen && !isSubmitting) setPendingPayload(null); }}
+      title="Ish haqi to‘lovini tasdiqlash"
+      description={pendingPayload && paymentEmployee ? `${periodLabel} · ${paymentEmployee.employee.name} · ${pendingPayload.amount} so‘m · ${paymentMethodLabel(pendingPayload.method)} · ${pendingPayload.paidAt ?? "bugun"}. Tasdiqlangandan keyin to‘lov yozuvi yaratiladi.` : "To‘lov ma’lumotlarini tekshiring."}
+      confirmLabel="To‘lovni tasdiqlash"
+      isPending={isSubmitting}
+      errorMessage={errorMessage}
+      onConfirm={async () => {
+        if (!pendingPayload) return;
+        await onSubmit(pendingPayload);
+        setPendingPayload(null);
+      }}
+    />
+    </>
   );
+}
+
+function paymentMethodLabel(method: PayPayrollPeriodPayload["method"]): string {
+  if (method === "CASH") return "Naqd";
+  if (method === "TRANSFER") return "Bank o‘tkazma";
+  return "Boshqa";
 }
 
 function getTodayValue(): string {

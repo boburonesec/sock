@@ -37,6 +37,22 @@ export function PayrollPeriodsTable({
   onSelect,
 }: PayrollPeriodsTableProps) {
   return (
+    <>
+    <div className="space-y-2 md:hidden" aria-label="Ish haqi davrlari">
+      {periods.length > 0 ? periods.map((period) => (
+        <button key={period.id} type="button" aria-pressed={period.id === selectedPeriodId} onClick={() => onSelect(period.id)} className={`min-h-12 w-full rounded-xl border p-4 text-left ${period.id === selectedPeriodId ? "border-primary bg-primary/5" : "border-border/70 bg-card/40"}`}>
+          <span className="flex items-center justify-between gap-3">
+            <span className="font-semibold">{formatMonth(period.month)}</span>
+            <StatusBadge tone={statusTone[period.status] ?? "neutral"}>{labelStatus(payrollPeriodStatusLabel, period.status)}</StatusBadge>
+          </span>
+          <span className="mt-3 grid grid-cols-2 gap-2 text-sm">
+            <span><span className="block text-muted-foreground">Jami</span>{period.totalFinalAmount} so‘m</span>
+            <span><span className="block text-muted-foreground">Qoldiq</span>{period.totalRemainingAmount} so‘m</span>
+          </span>
+        </button>
+      )) : <div className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Ish haqi davrlari mavjud emas.</div>}
+    </div>
+    <div className="hidden md:block">
     <DataTable label="Ish haqi davrlari">
       <DataTableHead>
         <DataTableRow>
@@ -85,5 +101,7 @@ export function PayrollPeriodsTable({
         )}
       </tbody>
     </DataTable>
+    </div>
+    </>
   );
 }

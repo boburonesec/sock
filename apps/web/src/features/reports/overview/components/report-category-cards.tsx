@@ -4,6 +4,7 @@ import { InfoCard } from "@/components/cards/info-card";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { ReportOverviewStatus, ReportsOverview } from "@/lib/api/reports";
+import { formatDateShort } from "@/lib/format";
 
 type ReportCategory = ReportsOverview["categoryCards"][number];
 
@@ -17,12 +18,6 @@ const statusLabel: Record<ReportOverviewStatus, string> = {
   COMING_SOON: "Tez orada",
 };
 
-const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
 export function ReportCategoryCards({
   categories,
 }: {
@@ -31,8 +26,8 @@ export function ReportCategoryCards({
   if (categories.length === 0) {
     return (
       <EmptyState
-        title="Hisobot kategoriyalari yo‘q"
-        description="Tizim categoryCards bo‘sh ro‘yxat qaytardi."
+        title="Hisobot bo‘limlari topilmadi"
+        description="Hozircha ko‘rsatish uchun hisobot bo‘limi yo‘q."
       />
     );
   }
@@ -54,15 +49,15 @@ export function ReportCategoryCards({
             <span className="font-semibold">{category.reportCount}</span>
             <span className="text-muted-foreground">
               {category.lastUpdatedAt
-                ? dateFormatter.format(new Date(category.lastUpdatedAt))
-                : "Metadata"}
+                ? formatDateShort(category.lastUpdatedAt)
+                : "Hali yangilanmagan"}
             </span>
           </div>
           <Link
             href={category.href}
             className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
           >
-            Ko‘rish <ArrowRight size={15} />
+            Bo‘limni ochish <ArrowRight size={15} />
           </Link>
         </InfoCard>
       ))}

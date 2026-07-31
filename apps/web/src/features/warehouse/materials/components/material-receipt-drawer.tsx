@@ -179,7 +179,7 @@ export function MaterialReceiptDrawer({
 
         {materials.length === 0 ? (
           <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-            Material qabul qilish uchun avval master data materiallari mavjud
+            Material qabul qilish uchun avval asosiy ma’lumotlarda material mavjud
             bo‘lishi kerak.
           </p>
         ) : null}

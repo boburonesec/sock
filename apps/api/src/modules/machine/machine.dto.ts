@@ -5,7 +5,7 @@ import {
   MaintenanceTaskPriority,
   MaintenanceTaskStatus,
   MaintenanceTaskType,
-} from '@prisma/client';
+} from '../../prisma/client';
 import {
   IsArray,
   ArrayMaxSize,
