@@ -138,7 +138,7 @@ async function verifyCriticalControls(page, label) {
     ["/warehouse/materials", "Material qabul qilish"],
     ["/sales/orders", "Buyurtma yaratish"],
     ["/sales/payments", "To‘lov qayd qilish"],
-    ["/finance/payroll", "Davr yaratish"],
+    ["/finance/payroll", "Yangi davr"],
   ]) {
     await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(600);
@@ -179,6 +179,27 @@ async function main() {
     ok("Desktop owner login redirects to dashboard");
     await verifyCriticalControls(page, "1440px");
 
+    await page.goto(`${BASE}/machines`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(700);
+    const machineTaskChooser = page.getByRole("button", {
+      name: "Yangi stanok qo‘shish",
+    });
+    if ((await machineTaskChooser.count()) === 1) {
+      const formsBefore = await page.locator("main form").count();
+      await machineTaskChooser.click();
+      const formsAfter = await page.locator("main form").count();
+      if (formsBefore === 0 && formsAfter === 1) {
+        ok("Desktop machines opens one selected workflow");
+      } else {
+        fail(
+          "Desktop machines opens one selected workflow",
+          `forms before=${formsBefore} after=${formsAfter}`,
+        );
+      }
+    } else {
+      fail("Desktop machines task chooser", "primary task button missing");
+    }
+
     for (const route of ROUTES) {
       const res = await page.goto(`${BASE}${route}`, {
         waitUntil: "domcontentloaded",
@@ -212,6 +233,23 @@ async function main() {
     await login(page);
     ok("Mobile login works");
     await verifyCriticalControls(page, "390px");
+
+    await page.goto(`${BASE}/machines`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(700);
+    const mobileMachineTask = page.getByRole("button", {
+      name: "Yangi stanok qo‘shish",
+    });
+    if ((await mobileMachineTask.count()) === 1) {
+      await mobileMachineTask.click();
+      const machineCode = page.getByRole("textbox", { name: "Stanok kodi" });
+      if ((await machineCode.count()) === 1) {
+        ok("Mobile machines task opens with accessible fields");
+      } else {
+        fail("Mobile machines task opens with accessible fields");
+      }
+    } else {
+      fail("Mobile machines task chooser", "primary task button missing");
+    }
 
     // hamburger should open sidebar
     const menuBtn = page.getByRole("button", { name: /Menyuni ochish/i });

@@ -389,65 +389,99 @@ async function testPayrollClose(page) {
 
 async function testMachineAndAtomicSlots(page) {
   await page.goto(`${WEB}/machines`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Yangi stanok qo‘shish" }).click();
   const machineForm = page.getByRole("heading", { name: "Stanok qo‘shish" }).locator("..");
   const code = `UI-${Date.now()}`;
-  await machineForm.getByPlaceholder("Kod: ST-01").fill(code);
-  await machineForm.getByPlaceholder("Nomi").fill("UI transactional machine");
+  await machineForm.getByLabel("Stanok kodi").fill(code);
+  await machineForm.getByLabel("Stanok nomi").fill("UI transactional machine");
   const submit = machineForm.getByRole("button", { name: "Saqlash" });
   const failure = controlledMutation(page, "**/machines", "Stanok kodi allaqachon mavjud.");
   await failure.install(); await rapidDoubleClick(submit); await failure.entered;
   assert.equal(await submit.isDisabled(), true); assert.equal(failure.count(), 1);
   failure.release(); await page.getByRole("alert").filter({ hasText: "Stanok kodi" }).waitFor();
-  assert.equal(await machineForm.getByPlaceholder("Kod: ST-01").inputValue(), code);
+  assert.equal(await machineForm.getByLabel("Stanok kodi").inputValue(), code);
+  assert.equal(await machineForm.getByLabel("Stanok nomi").inputValue(), "UI transactional machine");
   pass("machine create failure/pending/double submit", "requests=1");
   await failure.remove();
   await Promise.all([page.waitForResponse((response) => new URL(response.url()).pathname === "/machines" && response.request().method() === "POST" && response.ok()), submit.click()]);
   await page.getByRole("status").filter({ hasText: "Stanok muvaffaqiyatli" }).waitFor();
-  assert.equal(await machineForm.getByPlaceholder("Kod: ST-01").inputValue(), "");
+  assert.equal(await machineForm.getByLabel("Stanok kodi").inputValue(), "");
+  assert.equal(await machineForm.getByLabel("Stanok nomi").inputValue(), "");
+  await page.getByRole("button", { name: "Mexanik biriktirish" }).click();
+  assert.ok(await page.locator("option", { hasText: `${code} · UI transactional machine` }).count() >= 1);
   pass("machine create success feedback/refresh");
 
-  const slotForm = page.getByRole("heading", { name: "Smenadagi 3 inspection slot" }).locator("..");
+  await page.getByRole("button", { name: "Tekshiruv vaqtlarini sozlash" }).click();
+  const slotForm = page.getByRole("heading", { name: "Smenadagi tekshiruv vaqtlari" }).locator("..");
   await selectFirst(slotForm.locator("select"));
-  await slotForm.getByLabel("1-slot").fill("10"); await slotForm.getByLabel("2-slot").fill("130"); await slotForm.getByLabel("3-slot").fill("250");
-  const slotSubmit = slotForm.getByRole("button", { name: "3 slotni saqlash" });
+  await slotForm.getByLabel("1-tekshiruv vaqti").fill("10"); await slotForm.getByLabel("2-tekshiruv vaqti").fill("130"); await slotForm.getByLabel("3-tekshiruv vaqti").fill("250");
+  const slotSubmit = slotForm.getByRole("button", { name: "Tekshiruv vaqtlarini saqlash" });
   const slotFailure = controlledMutation(page, "**/machines/inspection-slots", "Slot konfiguratsiyasi saqlanmadi.");
   await slotFailure.install(); await rapidDoubleClick(slotSubmit); await slotFailure.entered;
   assert.equal(await slotSubmit.isDisabled(), true); assert.equal(slotFailure.count(), 1);
   const body = JSON.parse(slotFailure.requestBody() || "{}");
   assert.equal(body.slots.length, 3);
   slotFailure.release(); await page.getByRole("alert").filter({ hasText: "Slot konfiguratsiyasi" }).waitFor();
-  assert.deepEqual(await Promise.all([1, 2, 3].map((number) => slotForm.getByLabel(`${number}-slot`).inputValue())), ["10", "130", "250"]);
+  assert.deepEqual(await Promise.all([1, 2, 3].map((number) => slotForm.getByLabel(`${number}-tekshiruv vaqti`).inputValue())), ["10", "130", "250"]);
   pass("atomic slots failure/state preserved", "requests=1, partial=0");
   await slotFailure.remove();
   await Promise.all([page.waitForResponse((response) => response.url().includes("/machines/inspection-slots") && response.ok()), slotSubmit.click()]);
-  await page.getByRole("status").filter({ hasText: "atomik saqlandi" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "uchta tekshiruv vaqti saqlandi" }).waitFor();
+  assert.deepEqual(await Promise.all([1, 2, 3].map((number) => slotForm.getByLabel(`${number}-tekshiruv vaqti`).inputValue())), ["10", "130", "250"]);
   pass("atomic slots success/authoritative refresh", "requests=1");
 }
 
 async function testMechanicMutation(page) {
   const task = { id: "ui-mechanic-task", type: "REPAIR", priority: "HIGH", status: "OPEN", description: "Deterministic browser task", resolution: null, dueAt: null, machine: { id: "m", code: "UI-M", name: "UI machine", status: "ACTIVE", note: null, assignments: [] }, assignee: { id: "e", name: "Mechanic" } };
-  await page.route("**/machines/tasks", async (route) => route.request().method() === "GET" ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [task] }) }) : route.continue());
-  await page.route("**/machines/inspection-rounds/mine", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }));
+  let taskState = task;
+  const round = { id: "ui-inspection-round", status: "PENDING", scheduledAt: new Date().toISOString(), machine: task.machine, productionRun: { id: "ui-run", status: "RUNNING", productVariant: { product: { name: "UI Product" } } }, specification: { metrics: [{ id: "metric-length", name: "Uzunlik", code: "LENGTH", unit: "cm", target: "20", min: "19", max: "21" }] }, measurements: [] };
+  await page.route("**/machines/tasks", async (route) => route.request().method() === "GET" ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [taskState] }) }) : route.continue());
+  await page.route("**/machines/inspection-rounds/mine", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [round] }) }));
   await page.route("**/machines/quality-issues", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }));
   await page.goto(`${WEB}/mechanic`, { waitUntil: "domcontentloaded" });
+  const measurement = page.getByRole("spinbutton", { name: /Uzunlik/ });
+  await measurement.waitFor({ state: "visible" });
+  assert.equal(await measurement.count(), 1);
+  await measurement.fill("20.5");
+  const measurementSubmit = page.getByRole("button", { name: "O‘lchovni saqlash" });
+  const measurementFailure = controlledMutation(page, "**/machines/inspection-rounds/ui-inspection-round/measurements", "O‘lchov saqlanmadi.");
+  await measurementFailure.install(); await rapidDoubleClick(measurementSubmit); await measurementFailure.entered;
+  const pendingMeasurement = page.getByRole("button", { name: "Saqlanmoqda..." });
+  assert.equal(await pendingMeasurement.isDisabled(), true); assert.equal(measurementFailure.count(), 1);
+  measurementFailure.release(); await page.getByRole("alert").filter({ hasText: "O‘lchov saqlanmadi" }).waitFor();
+  assert.equal(await measurement.inputValue(), "20.5");
+  pass("mechanic measurement failure/pending/draft preserved", "requests=1");
+  await measurementFailure.remove();
+  await page.route("**/machines/inspection-rounds/ui-inspection-round/measurements", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { roundId: round.id, status: "PASSED", failed: [] } }) }));
+  await measurementSubmit.click();
+  await page.getByRole("status").filter({ hasText: "O‘lchov saqlandi" }).waitFor();
+  pass("mechanic measurement success feedback");
+
+  const openTask = page.getByRole("button", { name: "Vazifani ochish" });
+  assert.equal(await openTask.count(), 1); await openTask.click();
   const start = page.getByRole("button", { name: "Ishni boshlash" });
   const failure = controlledMutation(page, "**/machines/tasks/ui-mechanic-task", "Task boshqa mexanik tomonidan o‘zgartirilgan.", "PATCH");
   await failure.install(); await rapidDoubleClick(start); await failure.entered;
-  assert.equal(await start.isDisabled(), true); assert.equal(failure.count(), 1);
+  assert.equal(await page.getByRole("button", { name: "Boshlanmoqda..." }).isDisabled(), true); assert.equal(failure.count(), 1);
   failure.release(); await page.getByRole("alert").filter({ hasText: "boshqa mexanik" }).waitFor();
   pass("mechanic task failure/pending/double submit", "requests=1");
   await failure.remove();
   let patchCount = 0;
-  await page.route("**/machines/tasks/ui-mechanic-task", async (route) => { if (route.request().method() !== "PATCH") return route.continue(); patchCount += 1; await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { ...task, status: "IN_PROGRESS" } }) }); });
-  await start.click(); await page.getByRole("status").filter({ hasText: "Task boshlandi" }).waitFor();
+  await page.route("**/machines/tasks/ui-mechanic-task", async (route) => { if (route.request().method() !== "PATCH") return route.continue(); patchCount += 1; taskState = { ...taskState, status: "IN_PROGRESS" }; await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: taskState }) }); });
+  await start.click(); await page.getByRole("status").filter({ hasText: "Vazifa boshlandi" }).waitFor();
   assert.equal(patchCount, 1); pass("mechanic task success feedback/refresh", "requests=1");
+  await page.getByLabel("Bajarilgan ish natijasi").fill("Mexanik tekshiruvi bajarildi");
+  await page.getByRole("button", { name: "Yakunlashni tekshirish" }).click();
+  const completionDialog = page.getByRole("alertdialog", { name: "Vazifani yakunlaysizmi?" });
+  assert.equal(await completionDialog.count(), 1);
+  pass("mechanic task completion requires confirmation");
 }
 
 async function testNotificationRead(page) {
   const item = { id: "ui-notification", title: "Deterministic notification", body: "Read mutation contract", readAt: null, createdAt: new Date().toISOString() };
   await page.route("**/notifications", async (route) => route.request().method() === "GET" && route.request().url().startsWith(API) ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [item] }) }) : route.continue());
   await page.goto(`${WEB}/notifications`, { waitUntil: "domcontentloaded" });
-  const button = page.getByRole("button", { name: "O‘qildi" });
+  const button = page.getByRole("button", { name: "O‘qilgan deb belgilash" });
   const failure = controlledMutation(page, "**/notifications/ui-notification/read", "Bildirishnoma holati o‘zgargan.", "PATCH");
   await failure.install(); await rapidDoubleClick(button); await failure.entered;
   assert.equal(await button.isDisabled(), true); assert.equal(failure.count(), 1);
@@ -468,6 +502,11 @@ async function main() {
   page.setDefaultTimeout(15_000);
   try {
     await login(page);
+    if (process.env.UI_TEST_SCOPE === "mechanic") {
+      await testMechanicMutation(page);
+      console.log(`transactional browser mutations: ${results.length} passed, 0 failed`);
+      return;
+    }
     await testMovement(page);
     await testActivity(page);
     await testOrderCancellation(page);
