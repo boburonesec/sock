@@ -114,10 +114,33 @@ export const auditActionLabel: Record<string, string> = {
   ORDER_CREATED: "Buyurtma yaratildi",
   PAYROLL_PERIOD_CREATED: "Ish haqi davri",
   PAYROLL_PERIOD_CLOSED: "Ish haqi yopildi",
+  STAGE_INVENTORY_INCREASED: "Bosqich qoldig‘i oshirildi",
+  STAGE_INVENTORY_DECREASED: "Bosqich qoldig‘i kamaytirildi",
+  TELEGRAM_ACCOUNT_LINKED: "Telegram hisobi bog‘landi",
+  TELEGRAM_ACCOUNT_UNLINKED: "Telegram hisobi uzildi",
+  TELEGRAM_ACCOUNT_BLOCKED: "Telegram hisobi bloklandi",
+  TELEGRAM_LINK_TOKEN_CREATED: "Telegram ulash kodi yaratildi",
 };
 
 export function formatAuditAction(action: string): string {
   return auditActionLabel[action] ?? action.replaceAll("_", " ");
+}
+
+const auditEntityTypeLabel: Record<string, string> = {
+  StageInventory: "Ishlab chiqarish qoldig‘i",
+  TelegramAccount: "Telegram hisobi",
+  TelegramLinkToken: "Telegram ulash kodi",
+  Order: "Buyurtma",
+  Payment: "Mijoz to‘lovi",
+  Expense: "Xarajat",
+  Advance: "Avans",
+  Employee: "Xodim",
+  PayrollPeriod: "Ish haqi davri",
+  StockMovement: "Ombor harakati",
+};
+
+export function formatAuditEntityType(value: string): string {
+  return auditEntityTypeLabel[value] ?? value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
 /** Payroll period */
@@ -157,7 +180,47 @@ export const roleNameLabel: Record<string, string> = {
   Seller: "Sotuvchi",
   "Warehouse Operator": "Omborchi",
   "Shift Receiver": "Smena qabul qiluvchi",
+  Mechanic: "Mexanik",
+  "Mechanic Master": "Mexanik-master",
 };
+
+const visibleStatusLabels: Record<string, string> = {
+  ...entityStatusLabel,
+  ...orderStatusLabel,
+  ...paymentStatusLabel,
+  ...advanceStatusLabel,
+  ...expenseStatusLabel,
+  ...payrollPeriodStatusLabel,
+  OPEN: "Ochiq",
+  IN_PROGRESS: "Bajarilmoqda",
+  COMPLETED: "Bajarilgan",
+  PLANNED: "Rejalashtirilgan",
+  RUNNING: "Ishlamoqda",
+  STOPPED: "To‘xtagan",
+  HOLD: "To‘xtatib turilgan",
+  LOW: "Past",
+  MEDIUM: "O‘rta",
+  HIGH: "Yuqori",
+  CRITICAL: "Jiddiy",
+  MAINTENANCE: "Texnik xizmat",
+  BREAKDOWN: "Nosozlik",
+  REPAIR: "Ta’mirlash",
+  SETUP: "Sozlash",
+  INSPECTION: "Tekshiruv",
+  URGENT: "Shoshilinch",
+  QUALITY: "Sifat nazorati",
+  PASSED: "Me’yorda",
+  ATTENTION: "E’tibor kerak",
+  RECHECK_DUE: "Qayta tekshiruv vaqti",
+  ESCALATED: "Rahbar e’tiborida",
+  RESOLVED: "Hal qilingan",
+  OTHER: "Boshqa",
+};
+
+/** Replaces raw backend status tokens inside user-facing summary sentences. */
+export function formatVisibleStatusText(value: string): string {
+  return value.replace(/\b[A-Z][A-Z_]+\b/g, (token) => visibleStatusLabels[token] ?? token.replaceAll("_", " "));
+}
 
 /** Human labels for permission keys (never show raw keys to operators). */
 export const permissionKeyLabel: Record<string, string> = {

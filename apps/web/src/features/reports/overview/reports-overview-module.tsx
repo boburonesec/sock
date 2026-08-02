@@ -13,13 +13,13 @@ export function ReportsOverviewModule() {
   const { data, error, isError, isPending, refetch } = useReportsOverview();
 
   if (isPending) {
-    return <LoadingState label="Hisobotlar overview yuklanmoqda..." />;
+    return <LoadingState label="Hisobotlar yuklanmoqda..." />;
   }
 
   if (isError) {
     return (
       <ErrorState
-        title="Hisobotlar overview yuklanmadi"
+        title="Hisobotlar yuklanmadi"
         description={
           error instanceof Error
             ? error.message
@@ -39,7 +39,7 @@ export function ReportsOverviewModule() {
   if (!overview) {
     return (
       <ErrorState
-        title="Hisobotlar overview mavjud emas"
+        title="Hisobot ma’lumotlari topilmadi"
         description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
@@ -53,26 +53,26 @@ export function ReportsOverviewModule() {
   return (
     <div className="space-y-8">
       <PageSection
-        title="Hisobot kategoriyalari"
-        description="Tizim qaytargan hisobot metadata katalogi."
+        title="Hisobot bo‘limlari"
+        description="Kerakli yo‘nalishni tanlang va tegishli ma’lumotlarni ko‘ring."
       >
         <ReportCategoryCards categories={overview.categoryCards} />
       </PageSection>
 
       <PageSection
         title="Tezkor hisobotlar"
-        description="Ko‘p ishlatiladigan umumiy ko‘rinishlar."
+        description="Eng ko‘p ishlatiladigan ma’lumotlarga tez o‘ting."
       >
         <QuickReportShortcuts reports={overview.quickReports} />
       </PageSection>
 
       <PageSection
         title="So‘nggi hisobotlar"
-        description="Real generated report metadata mavjud bo‘lmaguncha bo‘sh ko‘rsatiladi."
+        description="Oldin tayyorlangan hisobotlar shu yerda ko‘rinadi."
       >
         <p className="mb-4 text-sm text-muted-foreground">
-          Excel/PDF export keyingi bosqichda. Yuqoridagi tezkor havolalar haqiqiy
-          operatsion ekranlarga olib boradi.
+          Hozircha hisobotlar ekranda ko‘riladi. Excel yoki PDF faylga yuklash
+          keyingi bosqichda qo‘shiladi.
         </p>
         <RecentReportsTable reports={overview.recentReports} />
       </PageSection>

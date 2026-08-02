@@ -15,16 +15,10 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { financeApi } from "@/lib/api/finance";
 import { queryKeys } from "@/lib/api/query-keys";
+import { formatDateTimeForUser } from "@/lib/format";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
 
 type Kind = "bonus" | "penalty";
-
-function formatWhen(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export function AdjustmentsListModule({ kind }: { kind: Kind }) {
   const isBonus = kind === "bonus";
@@ -89,7 +83,7 @@ export function AdjustmentsListModule({ kind }: { kind: Kind }) {
                   {labelStatus(advanceStatusLabel, row.status)}
                 </StatusBadge>
               </DataTableCell>
-              <DataTableCell>{formatWhen(row.requestedAt)}</DataTableCell>
+              <DataTableCell>{formatDateTimeForUser(row.requestedAt)}</DataTableCell>
               <DataTableCell>{row.requestedBy?.name ?? "—"}</DataTableCell>
             </DataTableRow>
           ))

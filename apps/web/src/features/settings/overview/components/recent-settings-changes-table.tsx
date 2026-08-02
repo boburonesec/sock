@@ -34,7 +34,7 @@ export function RecentSettingsChangesTable({
           <EmptyTableState
             colSpan={5}
             title="So‘nggi o‘zgarishlar yo‘q"
-            description="AuditLog-backed settings history hali ulanmagan."
+            description="Sozlamalar tarixi hali ulanmagan."
           />
         ) : (
           changes.map((change) => (

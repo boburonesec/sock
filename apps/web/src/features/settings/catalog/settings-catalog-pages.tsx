@@ -140,8 +140,8 @@ export function SettingsRolesPage() {
       />
 
       <p className="mb-4 text-sm text-muted-foreground">
-        Hozircha rollar tizim tomonidan beriladi (o‘zgartirish/yangi rol ochish MVP da yo‘q).
-        Muhimi: dasturga kiradigan operatorga to‘g‘ri rolni tanlash.
+        Rollar hozircha tayyor holda beriladi va ularni o‘zgartirib bo‘lmaydi.
+        Har bir operatorga bajaradigan ishiga mos rolni tanlang.
       </p>
 
       {roles.length === 0 ? (
@@ -320,7 +320,7 @@ export function SettingsThresholdsPage() {
     <>
       <PageHeader
         title="Limitlar"
-        description="Material uchun minimal qoldiq — past qoldiq KPI shu qiymatga asoslanadi"
+        description="Material qancha qolganda ogohlantirish chiqishini belgilang"
       />
 
       <section className="panel mb-6 space-y-4 p-5">
@@ -409,7 +409,7 @@ export function SettingsThresholdsPage() {
             <EmptyTableState
               colSpan={4}
               title="Limitlar yo‘q"
-              description="Material uchun minimal qoldiq qo‘ying — ombor KPI shu limitalarga tayanadi."
+              description="Material qancha qolganda ogohlantirish kerakligini kiriting."
             />
           )}
         </tbody>

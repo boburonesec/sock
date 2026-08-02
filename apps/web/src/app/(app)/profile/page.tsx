@@ -76,7 +76,7 @@ export default function ProfilePage() {
 
       <section className="panel p-5">
         <h2 className="font-semibold">Telegram bildirishnomalari</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Task va recheck xabarlarini olish uchun USER accountingizni botga ulang.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Vazifa va qayta tekshiruv xabarlarini olish uchun dastur hisobingizni botga ulang.</p>
         {telegramCode ? <p className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 font-mono text-lg">/link {telegramCode}</p> : <Button className="mt-3" variant="outline" onClick={() => telegramLink.mutate()}>Ulanish kodini olish</Button>}
       </section>
 

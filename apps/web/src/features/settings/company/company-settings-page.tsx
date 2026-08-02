@@ -553,7 +553,7 @@ export function CompanySettingsPage() {
                   </select>
                 </FormField>
                 <p className="text-xs text-muted-foreground">Yangi xodim profili «Xodimlar» bo‘limida yaratiladi.</p>
-                {linkEmployee.isError ? <p className="text-sm text-rose-300">Bog‘lash amalga oshmadi. Profil boshqa accountga biriktirilmaganini tekshiring.</p> : null}
+                {linkEmployee.isError ? <p className="text-sm text-rose-300">Bog‘lash amalga oshmadi. Profil boshqa dastur hisobiga biriktirilmaganini tekshiring.</p> : null}
                 <Button className="w-full" disabled={!selectedEmployeeId || linkEmployee.isPending}>{linkEmployee.isPending ? "Bog‘lanmoqda..." : "Xodim profiliga bog‘lash"}</Button>
               </form>
             ) : null}

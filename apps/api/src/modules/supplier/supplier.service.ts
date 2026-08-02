@@ -4,8 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PaymentStatus, Prisma } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { PaymentStatus, Prisma } from '../../prisma/client';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
@@ -24,6 +24,8 @@ import {
 } from './supplier.types';
 
 const RECENT_PAYMENT_LIMIT = 50;
+const SUPPLIER_PAYMENT_OPERATION = 'SUPPLIER_PAYMENT_CREATE';
+const TRANSACTION_RETRY_LIMIT = 3;
 
 @Injectable()
 export class SupplierService {
@@ -324,6 +326,7 @@ export class SupplierService {
   async createPayment(
     context: RequestContext,
     dto: CreateSupplierPaymentDto,
+    idempotencyKey: string,
   ): Promise<{ data: SupplierPaymentResponse }> {
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
@@ -346,7 +349,29 @@ export class SupplierService {
       throw new BadRequestException('Duplicate purchase allocation is not allowed.');
     }
 
-    const payment = await this.prisma.$transaction(async (tx) => {
+    const requestFingerprint = this.fingerprintSupplierPayment(dto, allocationAmounts);
+    const replay = await this.findSupplierPaymentReplay(
+      tenantId,
+      factoryId,
+      idempotencyKey,
+      requestFingerprint,
+    );
+
+    if (replay) {
+      return { data: replay };
+    }
+
+    const createTransaction = () => this.prisma.$transaction(async (tx) => {
+      await tx.supplierPaymentIdempotency.create({
+        data: {
+          tenantId,
+          factoryId,
+          operation: SUPPLIER_PAYMENT_OPERATION,
+          key: idempotencyKey,
+          requestFingerprint,
+        },
+      });
+
       const supplier = await tx.supplier.findFirst({
         where: {
           id: dto.supplierId,
@@ -359,6 +384,25 @@ export class SupplierService {
 
       if (!supplier) {
         throw new NotFoundException('Active supplier not found.');
+      }
+
+      const sortedPurchaseIds = [...uniquePurchaseIds].sort();
+      const lockedPurchases = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "SupplierPurchase"
+          WHERE "tenantId" = ${tenantId}
+            AND "factoryId" = ${factoryId}
+            AND "id" IN (${Prisma.join(sortedPurchaseIds)})
+          ORDER BY "id"
+          FOR UPDATE
+        `,
+      );
+
+      if (lockedPurchases.length !== sortedPurchaseIds.length) {
+        throw new NotFoundException(
+          'Allocatable purchase not found for this supplier and factory.',
+        );
       }
 
       const purchases = await tx.supplierPurchase.findMany({
@@ -483,13 +527,13 @@ export class SupplierService {
         }
 
         const previousStatus = purchase.paymentStatus;
-        const previousPaid = this.sumDecimal(
-          purchase.allocations.map((existingAllocation) => existingAllocation.amount),
-        );
-        const newPaid = previousPaid.plus(allocationAmounts[index]);
+        const authoritativePaid = await tx.supplierPaymentAllocation.aggregate({
+          where: { tenantId, purchaseId: purchase.id },
+          _sum: { amount: true },
+        });
         const nextStatus = this.resolvePaymentStatus(
           purchase.totalAmount,
-          newPaid,
+          authoritativePaid._sum.amount ?? new Prisma.Decimal(0),
         );
 
         if (nextStatus !== previousStatus) {
@@ -530,8 +574,49 @@ export class SupplierService {
         select: supplierPaymentSelect,
       });
 
+      await tx.supplierPaymentIdempotency.update({
+        where: {
+          tenantId_factoryId_operation_key: {
+            tenantId,
+            factoryId,
+            operation: SUPPLIER_PAYMENT_OPERATION,
+            key: idempotencyKey,
+          },
+        },
+        data: { paymentId: createdPayment.id },
+      });
+
       return this.mapSupplierPayment(paymentWithRelations);
     });
+
+    let payment: SupplierPaymentResponse | null = null;
+
+    for (let attempt = 1; attempt <= TRANSACTION_RETRY_LIMIT; attempt += 1) {
+      try {
+        payment = await createTransaction();
+        break;
+      } catch (error) {
+        const conflictingReplay = await this.findSupplierPaymentReplay(
+          tenantId,
+          factoryId,
+          idempotencyKey,
+          requestFingerprint,
+        );
+
+        if (conflictingReplay) {
+          payment = conflictingReplay;
+          break;
+        }
+
+        if (!this.isRetryableTransactionError(error) || attempt === TRANSACTION_RETRY_LIMIT) {
+          throw error;
+        }
+      }
+    }
+
+    if (!payment) {
+      throw new ConflictException('Supplier payment transaction could not be completed.');
+    }
 
     return { data: payment };
   }
@@ -587,6 +672,87 @@ export class SupplierService {
         };
       }),
     };
+  }
+
+  private async findSupplierPaymentReplay(
+    tenantId: string,
+    factoryId: string,
+    idempotencyKey: string,
+    requestFingerprint: string,
+  ): Promise<SupplierPaymentResponse | null> {
+    const record = await this.prisma.supplierPaymentIdempotency.findUnique({
+      where: {
+        tenantId_factoryId_operation_key: {
+          tenantId,
+          factoryId,
+          operation: SUPPLIER_PAYMENT_OPERATION,
+          key: idempotencyKey,
+        },
+      },
+      select: {
+        requestFingerprint: true,
+        payment: { select: supplierPaymentSelect },
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    if (record.requestFingerprint !== requestFingerprint) {
+      throw new ConflictException(
+        'Idempotency key was already used with different supplier payment data.',
+      );
+    }
+
+    if (!record.payment) {
+      throw new ConflictException(
+        'Supplier payment with this idempotency key is still being processed.',
+      );
+    }
+
+    return this.mapSupplierPayment(record.payment);
+  }
+
+  private fingerprintSupplierPayment(
+    dto: CreateSupplierPaymentDto,
+    allocationAmounts: Prisma.Decimal[],
+  ): string {
+    const allocations = dto.allocations
+      .map((allocation, index) => ({
+        purchaseId: allocation.purchaseId,
+        amount: allocationAmounts[index].toString(),
+      }))
+      .sort((left, right) => left.purchaseId.localeCompare(right.purchaseId));
+    const canonicalPayload = JSON.stringify({
+      supplierId: dto.supplierId,
+      amount: new Prisma.Decimal(dto.amount).toString(),
+      method: dto.method,
+      paymentDate: dto.paymentDate ? new Date(dto.paymentDate).toISOString() : null,
+      note: dto.note ?? null,
+      allocations,
+    });
+
+    return createHash('sha256').update(canonicalPayload).digest('hex');
+  }
+
+  private isRetryableTransactionError(error: unknown): boolean {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+      return true;
+    }
+
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const candidate = error as {
+      code?: unknown;
+      meta?: { database_error?: { code?: unknown } };
+    };
+    const databaseCode = candidate.meta?.database_error?.code;
+
+    return candidate.code === '40001' || candidate.code === '40P01' ||
+      databaseCode === '40001' || databaseCode === '40P01';
   }
 
   private sumDecimal(values: Prisma.Decimal[]): Prisma.Decimal {

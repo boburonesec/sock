@@ -2,10 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
+import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,7 @@ export function SupplierPurchaseDrawer({
   onOpenChange,
   onSubmit,
 }: SupplierPurchaseDrawerProps) {
+  const [pendingPayload, setPendingPayload] = useState<CreateSupplierPurchasePayload | null>(null);
   const {
     control,
     register,
@@ -86,6 +88,7 @@ export function SupplierPurchaseDrawer({
 
   useEffect(() => {
     if (open) {
+      setPendingPayload(null);
       reset({
         supplierId: initialSupplierId ?? "",
         purchaseDate: new Date().toISOString().slice(0, 10),
@@ -106,8 +109,10 @@ export function SupplierPurchaseDrawer({
     return total + quantity * unitPrice;
   }, 0);
   const formDisabled = isSubmitting || isOptionsLoading;
+  const selectedSupplier = suppliers.find((supplier) => supplier.id === watch("supplierId"));
 
   return (
+    <>
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
@@ -117,8 +122,9 @@ export function SupplierPurchaseDrawer({
     >
       <form
         className="space-y-5"
-        onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
+        onSubmit={handleSubmit((values) => setPendingPayload(buildPayload(values)))}
       >
+        {initialSupplierId && selectedSupplier ? <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2"><p className="text-xs text-muted-foreground">Tanlangan yetkazib beruvchi</p><p className="font-semibold">{selectedSupplier.name}</p></div> : null}
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             htmlFor="purchaseSupplier"
@@ -128,7 +134,7 @@ export function SupplierPurchaseDrawer({
           >
             <Select
               id="purchaseSupplier"
-              disabled={formDisabled}
+              disabled={formDisabled || Boolean(initialSupplierId)}
               aria-invalid={Boolean(errors.supplierId)}
               {...register("supplierId")}
             >
@@ -288,10 +294,21 @@ export function SupplierPurchaseDrawer({
           className="w-full"
           disabled={formDisabled || suppliers.length === 0 || materials.length === 0}
         >
-          {isSubmitting ? "Xarid saqlanmoqda..." : "Xarid qayd qilish"}
+          {isSubmitting ? "Xarid saqlanmoqda..." : "Xaridni tekshirish"}
         </Button>
       </form>
     </Drawer>
+    <ConfirmDialog
+      open={Boolean(pendingPayload)}
+      onOpenChange={(nextOpen) => { if (!nextOpen && !isSubmitting) setPendingPayload(null); }}
+      title="Xaridni tasdiqlash"
+      description={pendingPayload && selectedSupplier ? `${selectedSupplier.name} · ${pendingPayload.purchaseDate ?? "bugun"} · ${pendingPayload.items.length} ta material · taxminiy ${estimatedTotal.toLocaleString("uz-UZ")} so‘m. Server yakuniy summani satrlardan hisoblaydi va bu summa yetkazib beruvchi qarzini oshiradi; ombor qoldig‘i o‘zgarmaydi.` : "Xarid ma’lumotlarini tekshiring."}
+      confirmLabel="Xaridni tasdiqlash"
+      isPending={isSubmitting}
+      errorMessage={errorMessage}
+      onConfirm={async () => { if (!pendingPayload) return; await onSubmit(pendingPayload); setPendingPayload(null); }}
+    />
+    </>
   );
 }
 

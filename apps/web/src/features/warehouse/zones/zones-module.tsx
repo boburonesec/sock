@@ -83,19 +83,19 @@ export function ZonesModule() {
           <KpiCard
             label="Jami zonalar"
             value={`${summary?.kpis.warehouseZoneCount ?? "0"} ta`}
-            description="Tizim stock-summary qiymati"
+            description="Ombordagi barcha zonalar"
             accent="primary"
           />
           <KpiCard
             label="Tayyor mahsulot"
             value={`${summary?.kpis.finishedProductQuantity ?? "0"} dona`}
-            description="Finished Products zone summary"
+            description="Tayyor mahsulot zonasidagi jami"
             accent="success"
           />
           <KpiCard
             label="Material yozuvlari"
             value={`${summary?.kpis.materialRecordCount ?? "0"} ta`}
-            description="Tizim hisoblagan material record count"
+            description="Material qoldig‘i yozuvlari"
             accent="neutral"
           />
           <KpiCard

@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PlatformAdmin } from '@prisma/client';
+import { PlatformAdmin } from '../../../prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import * as argon2 from 'argon2';
 import * as jwt from 'jsonwebtoken';

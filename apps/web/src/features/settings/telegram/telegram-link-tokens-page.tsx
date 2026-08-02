@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { queryKeys } from "@/lib/api/query-keys";
 import { telegramApi, type TelegramAccountListItem } from "@/lib/api/telegram";
+import { formatDateTimeForUser } from "@/lib/format";
 
 export function TelegramLinkTokensPage() {
   const queryClient = useQueryClient();
@@ -198,16 +199,16 @@ export function TelegramLinkTokensPage() {
       </PageSection>
 
       <PageSection
-        title="Telegram link tokenlar"
+        title="Telegram ulash kodlari"
         description="Kod faqat yaratilgan paytda bir marta ko‘rinadi."
       >
         {tokens.length === 0 ? (
           <EmptyState
             title="Telegram tokenlar yo‘q"
-            description="Hali employee yoki client uchun Telegram link kodi yaratilmagan."
+            description="Hali xodim yoki mijoz uchun Telegram ulash kodi yaratilmagan."
           />
         ) : (
-          <DataTable label="Telegram link tokenlar">
+          <DataTable label="Telegram ulash kodlari">
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeader>Ulanadigan tur</DataTableHeader>
@@ -226,7 +227,7 @@ export function TelegramLinkTokensPage() {
                       {token.targetName ?? "Nomi ko‘rsatilmagan"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {token.targetId ?? "ID mavjud emas"}
+                      {token.targetId ?? "Yozuv raqami mavjud emas"}
                     </div>
                   </DataTableCell>
                   <DataTableCell>{formatDateTime(token.expiresAt)}</DataTableCell>
@@ -308,8 +309,5 @@ function formatTargetType(value: string): string {
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(value);
 }

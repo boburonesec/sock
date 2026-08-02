@@ -6,7 +6,7 @@ export default function EmployeeBonusesPage() {
     <>
       <PageHeader
         title="Bonuslar"
-        description="Xodimlarga berilgan bonus yozuvlari (backend hisobi asosida)"
+        description="Xodimlarga berilgan qo‘shimcha pullar va ularning holati"
       />
       <AdjustmentsListModule kind="bonus" />
     </>

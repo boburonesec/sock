@@ -326,7 +326,7 @@ export function OrdersModule() {
           if (!open) setReturnTarget(null);
         }}
         title="Yetkazuvni qaytarish"
-        description="Mahsulot Finished Products zonasiga qaytadi. Mijoz to‘lovi avtomatik bekor qilinmaydi."
+        description="Mahsulot Tayyor mahsulot zonasiga qaytadi. Mijoz to‘lovi avtomatik bekor qilinmaydi."
         confirmLabel="Qaytarish"
         onConfirm={async () => {
           if (returnTarget) await returnDelivery.mutateAsync(returnTarget.id);

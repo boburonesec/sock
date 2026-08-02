@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import {
   EmployeeCompensationType,
   EmployeeWorkProfile,
-} from '@prisma/client';
+} from '../../prisma/client';
 import {
   ArrayMinSize,
   IsArray,

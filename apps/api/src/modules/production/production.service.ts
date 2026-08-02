@@ -12,7 +12,7 @@ import {
   Prisma,
   ProductionRunStatus,
   WorkerActivitySource,
-} from '@prisma/client';
+} from '../../prisma/client';
 import { sanitizeOperatorText } from '../../common/sanitize-operator-text';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';

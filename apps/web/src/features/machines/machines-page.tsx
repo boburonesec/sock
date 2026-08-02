@@ -8,7 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { machinesApi } from "@/lib/api/machines";
 import { productionApi } from "@/lib/api/production";
+import { formatVisibleStatusText } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
+
+type MachineWorkflow =
+  | "create-machine"
+  | "assign-mechanic"
+  | "start-run"
+  | "piece-rate"
+  | "maintenance-task"
+  | "inspection-slots"
+  | "measurement-spec";
 
 export function MachinesPage() {
   const queryClient = useQueryClient();
@@ -80,6 +90,8 @@ export function MachinesPage() {
   ]);
   const [intake, setIntake] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState("");
+  const [activeWorkflow, setActiveWorkflow] =
+    useState<MachineWorkflow | null>(null);
   const inFlight = useRef(new Set<string>());
   const refresh = async () => {
     await Promise.all([
@@ -160,7 +172,7 @@ export function MachinesPage() {
       void submitOnce(
         `intake:${payload.id}`,
         () => createIntakeMutation.mutateAsync(payload),
-        "Run outputi qabul qilindi.",
+        "Ishlab chiqarilgan mahsulot qabul qilindi.",
         () => setIntake((current) => ({ ...current, [payload.id]: "" })),
       ),
   };
@@ -170,7 +182,7 @@ export function MachinesPage() {
       void submitOnce(
         "create-spec",
         () => createSpecMutation.mutateAsync(),
-        "O‘lchov specificationi yaratildi va aktivlandi.",
+        "O‘lchov me’yorlari yaratildi va faollashtirildi.",
       ),
   };
   const mechanics = (lookups.data?.data.employees ?? []).filter(
@@ -193,8 +205,8 @@ export function MachinesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Stanoklar va ishlab chiqarish runlari"
-        description="Stanok, mexanik assignment va qabul qilinadigan outputning yagona ish maydoni"
+        title="Stanoklar va ishlab chiqarish"
+        description="Stanok, biriktirilgan mexanik va tayyorlangan mahsulotni qabul qilish"
       />
       {success && (
         <p
@@ -212,10 +224,47 @@ export function MachinesPage() {
           {error.message}
         </p>
       )}
+      {(canManageMachines || canManageProduction || canAssignTasks || canConfigureQuality) && (
+        <section className="space-y-3 rounded-xl border bg-card p-4">
+          <div>
+            <h2 className="font-semibold">Qaysi ishni bajarmoqchisiz?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Kerakli amalni tanlang. Bir vaqtda faqat bitta forma ochiladi.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              canManageMachines && ["create-machine", "Yangi stanok qo‘shish"],
+              canManageMachines && ["assign-mechanic", "Mexanik biriktirish"],
+              canManageProduction && ["start-run", "Ishlab chiqarishni boshlash"],
+              canManageMachines && ["piece-rate", "Ishbay stavka belgilash"],
+              canAssignTasks && ["maintenance-task", "Mexanikka vazifa berish"],
+              canConfigureQuality && ["inspection-slots", "Tekshiruv vaqtlarini sozlash"],
+              canConfigureQuality && ["measurement-spec", "O‘lchov me’yorlarini sozlash"],
+            ]
+              .filter((item): item is string[] => Boolean(item))
+              .map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={activeWorkflow === value ? "default" : "outline"}
+                  className="h-auto min-h-11 justify-start whitespace-normal py-3 text-left"
+                  aria-pressed={activeWorkflow === value}
+                  onClick={() =>
+                    setActiveWorkflow((current) =>
+                      current === value ? null : (value as MachineWorkflow),
+                    )
+                  }
+                >
+                  {label}
+                </Button>
+              ))}
+          </div>
+        </section>
+      )}
       {(canManageMachines || canManageProduction) && (
-        <section className="grid gap-4 lg:grid-cols-3">
-          {canManageMachines && (
-            <>
+        <section className="grid gap-4">
+          {canManageMachines && activeWorkflow === "create-machine" && (
               <form
                 className="space-y-3 rounded-xl border p-4"
                 onSubmit={(e: FormEvent) => {
@@ -229,16 +278,21 @@ export function MachinesPage() {
                 }}
               >
                 <h2 className="font-semibold">Stanok qo‘shish</h2>
+                <p className="text-xs text-muted-foreground">Yangi stanokning zavoddagi kodi va nomini kiriting.</p>
+                <p className="text-xs font-medium">Stanok kodi</p>
                 <Input
-                  placeholder="Kod: ST-01"
+                  aria-label="Stanok kodi"
+                  placeholder="Stanok kodi, masalan ST-01"
                   value={machineForm.code}
                   onChange={(e) =>
                     setMachineForm({ ...machineForm, code: e.target.value })
                   }
                   required
                 />
+                <p className="text-xs font-medium">Stanok nomi</p>
                 <Input
-                  placeholder="Nomi"
+                  aria-label="Stanok nomi"
+                  placeholder="Stanok nomi"
                   value={machineForm.name}
                   onChange={(e) =>
                     setMachineForm({ ...machineForm, name: e.target.value })
@@ -249,6 +303,8 @@ export function MachinesPage() {
                   Saqlash
                 </Button>
               </form>
+          )}
+          {canManageMachines && activeWorkflow === "assign-mechanic" && (
               <form
                 className="space-y-3 rounded-xl border p-4"
                 onSubmit={(e: FormEvent) => {
@@ -265,7 +321,10 @@ export function MachinesPage() {
                 }}
               >
                 <h2 className="font-semibold">Mexanik biriktirish</h2>
+                <p className="text-xs text-muted-foreground">Qaysi mexanik qaysi stanok va smenaga mas’ul ekanini belgilang.</p>
+                <p className="text-xs font-medium">Stanok</p>
                 <Select
+                  aria-label="Stanok"
                   value={assignment.machineId}
                   onChange={(e) =>
                     setAssignment({ ...assignment, machineId: e.target.value })
@@ -279,7 +338,9 @@ export function MachinesPage() {
                     </option>
                   ))}
                 </Select>
+                <p className="text-xs font-medium">Mas’ul mexanik</p>
                 <Select
+                  aria-label="Mas’ul mexanik"
                   value={assignment.mechanicId}
                   onChange={(e) =>
                     setAssignment({ ...assignment, mechanicId: e.target.value })
@@ -293,7 +354,9 @@ export function MachinesPage() {
                     </option>
                   ))}
                 </Select>
+                <p className="text-xs font-medium">Ish smenasi</p>
                 <Select
+                  aria-label="Ish smenasi"
                   value={assignment.workShiftId}
                   onChange={(e) =>
                     setAssignment({
@@ -310,7 +373,9 @@ export function MachinesPage() {
                     </option>
                   ))}
                 </Select>
+                <p className="text-xs font-medium">Biriktirish boshlanadigan vaqt</p>
                 <Input
+                  aria-label="Biriktirish boshlanadigan vaqt"
                   type="datetime-local"
                   value={assignment.validFrom}
                   onChange={(e) =>
@@ -322,9 +387,8 @@ export function MachinesPage() {
                   Biriktirish
                 </Button>
               </form>
-            </>
           )}
-          {canManageProduction && (
+          {canManageProduction && activeWorkflow === "start-run" && (
             <form
               className="space-y-3 rounded-xl border p-4"
               onSubmit={(e: FormEvent) => {
@@ -332,12 +396,15 @@ export function MachinesPage() {
                 void submitOnce(
                   "create-run",
                   () => createRun.mutateAsync(run),
-                  "Production run muvaffaqiyatli boshlandi.",
+                    "Stanokda ishlab chiqarish boshlandi.",
                 );
               }}
             >
-              <h2 className="font-semibold">Production run boshlash</h2>
+              <h2 className="font-semibold">Ishlab chiqarishni boshlash</h2>
+              <p className="text-xs text-muted-foreground">Stanok, mahsulot, operator va smenani tanlang.</p>
+              <p className="text-xs font-medium">Stanok</p>
               <Select
+                aria-label="Stanok"
                 value={run.machineId}
                 onChange={(e) => setRun({ ...run, machineId: e.target.value })}
                 required
@@ -349,21 +416,25 @@ export function MachinesPage() {
                   </option>
                 ))}
               </Select>
+              <p className="text-xs font-medium">Mahsulot turi</p>
               <Select
+                aria-label="Mahsulot turi"
                 value={run.productVariantId}
                 onChange={(e) =>
                   setRun({ ...run, productVariantId: e.target.value })
                 }
                 required
               >
-                <option value="">Mahsulot varianti</option>
+                <option value="">Mahsulot turini tanlang</option>
                 {variants.data?.data.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.label}
                   </option>
                 ))}
               </Select>
+              <p className="text-xs font-medium">Stanok operatori</p>
               <Select
+                aria-label="Stanok operatori"
                 value={run.operatorEmployeeId}
                 onChange={(e) =>
                   setRun({ ...run, operatorEmployeeId: e.target.value })
@@ -377,7 +448,9 @@ export function MachinesPage() {
                   </option>
                 ))}
               </Select>
+              <p className="text-xs font-medium">Ish smenasi</p>
               <Select
+                aria-label="Ish smenasi"
                 value={run.workShiftId}
                 onChange={(e) =>
                   setRun({ ...run, workShiftId: e.target.value })
@@ -392,15 +465,15 @@ export function MachinesPage() {
                 ))}
               </Select>
               <Button className="w-full" disabled={createRun.isPending}>
-                Runni boshlash
+                Ishlab chiqarishni boshlash
               </Button>
             </form>
           )}
         </section>
       )}
       {(canManageMachines || canAssignTasks || canConfigureQuality) && (
-        <section className="grid gap-4 lg:grid-cols-2">
-          {canManageMachines && (
+        <section className="grid gap-4">
+          {canManageMachines && activeWorkflow === "piece-rate" && (
             <form
               className="space-y-3 rounded-xl border p-4"
               onSubmit={(e) => {
@@ -413,7 +486,9 @@ export function MachinesPage() {
               }}
             >
               <h2 className="font-semibold">Model bo‘yicha ishbay stavka</h2>
+              <p className="text-xs text-muted-foreground">Bir dona mahsulot uchun mexanik yoki operatorga to‘lanadigan haq.</p>
               <Select
+                aria-label="Mahsulot modeli"
                 value={rate.productId}
                 onChange={(e) =>
                   setRate({ ...rate, productId: e.target.value })
@@ -428,6 +503,7 @@ export function MachinesPage() {
                 ))}
               </Select>
               <Select
+                aria-label="Ish turi"
                 value={rate.workRole}
                 onChange={(e) =>
                   setRate({
@@ -444,6 +520,7 @@ export function MachinesPage() {
                 min={0}
                 step="0.01"
                 placeholder="so‘m/dona"
+                aria-label="Bir dona uchun haq"
                 value={rate.amount}
                 onChange={(e) => setRate({ ...rate, amount: e.target.value })}
                 required
@@ -451,7 +528,7 @@ export function MachinesPage() {
               <Button disabled={createRate.isPending}>Stavkani saqlash</Button>
             </form>
           )}
-          {canAssignTasks && (
+          {canAssignTasks && activeWorkflow === "maintenance-task" && (
             <form
               className="space-y-3 rounded-xl border p-4"
               onSubmit={(e) => {
@@ -459,13 +536,15 @@ export function MachinesPage() {
                 void submitOnce(
                   "create-task",
                   () => createTask.mutateAsync(),
-                  "Mexanikka task yuborildi.",
+                  "Mexanikka vazifa yuborildi.",
                   () => setTask({ ...task, description: "" }),
                 );
               }}
             >
-              <h2 className="font-semibold">Mexanikka task</h2>
+              <h2 className="font-semibold">Mexanikka vazifa</h2>
+              <p className="text-xs text-muted-foreground">Stanokni tanlang, mas’ul mexanikni belgilang va vazifani yozing.</p>
               <Select
+                aria-label="Stanok"
                 value={task.machineId}
                 onChange={(e) =>
                   setTask({ ...task, machineId: e.target.value })
@@ -480,6 +559,7 @@ export function MachinesPage() {
                 ))}
               </Select>
               <Select
+                aria-label="Mas’ul mexanik"
                 value={task.assigneeMechanicId}
                 onChange={(e) =>
                   setTask({ ...task, assigneeMechanicId: e.target.value })
@@ -495,6 +575,7 @@ export function MachinesPage() {
               </Select>
               <div className="grid grid-cols-2 gap-2">
                 <Select
+                  aria-label="Vazifa turi"
                   value={task.type}
                   onChange={(e) => setTask({ ...task, type: e.target.value })}
                 >
@@ -504,6 +585,7 @@ export function MachinesPage() {
                   <option value="OTHER">Boshqa</option>
                 </Select>
                 <Select
+                  aria-label="Vazifa muhimligi"
                   value={task.priority}
                   onChange={(e) =>
                     setTask({ ...task, priority: e.target.value })
@@ -516,6 +598,7 @@ export function MachinesPage() {
                 </Select>
               </div>
               <Input
+                aria-label="Vazifa tavsifi"
                 placeholder="Vazifa tavsifi"
                 value={task.description}
                 onChange={(e) =>
@@ -523,10 +606,10 @@ export function MachinesPage() {
                 }
                 required
               />
-              <Button disabled={createTask.isPending}>Task berish</Button>
+              <Button disabled={createTask.isPending}>Vazifani yuborish</Button>
             </form>
           )}
-          {canConfigureQuality && (
+          {canConfigureQuality && activeWorkflow === "inspection-slots" && (
             <>
               <form
                 className="space-y-3 rounded-xl border p-4"
@@ -546,12 +629,13 @@ export function MachinesPage() {
                         third: values[2],
                       });
                     },
-                    "3 ta inspection slot atomik saqlandi.",
+                    "Smenadagi uchta tekshiruv vaqti saqlandi.",
                   );
                 }}
               >
-                <h2 className="font-semibold">Smenadagi 3 inspection slot</h2>
+                <h2 className="font-semibold">Smenadagi tekshiruv vaqtlari</h2>
                 <Select
+                  aria-label="Ish smenasi"
                   value={slot.workShiftId}
                   onChange={(e) => {
                     const shift = lookups.data?.data.shifts.find(
@@ -577,7 +661,7 @@ export function MachinesPage() {
                   ))}
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Smena boshlanishidan keyingi daqiqalar
+                  Smena boshlanganidan necha daqiqa keyin tekshirilishini kiriting.
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {(["first", "second", "third"] as const).map((key, index) => (
@@ -586,7 +670,7 @@ export function MachinesPage() {
                       type="number"
                       min={0}
                       required
-                      aria-label={`${index + 1}-slot`}
+                      aria-label={`${index + 1}-tekshiruv vaqti`}
                       value={slot[key]}
                       onChange={(e) =>
                         setSlot({ ...slot, [key]: e.target.value })
@@ -595,9 +679,13 @@ export function MachinesPage() {
                   ))}
                 </div>
                 <Button disabled={configureSlots.isPending}>
-                  3 slotni saqlash
+                  Tekshiruv vaqtlarini saqlash
                 </Button>
               </form>
+            </>
+          )}
+          {canConfigureQuality && activeWorkflow === "measurement-spec" && (
+            <>
               <form
                 className="space-y-3 rounded-xl border p-4"
                 onSubmit={(e) => {
@@ -605,8 +693,10 @@ export function MachinesPage() {
                   createSpec.mutate();
                 }}
               >
-                <h2 className="font-semibold">Model o‘lchov specificationi</h2>
+                <h2 className="font-semibold">Mahsulot o‘lchov me’yorlari</h2>
+                <p className="text-xs text-muted-foreground">Sifat tekshiruvida o‘lchanadigan qiymatlar va ruxsat etilgan chegaralar.</p>
                 <Select
+                  aria-label="Mahsulot modeli"
                   value={specProductId}
                   onChange={(e) => setSpecProductId(e.target.value)}
                   required
@@ -624,6 +714,7 @@ export function MachinesPage() {
                     className="grid gap-2 rounded-lg border p-2 sm:grid-cols-3"
                   >
                     <Input
+                      aria-label={`O‘lchov ${index + 1} kodi`}
                       placeholder="Kod"
                       value={metric.code}
                       onChange={(e) =>
@@ -635,6 +726,7 @@ export function MachinesPage() {
                       }
                     />
                     <Input
+                      aria-label={`O‘lchov ${index + 1} nomi`}
                       placeholder="Nomi"
                       value={metric.name}
                       onChange={(e) =>
@@ -646,6 +738,7 @@ export function MachinesPage() {
                       }
                     />
                     <Input
+                      aria-label={`O‘lchov ${index + 1} birligi`}
                       placeholder="Birlik"
                       value={metric.unit}
                       onChange={(e) =>
@@ -659,7 +752,8 @@ export function MachinesPage() {
                     <Input
                       type="number"
                       step="0.001"
-                      placeholder="Min"
+                      placeholder="Eng kam"
+                      aria-label="Eng kam qiymat"
                       value={metric.min}
                       onChange={(e) =>
                         setMetrics(
@@ -672,7 +766,8 @@ export function MachinesPage() {
                     <Input
                       type="number"
                       step="0.001"
-                      placeholder="Target"
+                      placeholder="Maqsad"
+                      aria-label="Maqsad qiymat"
                       value={metric.target}
                       onChange={(e) =>
                         setMetrics(
@@ -685,7 +780,8 @@ export function MachinesPage() {
                     <Input
                       type="number"
                       step="0.001"
-                      placeholder="Max"
+                      placeholder="Eng ko‘p"
+                      aria-label="Eng ko‘p qiymat"
                       value={metric.max}
                       onChange={(e) =>
                         setMetrics(
@@ -716,10 +812,10 @@ export function MachinesPage() {
                       ])
                     }
                   >
-                    Metrika qo‘shish
+                    O‘lchov qo‘shish
                   </Button>
                   <Button disabled={createSpec.isPending}>
-                    Draft yaratib aktivlash
+                    Me’yorlarni yaratish va faollashtirish
                   </Button>
                 </div>
               </form>
@@ -729,7 +825,7 @@ export function MachinesPage() {
       )}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">
-          Faol runlar{canManageProduction ? " va output qabuli" : ""}
+          Faol ishlab chiqarish{canManageProduction ? " va mahsulot qabuli" : ""}
         </h2>
         {(runs.data?.data ?? [])
           .filter((r) => ["RUNNING", "HOLD"].includes(r.status))
@@ -743,7 +839,7 @@ export function MachinesPage() {
                   {r.machine.code} · {r.productVariant.product.name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {r.operator.name} / {r.mechanic.name} · {r.status}
+                  Operator: {r.operator.name} · Mexanik: {r.mechanic.name} · {formatVisibleStatusText(r.status)}
                 </p>
               </div>
               {canManageProduction && (
@@ -753,7 +849,8 @@ export function MachinesPage() {
                     type="number"
                     min={1}
                     disabled={createIntake.isPending}
-                    placeholder="Dona"
+                    aria-label="Qabul qilinadigan mahsulot soni"
+                    placeholder="Mahsulot soni"
                     value={intake[r.id] ?? ""}
                     onChange={(e) =>
                       setIntake({ ...intake, [r.id]: e.target.value })

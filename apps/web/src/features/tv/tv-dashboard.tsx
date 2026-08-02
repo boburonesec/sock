@@ -91,7 +91,7 @@ export function TvDashboard() {
       tone: "border-violet-500/40 bg-violet-500/10",
     },
     {
-      label: "Aktiv ishchilar",
+      label: "Faol ishchilar",
       value: summary.kpis.activeWorkers,
       unit: "nafar",
       tone: "border-amber-500/40 bg-amber-500/10",

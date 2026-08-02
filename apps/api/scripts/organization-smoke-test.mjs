@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrismaClient } from './prisma-client.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const apiRoot = path.resolve(path.dirname(scriptPath), '..');
@@ -14,7 +14,7 @@ const baseUrl =
 const port = new URL(baseUrl).port || '3019';
 const shouldStartServer = !process.env.ORGANIZATION_SMOKE_BASE_URL;
 const keepServer = process.env.ORGANIZATION_SMOKE_KEEP_SERVER === '1';
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const platformAdminEmail =
   process.env.ORGANIZATION_SMOKE_PLATFORM_EMAIL ?? 'platform@paypoq.local';

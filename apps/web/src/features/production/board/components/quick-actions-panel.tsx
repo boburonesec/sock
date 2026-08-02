@@ -65,7 +65,7 @@ export function QuickActionsPanel({
           className="inline-flex min-h-11 w-full items-center justify-start gap-2 rounded-lg border bg-transparent px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <Cog size={18} className="shrink-0" />
-          <span className="min-w-0 flex-1">Stanok runini boshlash yoki output qabul qilish</span>
+          <span className="min-w-0 flex-1">Stanokda ishlab chiqarishni boshlash yoki mahsulotni qabul qilish</span>
         </Link>
         {visibleActions.map(({ label, action, icon: Icon }) => (
           <Button

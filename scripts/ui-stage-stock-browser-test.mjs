@@ -6,11 +6,13 @@ const { chromium } = require("playwright");
 const WEB = process.env.WEB_BASE_URL || "http://localhost:3000";
 
 async function login(page) {
+  const refresh = page.waitForResponse((response) => response.url().includes("/auth/refresh"));
   await page.goto(`${WEB}/login`, { waitUntil: "domcontentloaded" });
+  await refresh;
   await page.locator("#email").fill("owner@paypoq.local");
   await page.locator("#password").fill("ChangeMe123!");
   await page.getByRole("button", { name: "Kirish" }).click();
-  await page.waitForURL(/\/dashboard\//);
+  await page.waitForURL(/\/dashboard\//, { waitUntil: "domcontentloaded" });
 }
 
 async function withAvailableQuantity(page, quantity, callback) {

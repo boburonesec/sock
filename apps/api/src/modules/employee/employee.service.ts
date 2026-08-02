@@ -11,7 +11,7 @@ import {
   EmployeeWorkProfile,
   Prisma,
   UserStatus,
-} from '@prisma/client';
+} from '../../prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';

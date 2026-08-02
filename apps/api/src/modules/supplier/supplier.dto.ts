@@ -1,4 +1,4 @@
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod } from '../../prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,

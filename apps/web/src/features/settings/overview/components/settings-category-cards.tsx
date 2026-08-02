@@ -27,7 +27,7 @@ export function SettingsCategoryCards({
     return (
       <EmptyState
         title="Sozlama kategoriyalari yo‘q"
-        description="Hozircha master-data kategoriyalari topilmadi."
+        description="Hozircha asosiy ma’lumot bo‘limlari topilmadi."
       />
     );
   }

@@ -22,6 +22,26 @@ const statusTone: Record<string, StatusTone> = {
 
 export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
   return (
+    <>
+    <div className="space-y-3 md:hidden" aria-label="Xodimlar ish haqi tafsilotlari">
+      {details.length > 0 ? details.map((detail) => (
+        <article key={detail.id} className="rounded-xl border border-border/70 bg-card/40 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-semibold">{detail.employee.name}</p>
+            <StatusBadge tone={statusTone[detail.status] ?? "neutral"}>{labelStatus(payrollItemStatusLabel, detail.status)}</StatusBadge>
+          </div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+            <div><dt className="text-muted-foreground">Yakuniy oylik</dt><dd className="font-semibold">{detail.finalAmount} so‘m</dd></div>
+            <div><dt className="text-muted-foreground">Qoldiq</dt><dd className="font-semibold">{detail.remainingAmount} so‘m</dd></div>
+            <div><dt className="text-muted-foreground">Ishlangan</dt><dd>{detail.workedAmount} so‘m</dd></div>
+            <div><dt className="text-muted-foreground">To‘langan</dt><dd>{detail.paidAmount} so‘m</dd></div>
+            <div><dt className="text-muted-foreground">Bonus</dt><dd>{detail.bonusAmount} so‘m</dd></div>
+            <div><dt className="text-muted-foreground">Jarima / avans</dt><dd>{detail.penaltyAmount} / {detail.advanceAmount} so‘m</dd></div>
+          </dl>
+        </article>
+      )) : <div className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Tanlangan davr uchun xodimlar ma’lumoti topilmadi.</div>}
+    </div>
+    <div className="hidden md:block">
     <DataTable label="Xodimlar ish haqi tafsilotlari">
       <DataTableHead>
         <DataTableRow>
@@ -68,5 +88,7 @@ export function PayrollDetailsTable({ details }: { details: PayrollItem[] }) {
         )}
       </tbody>
     </DataTable>
+    </div>
+    </>
   );
 }

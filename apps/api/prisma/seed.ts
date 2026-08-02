@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/prisma/client';
 import * as argon2 from 'argon2';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 /**
  * Baseline seed creates demo tenant users with a known password.

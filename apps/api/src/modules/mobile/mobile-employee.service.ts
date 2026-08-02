@@ -4,7 +4,7 @@ import {
   EmployeeStatus,
   TelegramAccountStatus,
   TelegramAccountType,
-} from '@prisma/client';
+} from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import { requireActiveFactoryId } from '../identity/request-context/request-context.utils';
@@ -327,4 +327,3 @@ function mapProductVariant(productVariant: {
     season: productVariant.season,
   };
 }
-

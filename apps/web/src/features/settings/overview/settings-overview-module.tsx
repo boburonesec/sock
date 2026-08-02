@@ -32,13 +32,13 @@ const settingsHubItems = [
   {
     href: "/settings/products",
     title: "Mahsulotlar",
-    description: "Mahsulot katalogi va variantlar",
+    description: "Mahsulotlar va ularning rang-material turlari",
     icon: Shirt,
   },
   {
     href: "/settings/colors",
     title: "Ranglar",
-    description: "Mahsulot variantlari uchun ranglar",
+    description: "Mahsulot turlari uchun ranglar",
     icon: Palette,
   },
   {
@@ -91,13 +91,13 @@ export function SettingsOverviewModule() {
   const { data, error, isError, isPending, refetch } = useSettingsOverview();
 
   if (isPending) {
-    return <LoadingState label="Sozlamalar overview yuklanmoqda..." />;
+    return <LoadingState label="Sozlamalar yuklanmoqda..." />;
   }
 
   if (isError) {
     return (
       <ErrorState
-        title="Sozlamalar overview yuklanmadi"
+        title="Sozlamalar yuklanmadi"
         description={
           error instanceof Error
             ? error.message
@@ -117,7 +117,7 @@ export function SettingsOverviewModule() {
   if (!overview) {
     return (
       <ErrorState
-        title="Sozlamalar overview mavjud emas"
+        title="Sozlama ma’lumotlari topilmadi"
         description="Ma’lumotlar hozircha kelmadi."
         action={
           <Button type="button" variant="outline" onClick={() => refetch()}>
@@ -182,14 +182,14 @@ export function SettingsOverviewModule() {
 
       <PageSection
         title="Sozlamalar holati"
-        description="Asosiy master data sozlamalarining tizim hisoblagan qisqa holati."
+        description="Asosiy ma’lumotlar sozlamalarining qisqa holati."
       >
         <ConfigurationHealthSection items={visibleConfigurationHealth} />
       </PageSection>
 
       <PageSection
         title="So‘nggi sozlama o‘zgarishlari"
-        description="AuditLog-backed settings history ulanmaguncha bo‘sh ko‘rsatiladi."
+        description="Sozlamalar tarixi ulanmaguncha bu bo‘lim bo‘sh ko‘rsatiladi."
       >
         <RecentSettingsChangesTable changes={overview.recentChanges} />
       </PageSection>

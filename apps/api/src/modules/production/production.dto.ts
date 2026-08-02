@@ -11,7 +11,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { ProductionRunStatus } from '@prisma/client';
+import { ProductionRunStatus } from '../../prisma/client';
 
 function trimString(value: unknown): unknown {
   return typeof value === 'string' ? value.trim() : value;

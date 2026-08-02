@@ -109,7 +109,7 @@ export function OrderDetailsDrawer({
 
         {isDeliverable ? (
           <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
-            Yetkazish mijoz to‘loviga bog‘liq emas. Ombor (Finished Products)
+            Yetkazish mijoz to‘loviga bog‘liq emas. Tayyor mahsulot ombori
             yetarli bo‘lsa yetkazish mumkin. Logistika chiqimi ixtiyoriy —
             fabrika xarajati sifatida yoziladi.
           </p>

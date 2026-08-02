@@ -7,7 +7,7 @@ export default function FinancePage() {
     <>
       <PageHeader
         title="Moliya"
-        description="Xarajatlar, avanslar va payroll qoldiqlari bo‘yicha umumiy ko‘rinish"
+        description="Xarajatlar, avanslar va ish haqi qoldiqlari bo‘yicha umumiy ko‘rinish"
       />
       <ModuleNavigation
         items={[

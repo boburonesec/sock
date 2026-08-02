@@ -8,7 +8,7 @@ import {
   Prisma,
   StockMovementItemType,
   StockMovementType,
-} from '@prisma/client';
+} from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';

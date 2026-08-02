@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import { JwtAuthGuard } from '../identity/auth/jwt-auth.guard';
 import { PermissionGuard } from '../identity/authorization/permission.guard';
 import { RequirePermissions } from '../identity/authorization/require-permissions.decorator';
@@ -80,9 +81,14 @@ export class SupplierController {
   @RequirePermissions('finance.write')
   createPayment(
     @CurrentContext() context: RequestContext,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() dto: CreateSupplierPaymentDto,
   ): Promise<{ data: SupplierPaymentResponse }> {
-    return this.supplierService.createPayment(context, dto);
+    if (!idempotencyKey || !isUUID(idempotencyKey, '4')) {
+      throw new BadRequestException('Idempotency-Key header must be a UUID v4.');
+    }
+
+    return this.supplierService.createPayment(context, dto, idempotencyKey);
   }
 
   @Get('debts')

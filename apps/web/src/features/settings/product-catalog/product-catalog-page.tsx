@@ -173,7 +173,7 @@ export function ProductCatalogPage() {
     <div>
       <PageHeader
         title="Mahsulotlar"
-        description="Mahsulot katalogi, variantlar va narx tarixini boshqarish"
+        description="Mahsulotlar, ularning rang-material turlari va narxlarini boshqarish"
       />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -226,7 +226,7 @@ export function ProductCatalogPage() {
       {!isLoading && !firstError && products.length === 0 ? (
         <EmptyState
           title="Mahsulotlar mavjud emas"
-          description="Mahsulot yaratilgach, variant va narx tarixini shu yerda boshqarasiz."
+          description="Mahsulot yaratilgach, uning rang-material turlari va narxlarini shu yerda boshqarasiz."
         />
       ) : null}
 
@@ -425,7 +425,7 @@ function ProductsTable({
                   variant="outline"
                   onClick={() => onArchive(product)}
                 >
-                  Archive
+                  Arxivlash
                 </Button>
               </div>
             </DataTableCell>
@@ -556,7 +556,7 @@ function ProductDetailDrawer({
                         variant="outline"
                         onClick={() => onArchiveVariant(variant)}
                       >
-                        Archive
+                        Arxivlash
                       </Button>
                     </div>
                   </DataTableCell>
@@ -566,7 +566,7 @@ function ProductDetailDrawer({
               <EmptyTableState
                 colSpan={4}
                 title="Variantlar mavjud emas"
-                description="Rang, material va mavsum tanlab variant yarating."
+                description="Rang, material va mavsumni tanlab mahsulot turini yarating."
               />
             )}
           </tbody>
@@ -718,7 +718,7 @@ function VariantPriceHistory({ variant }: { variant: ProductVariantReference | n
     return (
       <EmptyState
         title="Narx tarixi"
-        description="Narx tarixini ko‘rish uchun variant tanlang."
+        description="Narx tarixini ko‘rish uchun mahsulot turini tanlang."
       />
     );
   }
@@ -765,7 +765,7 @@ function VariantPriceHistory({ variant }: { variant: ProductVariantReference | n
           <EmptyTableState
             colSpan={3}
             title="Narxlar mavjud emas"
-            description="Bu variant uchun narx tarixi hali kiritilmagan."
+            description="Bu mahsulot turi uchun narx tarixi hali kiritilmagan."
           />
         )}
       </tbody>

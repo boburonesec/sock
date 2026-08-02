@@ -12,7 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod } from '../../prisma/client';
 
 function trimString(value: unknown): unknown {
   return typeof value === 'string' ? value.trim() : value;

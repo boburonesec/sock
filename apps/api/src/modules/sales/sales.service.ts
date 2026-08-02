@@ -11,7 +11,7 @@ import {
   SalesOrderStatus,
   StockMovementItemType,
   StockMovementType,
-} from '@prisma/client';
+} from '../../prisma/client';
 import { randomUUID } from 'crypto';
 import { FINISHED_PRODUCTS_ZONE_NAMES } from '../../common/factory-defaults';
 import { PrismaService } from '../../prisma/prisma.service';

@@ -6,7 +6,7 @@ export default function SettingsPage() {
     <>
       <PageHeader
         title="Sozlamalar"
-        description="Tizimni yuritish uchun kerak bo‘ladigan master-data va account boshqaruvi"
+        description="Tizimni yuritish uchun asosiy ma’lumotlar va dastur hisoblarini boshqarish"
       />
       <SettingsOverviewModule />
     </>

@@ -4,10 +4,10 @@
  *
  * After wipe, operator creates everything from /admin.
  */
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/prisma/client';
 import * as argon2 from 'argon2';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const PLATFORM_ADMIN_EMAIL = 'platform@paypoq.local';
 const PLATFORM_PASSWORD = 'ChangeMe123!';

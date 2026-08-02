@@ -6,7 +6,7 @@ export default function EmployeePenaltiesPage() {
     <>
       <PageHeader
         title="Jarimalar"
-        description="Xodimlarga qo‘yilgan jarima yozuvlari (backend hisobi asosida)"
+        description="Xodimlarga qo‘yilgan jarimalar va ularning holati"
       />
       <AdjustmentsListModule kind="penalty" />
     </>
