@@ -86,9 +86,11 @@ async function main() {
     await page.route(paymentPattern, (route) => route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ data: { id: "ui-payment" } }) }));
     await confirm.getByRole("button", { name: "To‘lovni tasdiqlash" }).click();
     await page.getByText("Ish haqi to‘lovi yozildi.").waitFor();
-    assert.equal(await confirm.count(), 0);
+    await confirm.waitFor({ state: "hidden" });
 
-    await page.getByRole("button", { name: "Davrni yopish" }).click();
+    const closePeriodButton = page.getByRole("button", { name: "Davrni yopish" });
+    assert.equal(await closePeriodButton.isEnabled(), true);
+    await closePeriodButton.click();
     const closeConfirm = page.getByRole("alertdialog", { name: "Ish haqi davrini yopish" });
     await closeConfirm.getByText("130000 so‘m", { exact: false }).waitFor();
     assert.equal(await closeConfirm.getByRole("button", { name: "Yopish" }).count(), 1);
