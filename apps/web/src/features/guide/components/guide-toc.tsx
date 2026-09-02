@@ -30,8 +30,8 @@ interface GuideTocProps {
 
 export function GuideToc({ activeSection, onSelectSection }: GuideTocProps) {
   return (
-    <nav aria-label="Qo‘llanma mundarijasi" className="sticky top-16 z-10 -mx-3 mb-8 bg-background/95 px-3 py-3 backdrop-blur border-b sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+    <nav aria-label="Qo‘llanma mundarijasi" className="sticky top-16 z-10 mb-8 rounded-xl border bg-card/95 p-2.5 backdrop-blur shadow-sm overflow-hidden">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
         <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
           Mundarija:
         </span>

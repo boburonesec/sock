@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, UserRound } from "lucide-react";
+import { BookOpen, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -65,10 +65,16 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
           </div>
           <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
-              className="hidden text-sm text-muted-foreground hover:text-foreground sm:inline"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
               href="/admin/tenants"
             >
               Korxonalar
+            </Link>
+            <Link
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              href="/admin/guide"
+            >
+              Qo‘llanma
             </Link>
             <div>
               <button
@@ -117,18 +123,32 @@ export function PlatformAdminShell({ children }: { children: React.ReactNode }) 
                     </div>
                   </section>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setAccountOpen(false);
-                      router.push("/admin/profile");
-                    }}
-                  >
-                    <UserRound size={16} />
-                    Profil
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        router.push("/admin/profile");
+                      }}
+                    >
+                      <UserRound size={16} />
+                      Profil
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        router.push("/admin/guide");
+                      }}
+                    >
+                      <BookOpen size={16} />
+                      Qo‘llanma
+                    </Button>
+                  </div>
 
                   <form className="space-y-4" onSubmit={handlePasswordSubmit}>
                     <FormField htmlFor="platform-current-password" label="Hozirgi parol" required>

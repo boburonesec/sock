@@ -27,7 +27,7 @@ const PILOT_ROLE_PATHS: Record<string, readonly string[]> = {
   Accountant: ["/finance"],
 };
 
-const ALWAYS_VISIBLE_PATHS = ["/profile", "/notifications", "/guide"] as const;
+const ALWAYS_VISIBLE_PATHS = ["/profile", "/notifications"] as const;
 
 function matchesPath(pathname: string, allowedPath: string): boolean {
   const cleanPath = pathname.split("?")[0].split("#")[0];

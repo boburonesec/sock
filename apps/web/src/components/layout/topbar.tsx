@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, BookOpen, LogOut, Menu, Moon, Sun, UserRound } from "lucide-react";
+import { Bell, LogOut, Menu, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -121,15 +121,6 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
           {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-        <button
-          type="button"
-          className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted"
-          aria-label="Tizim qo‘llanmasi"
-          title="Tizim qo‘llanmasi"
-          onClick={() => router.push("/guide")}
-        >
-          <BookOpen size={18} />
         </button>
         <button
           type="button"

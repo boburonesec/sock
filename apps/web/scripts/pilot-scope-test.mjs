@@ -51,6 +51,7 @@ for (const role of Object.keys(expectedPaths)) {
     "/audit",
     "/mechanic",
     "/attendance",
+    "/guide",
   ]) {
     assert.equal(
       isPilotPathVisible(hiddenPath, [role]),

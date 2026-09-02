@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
-import {
-  isPilotPathVisible,
-  getPilotHomePath,
-  getPilotPathsForRole,
-} from "../src/lib/pilot-scope.ts";
+import { isPilotPathVisible } from "../src/lib/pilot-scope.ts";
+import { navigationItems } from "../src/lib/navigation.ts";
 
-const ALL_ROLES = [
+const TENANT_ROLES = [
   "Owner",
   "Manager",
   "Shift Receiver",
@@ -15,18 +12,22 @@ const ALL_ROLES = [
   "Mechanic",
 ];
 
-console.log("--- Starting Acceptance Tests for /guide across all roles ---");
+console.log("--- Starting Verification for Guide Access Isolation ---");
 
-for (const role of ALL_ROLES) {
-  // 1. Check if /guide is visible in pilot scope for this role
+// 1. Verify that /guide is completely absent from tenant navigationItems
+const tenantGuideNav = navigationItems.find((item) => item.href === "/guide" || item.href === "/admin/guide");
+assert.equal(tenantGuideNav, undefined, "Tenant navigation must NOT have /guide or /admin/guide item");
+console.log("✓ [PASS] Tenant sidebar navigation does NOT contain any guide link.");
+
+// 2. Verify that no tenant role has /guide visible in pilot scope
+for (const role of TENANT_ROLES) {
   const isVisible = isPilotPathVisible("/guide", [role]);
-  assert.equal(isVisible, true, `${role} must have /guide visible in pilot scope`);
-  
-  // 2. Check nested guide paths
-  assert.equal(isPilotPathVisible("/guide#about", [role]), true);
-  assert.equal(isPilotPathVisible("/guide#test-walkthrough", [role]), true);
+  assert.equal(isVisible, false, `${role} must NOT have /guide visible in pilot scope`);
 
-  console.log(`✓ [PASS] Role: ${role} -> /guide is always visible and accessible.`);
+  const isAdminGuideVisible = isPilotPathVisible("/admin/guide", [role]);
+  assert.equal(isAdminGuideVisible, false, `${role} must NOT have /admin/guide visible in pilot scope`);
+
+  console.log(`✓ [PASS] Role: ${role} -> Guide is strictly HIDDEN and inaccessible.`);
 }
 
-console.log("\nALL ROLE ACCEPTANCE CHECKS PASSED (7/7 personas).");
+console.log("\nALL TENANT ROLES STRICT ISOLATION CHECKS PASSED (7/7 personas).");
