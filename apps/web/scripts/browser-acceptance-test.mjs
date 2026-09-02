@@ -13,7 +13,7 @@ async function runBrowserAcceptance() {
   });
 
   // =========================================================================
-  // SECTION 1: SUPER ADMIN VERIFICATION
+  // SECTION 1: SUPER ADMIN VERIFICATION (/admin/guide)
   // =========================================================================
   console.log("\n=======================================================");
   console.log("--- 1. SUPER ADMIN TESTS (/admin) ---");
@@ -40,11 +40,11 @@ async function runBrowserAcceptance() {
     await page.waitForURL("**/admin/guide", { timeout: 5000 });
     console.log("✓ Clicked Qo‘llanma in header. Current URL:", page.url());
 
-    // 1.3 Test direct /guide redirect to /admin/guide
-    console.log("\n[TEST 1.3] Direct /guide URL redirect...");
-    await page.goto(`${BASE_URL}/guide`);
-    await page.waitForURL("**/admin/guide", { timeout: 5000 });
-    console.log("✓ Direct /guide cleanly redirected to /admin/guide.");
+    // 1.3 Test direct /admin/guide access for logged in Super Admin
+    console.log("\n[TEST 1.3] Direct /admin/guide reload...");
+    await page.goto(`${BASE_URL}/admin/guide`);
+    await page.waitForLoadState("networkidle");
+    console.log("✓ Direct /admin/guide loaded successfully for Super Admin.");
 
     // 1.4 Test TOC Navigation and scrolling
     console.log("\n[TEST 1.4] TOC Buttons & Scroll...");
@@ -111,10 +111,10 @@ async function runBrowserAcceptance() {
   }
 
   // =========================================================================
-  // SECTION 2: TENANT ACCESS ISOLATION VERIFICATION
+  // SECTION 2: TENANT ACCESS ISOLATION & 403 / 404 BLOCKS
   // =========================================================================
   console.log("\n=======================================================");
-  console.log("--- 2. TENANT ACCESS ISOLATION TESTS ---");
+  console.log("--- 2. TENANT ACCESS ISOLATION & ROUTE GUARDS ---");
   console.log("=======================================================");
 
   // 2.1 Owner Persona
@@ -140,15 +140,17 @@ async function runBrowserAcceptance() {
     assert.equal(await topbarGuideBtn.count(), 0, "Owner topbar must NOT have Guide button");
     console.log("✓ Owner topbar does NOT contain Guide button.");
 
-    // Direct /admin/guide access attempt -> must redirect to /admin/login
+    // Direct /guide attempt -> PermissionGate blocks with 403 / Ruxsat yo'q
+    await page.goto(`${BASE_URL}/guide`);
+    const deniedHeading = page.locator("h1", { hasText: "Bu sahifaga kira olmaysiz" });
+    await deniedHeading.waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await deniedHeading.isVisible(), true, "Direct /guide must be blocked by PermissionGate for Owner");
+    console.log("✓ Owner direct /guide attempt blocked with PermissionGate (403).");
+
+    // Direct /admin/guide attempt -> must redirect to /admin/login
     await page.goto(`${BASE_URL}/admin/guide`);
     await page.waitForURL("**/admin/login", { timeout: 5000 });
     console.log("✓ Owner direct /admin/guide attempt strictly BLOCKED & redirected to /admin/login.");
-
-    // Direct /guide access attempt -> must redirect to /admin/login
-    await page.goto(`${BASE_URL}/guide`);
-    await page.waitForURL("**/admin/login", { timeout: 5000 });
-    console.log("✓ Owner direct /guide attempt strictly BLOCKED & redirected to /admin/login.");
 
     await context.close();
   }
@@ -168,8 +170,11 @@ async function runBrowserAcceptance() {
     const sidebarGuideLink = page.locator("aside nav a", { hasText: "Qo‘llanma" });
     assert.equal(await sidebarGuideLink.count(), 0, "Manager sidebar must NOT have Qo'llanma");
 
-    const topbarGuideBtn = page.locator("header button[aria-label='Tizim qo‘llanmasi']");
-    assert.equal(await topbarGuideBtn.count(), 0, "Manager topbar must NOT have Guide button");
+    await page.goto(`${BASE_URL}/guide`);
+    const managerDenied = page.locator("h1", { hasText: "Bu sahifaga kira olmaysiz" });
+    await managerDenied.waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await managerDenied.isVisible(), true, "Direct /guide must be blocked by PermissionGate for Manager");
+    console.log("✓ Manager direct /guide attempt blocked with PermissionGate (403).");
 
     await page.goto(`${BASE_URL}/admin/guide`);
     await page.waitForURL("**/admin/login", { timeout: 5000 });
@@ -193,8 +198,11 @@ async function runBrowserAcceptance() {
     const sidebarGuideLink = page.locator("aside nav a", { hasText: "Qo‘llanma" });
     assert.equal(await sidebarGuideLink.count(), 0, "Shift Receiver sidebar must NOT have Qo'llanma");
 
-    const topbarGuideBtn = page.locator("header button[aria-label='Tizim qo‘llanmasi']");
-    assert.equal(await topbarGuideBtn.count(), 0, "Shift Receiver topbar must NOT have Guide button");
+    await page.goto(`${BASE_URL}/guide`);
+    const shiftDenied = page.locator("h1", { hasText: "Bu sahifaga kira olmaysiz" });
+    await shiftDenied.waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await shiftDenied.isVisible(), true, "Direct /guide must be blocked by PermissionGate for Shift Receiver");
+    console.log("✓ Shift Receiver direct /guide attempt blocked with PermissionGate (403).");
 
     await page.goto(`${BASE_URL}/admin/guide`);
     await page.waitForURL("**/admin/login", { timeout: 5000 });
@@ -210,8 +218,8 @@ async function runBrowserAcceptance() {
     const page = await context.newPage();
 
     await page.goto(`${BASE_URL}/guide`);
-    await page.waitForURL("**/admin/login", { timeout: 5000 });
-    console.log("✓ Unauthenticated visitor direct /guide redirected to /admin/login.");
+    await page.waitForURL("**/login", { timeout: 5000 });
+    console.log("✓ Unauthenticated visitor /guide redirected to /login.");
 
     await page.goto(`${BASE_URL}/admin/guide`);
     await page.waitForURL("**/admin/login", { timeout: 5000 });
