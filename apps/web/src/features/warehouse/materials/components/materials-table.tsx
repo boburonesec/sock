@@ -6,13 +6,12 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
 import type { MaterialStock } from "@/lib/api/warehouse";
+import { formatDateTimeForUser } from "@/lib/format";
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 export function MaterialsTable({
@@ -31,8 +30,6 @@ export function MaterialsTable({
           <DataTableHeader>Zona</DataTableHeader>
           <DataTableHeader>Miqdor</DataTableHeader>
           <DataTableHeader>Birlik</DataTableHeader>
-          <DataTableHeader>Minimal limit</DataTableHeader>
-          <DataTableHeader>Holat</DataTableHeader>
           <DataTableHeader>Yangilangan</DataTableHeader>
         </DataTableRow>
       </DataTableHead>
@@ -48,18 +45,16 @@ export function MaterialsTable({
                   {material.material.name}
                 </button>
               </DataTableCell>
-              <DataTableCell>{material.warehouse.name}</DataTableCell>
-              <DataTableCell>{material.zone.name}</DataTableCell>
+              <DataTableCell>{formatWarehouseZoneName(material.warehouse.name)}</DataTableCell>
+              <DataTableCell>{formatWarehouseZoneName(material.zone.name)}</DataTableCell>
               <DataTableCell>{material.quantity}</DataTableCell>
               <DataTableCell>{material.unit}</DataTableCell>
-              <DataTableCell>Mavjud emas</DataTableCell>
-              <DataTableCell>Mavjud emas</DataTableCell>
               <DataTableCell>{formatDate(material.updatedAt)}</DataTableCell>
             </DataTableRow>
           ))
         ) : (
           <EmptyTableState
-            colSpan={8}
+            colSpan={6}
             title="Material qoldiqlari mavjud emas"
             description="Material stock yozuvlari paydo bo‘lgach, ular shu yerda ko‘rinadi."
           />

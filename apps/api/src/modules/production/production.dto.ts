@@ -11,7 +11,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { ProductionRunStatus } from '../../prisma/client';
+import { CorrectionRequestDomain, ProductionRunStatus } from '../../prisma/client';
 
 function trimString(value: unknown): unknown {
   return typeof value === 'string' ? value.trim() : value;
@@ -204,4 +204,51 @@ export class CreateDefectDto {
   @IsString()
   @MinLength(3)
   reason!: string;
+}
+
+export class ConfigureWarehouseHandoffStageDto {
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(1)
+  productionStageId!: string;
+}
+
+export class ShiftReconciliationDto {
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(1)
+  workShiftId!: string;
+
+  @IsString()
+  @MinLength(10)
+  workDate!: string;
+}
+
+export class ShiftReconciliationReasonDto extends ShiftReconciliationDto {
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(3)
+  reason!: string;
+}
+
+export class CreateCorrectionRequestDto {
+  @IsEnum(CorrectionRequestDomain)
+  domain!: CorrectionRequestDomain;
+
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(1)
+  sourceRecordId!: string;
+
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(3)
+  reason!: string;
+}
+
+export class ResolveCorrectionRequestDto {
+  @Transform(({ value }) => trimString(value))
+  @IsString()
+  @MinLength(3)
+  resolutionNote!: string;
 }

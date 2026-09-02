@@ -23,7 +23,7 @@ export function PermissionGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const homePath = getDefaultHomePath(permissions);
+  const homePath = getDefaultHomePath(permissions, roles);
 
   return (
     <div className="mx-auto flex min-h-[50vh] max-w-lg flex-col items-center justify-center gap-4 px-4 py-16 text-center">

@@ -9,14 +9,13 @@ import {
 import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import type { SalesOrder } from "@/lib/api/sales";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateTimeForUser } from "@/lib/format";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
 
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 const orderStatusLabel: Record<string, string> = {
@@ -134,7 +133,7 @@ export function OrderDetailsDrawer({
 
         <div className="grid gap-4 sm:grid-cols-3">
           <InfoCard title="Jami summa">
-            <p className="text-xl font-bold">{order.totalAmount} so‘m</p>
+            <p className="text-xl font-bold">{formatCurrency(order.totalAmount)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Mijoz mahsulot qarzi asosi. Logistika alohida chiqim.
             </p>
@@ -176,9 +175,9 @@ export function OrderDetailsDrawer({
                   <DataTableCell>{item.productVariant.material.name}</DataTableCell>
                   <DataTableCell>{item.productVariant.season.name}</DataTableCell>
                   <DataTableCell>{item.quantity} dona</DataTableCell>
-                  <DataTableCell>{item.unitPrice} so‘m</DataTableCell>
+                  <DataTableCell>{formatCurrency(item.unitPrice)}</DataTableCell>
                   <DataTableCell className="font-semibold">
-                    {item.totalPrice} so‘m
+                    {formatCurrency(item.totalPrice)}
                   </DataTableCell>
                 </DataTableRow>
               ))}

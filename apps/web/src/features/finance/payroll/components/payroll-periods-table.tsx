@@ -9,6 +9,8 @@ import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { PayrollPeriod } from "@/lib/api/finance";
 import { labelStatus, payrollPeriodStatusLabel } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateShort } from "@/lib/format";
 
 const statusTone: Record<string, StatusTone> = {
   DRAFT: "neutral",
@@ -25,10 +27,7 @@ interface PayrollPeriodsTableProps {
 }
 
 function formatMonth(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
+  return formatDateShort(new Date(value));
 }
 
 export function PayrollPeriodsTable({
@@ -46,8 +45,8 @@ export function PayrollPeriodsTable({
             <StatusBadge tone={statusTone[period.status] ?? "neutral"}>{labelStatus(payrollPeriodStatusLabel, period.status)}</StatusBadge>
           </span>
           <span className="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <span><span className="block text-muted-foreground">Jami</span>{period.totalFinalAmount} so‘m</span>
-            <span><span className="block text-muted-foreground">Qoldiq</span>{period.totalRemainingAmount} so‘m</span>
+            <span><span className="block text-muted-foreground">Jami</span>{formatCurrency(period.totalFinalAmount)}</span>
+            <span><span className="block text-muted-foreground">Qoldiq</span>{formatCurrency(period.totalRemainingAmount)}</span>
           </span>
         </button>
       )) : <div className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Ish haqi davrlari mavjud emas.</div>}
@@ -86,10 +85,10 @@ export function PayrollPeriodsTable({
                 </StatusBadge>
               </DataTableCell>
               <DataTableCell className="font-semibold">
-                {period.totalFinalAmount} so‘m
+                {formatCurrency(period.totalFinalAmount)}
               </DataTableCell>
-              <DataTableCell>{period.totalPaidAmount} so‘m</DataTableCell>
-              <DataTableCell>{period.totalRemainingAmount} so‘m</DataTableCell>
+              <DataTableCell>{formatCurrency(period.totalPaidAmount)}</DataTableCell>
+              <DataTableCell>{formatCurrency(period.totalRemainingAmount)}</DataTableCell>
             </DataTableRow>
           ))
         ) : (

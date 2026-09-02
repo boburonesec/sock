@@ -25,6 +25,8 @@ export const queryKeys = {
     workerActivities: () => ["production", "worker-activities"] as const,
     defects: () => ["production", "defects"] as const,
     operationsSummary: () => ["production", "operations-summary"] as const,
+    shiftReconciliations: () => ["production", "shift-reconciliations"] as const,
+    warehouseHandoffStage: () => ["production", "warehouse-handoff-stage"] as const,
   },
   warehouse: {
     all: ["warehouse"] as const,
@@ -58,6 +60,7 @@ export const queryKeys = {
     bonuses: () => ["finance", "bonuses"] as const,
     penalties: () => ["finance", "penalties"] as const,
     payrollPeriods: () => ["finance", "payroll-periods"] as const,
+    payrollEmployees: () => ["finance", "payroll-employees"] as const,
     payrollPeriodItems: (payrollPeriodId: string) =>
       ["finance", "payroll-periods", payrollPeriodId, "items"] as const,
   },

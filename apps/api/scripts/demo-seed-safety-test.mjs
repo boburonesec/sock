@@ -34,6 +34,20 @@ async function main() {
   const variant = await prisma.productVariant.findFirstOrThrow({
     where: { tenantId: demoTenantId, deletedAt: null },
   });
+  const supplierPayment = await prisma.supplierPayment.findFirstOrThrow({
+    where: { tenantId: demoTenantId },
+  });
+  const idempotencyKey = `seed-safety-${Date.now()}`;
+  await prisma.supplierPaymentIdempotency.create({
+    data: {
+      tenantId: demoTenantId,
+      factoryId: demoFactory.id,
+      operation: 'CREATE_SUPPLIER_PAYMENT',
+      key: idempotencyKey,
+      requestFingerprint: 'seed-safety-fixture-cleanup',
+      paymentId: supplierPayment.id,
+    },
+  });
 
   const siblingFactory = await prisma.factory.create({
     data: { tenantId: demoTenantId, name: 'Seed safety sibling factory' },
@@ -117,6 +131,14 @@ async function main() {
   runDemoSeed(true);
 
   assert.equal(
+    await prisma.supplierPaymentIdempotency.count({
+      where: { tenantId: demoTenantId, key: idempotencyKey },
+    }),
+    0,
+    'demo cleanup left a supplier-payment idempotency record behind',
+  );
+
+  assert.equal(
     await prisma.stageInventory.count({ where: { id: siblingInventory.id } }),
     1,
     'demo cleanup deleted another factory inventory row',
@@ -139,7 +161,7 @@ async function main() {
   await prisma.client.delete({ where: { id: foreignClient.id } });
   await prisma.tenant.delete({ where: { id: foreignTenantId } });
 
-  console.log('demo seed safety: 5 passed, 0 failed');
+  console.log('demo seed safety: 6 passed, 0 failed');
 }
 
 main()

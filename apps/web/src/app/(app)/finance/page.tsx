@@ -13,7 +13,7 @@ export default function FinancePage() {
         items={[
           { href: "/finance/expenses", label: "Xarajatlar" },
           { href: "/finance/advances", label: "Avanslar" },
-          { href: "/finance/payroll", label: "Ish haqi" },
+          { href: "/finance/payroll", label: "Ish haqi hisob-kitobi" },
           { href: "/finance/suppliers", label: "Yetkazib beruvchilar" },
         ]}
       />

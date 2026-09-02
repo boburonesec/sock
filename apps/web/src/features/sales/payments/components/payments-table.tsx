@@ -8,6 +8,8 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import type { ClientPayment } from "@/lib/api/sales";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateTimeForUser } from "@/lib/format";
 
 const methodLabel: Record<string, string> = {
   CASH: "Naqd",
@@ -16,10 +18,7 @@ const methodLabel: Record<string, string> = {
 };
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 function formatOrderNumbers(payment: ClientPayment): string {
@@ -67,7 +66,7 @@ export function PaymentsTable({
               <DataTableCell>{payment.client.name}</DataTableCell>
               <DataTableCell>{formatOrderNumbers(payment)}</DataTableCell>
               <DataTableCell className="font-semibold">
-                {payment.amount} so‘m
+                {formatCurrency(payment.amount)}
               </DataTableCell>
               <DataTableCell>
                 {methodLabel[payment.method] ?? payment.method}

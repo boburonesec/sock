@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   ClipboardPlus,
   Cog,
+  PackageOpen,
   PackageCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,12 +19,12 @@ const actions: {
   requiresWarehouseWrite?: boolean;
 }[] = [
   {
-    label: "Smena o‘tkazish (+ ishchilar)",
+    label: "Keyingi bosqichga o‘tkazish",
     action: "move-stage",
     icon: ArrowRightLeft,
   },
   {
-    label: "Qo‘shimcha faollik kiritish",
+    label: "Qo‘shimcha bajarilgan ishni kiritish",
     action: "add-activity",
     icon: ClipboardPlus,
   },
@@ -65,13 +66,20 @@ export function QuickActionsPanel({
           className="inline-flex min-h-11 w-full items-center justify-start gap-2 rounded-lg border bg-transparent px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <Cog size={18} className="shrink-0" />
-          <span className="min-w-0 flex-1">Stanokda ishlab chiqarishni boshlash yoki mahsulotni qabul qilish</span>
+          <span className="min-w-0 flex-1">Stanok ishini boshlash</span>
         </Link>
-        {visibleActions.map(({ label, action, icon: Icon }) => (
+        <Link
+          href="/machines#machine-output"
+          className="inline-flex min-h-11 w-full items-center justify-start gap-2 rounded-lg border bg-transparent px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <PackageOpen size={18} className="shrink-0" />
+          <span className="min-w-0 flex-1">Stanokdan chiqqan mahsulotni qabul qilish</span>
+        </Link>
+        {visibleActions.map(({ label, action, icon: Icon }, index) => (
           <Button
             key={action}
             type="button"
-            variant="outline"
+            variant={index === 0 ? "default" : "outline"}
             className="h-auto min-h-11 w-full justify-start whitespace-normal py-3 text-left"
             onClick={() => onActionSelect(action)}
           >

@@ -15,6 +15,7 @@ import {
   type EmployeeWorkProfile,
 } from "@/lib/api/employees";
 import { formatRoleName } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
 
 const employeeFormSchema = z.object({
   name: z
@@ -185,6 +186,11 @@ export function EmployeeFormDrawer({
               </option>
             ))}
           </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {needsAccount
+              ? "Bu lavozim tizimga shaxsan kirishi kerak — pastda dastur hisobi (email, parol, rol) so‘raladi."
+              : "Bu lavozim uchun dastur hisobi kerak emas. Bajarilgan ishni Smena qabul qiluvchi tizimga kiritadi; xodim istasa, keyinroq xodim sahifasidan Telegram bilan bog‘lanib o‘z ish haqini ko‘rishi mumkin."}
+          </p>
         </FormField>
 
         <FormField htmlFor="employeeCompensation" label="Haq turi" error={errors.compensationType?.message} required>
@@ -212,7 +218,7 @@ export function EmployeeFormDrawer({
             {shiftOptions.map((shift) => (
               <option key={shift.id} value={shift.id}>
                 {shift.name} · {shift.startTime}–{shift.endTime}
-                {shift.code === "NIGHT" ? ` · +${shift.premiumPerPiece} so‘m/dona` : ""}
+                {shift.code === "NIGHT" ? ` · +${formatCurrency(shift.premiumPerPiece)}/dona` : ""}
               </option>
             ))}
           </Select>

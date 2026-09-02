@@ -9,6 +9,8 @@ import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { PayrollPeriod } from "@/lib/api/finance";
 import { labelStatus, payrollPeriodStatusLabel } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateShort } from "@/lib/format";
 
 const statusTone: Record<string, StatusTone> = {
   DRAFT: "neutral",
@@ -19,10 +21,7 @@ const statusTone: Record<string, StatusTone> = {
 };
 
 function formatMonth(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
+  return formatDateShort(new Date(value));
 }
 
 export function PayrollPeriodsTable({
@@ -53,10 +52,10 @@ export function PayrollPeriodsTable({
                   {labelStatus(payrollPeriodStatusLabel, period.status)}
                 </StatusBadge>
               </DataTableCell>
-              <DataTableCell>{period.totalFinalAmount} so‘m</DataTableCell>
-              <DataTableCell>{period.totalPaidAmount} so‘m</DataTableCell>
+              <DataTableCell>{formatCurrency(period.totalFinalAmount)}</DataTableCell>
+              <DataTableCell>{formatCurrency(period.totalPaidAmount)}</DataTableCell>
               <DataTableCell className="font-semibold">
-                {period.totalRemainingAmount} so‘m
+                {formatCurrency(period.totalRemainingAmount)}
               </DataTableCell>
             </DataTableRow>
           ))

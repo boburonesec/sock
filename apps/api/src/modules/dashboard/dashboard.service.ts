@@ -8,7 +8,6 @@ import {
   Prisma,
   SalesOrderStatus,
 } from '../../prisma/client';
-import { DevContextService } from '../../common/dev-context/dev-context.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import { requireActiveFactoryId } from '../identity/request-context/request-context.utils';
@@ -56,7 +55,6 @@ const OPEN_PAYROLL_STATUSES: PayrollPeriodStatus[] = [
 export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly devContext: DevContextService,
     private readonly productionService: ProductionService,
     private readonly warehouseService: WarehouseService,
   ) {}
@@ -229,8 +227,10 @@ export class DashboardService {
     };
   }
 
-  async getFactoryTvSummary(): Promise<FactoryTvSummaryResponse> {
-    const { tenantId, factoryId } = await this.devContext.getFactoryContext();
+  async getFactoryTvSummary(
+    resolvedContext: { tenantId: string; factoryId: string },
+  ): Promise<FactoryTvSummaryResponse> {
+    const { tenantId, factoryId } = resolvedContext;
     const publicTvContext = this.buildPublicTvContext(tenantId, factoryId);
     const [factory, operationsSummary, warehouseSummary] = await Promise.all([
       this.prisma.factory.findFirstOrThrow({

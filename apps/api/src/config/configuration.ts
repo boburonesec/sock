@@ -34,5 +34,10 @@ export default () => ({
     accessToken:
       process.env.FACTORY_TV_ACCESS_TOKEN ??
       'local-development-factory-tv-token-change-me',
+    // Which tenant/factory the shared token resolves to. Unset in
+    // development/CI falls back to auto-detecting a single seeded tenant;
+    // required in production (enforced by env.validation.ts).
+    tenantId: process.env.FACTORY_TV_TENANT_ID || undefined,
+    factoryId: process.env.FACTORY_TV_FACTORY_ID || undefined,
   },
 });

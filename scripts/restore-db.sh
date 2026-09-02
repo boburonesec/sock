@@ -16,6 +16,23 @@ BACKUP_FILE="${1:-${BACKUP_FILE:-}}"
 [[ -f "$BACKUP_FILE" ]] || fail "Backup file not found: ${BACKUP_FILE}"
 [[ "${ALLOW_DB_RESTORE:-}" == "true" ]] || fail "Refusing restore. Set ALLOW_DB_RESTORE=true."
 
+# Mirrors backup-db.sh's BACKUP_ENCRYPTION_KEY: decrypt to a private temp file
+# that is always removed on exit, so the plaintext dump never lingers on disk.
+if [[ "$BACKUP_FILE" == *.enc ]]; then
+  [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]] || fail "${BACKUP_FILE} looks encrypted. Set BACKUP_ENCRYPTION_KEY to decrypt it."
+  command -v openssl >/dev/null 2>&1 || fail "BACKUP_ENCRYPTION_KEY is set but openssl was not found."
+
+  DECRYPTED_FILE="$(mktemp "${TMPDIR:-/tmp}/paypoq-restore-XXXXXX.dump")"
+  cleanup_decrypted() { shred -u "$DECRYPTED_FILE" 2>/dev/null || rm -f "$DECRYPTED_FILE"; }
+  trap cleanup_decrypted EXIT
+
+  log "Decrypting backup before restore."
+  openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 \
+    -pass env:BACKUP_ENCRYPTION_KEY \
+    -in "$BACKUP_FILE" -out "$DECRYPTED_FILE"
+  BACKUP_FILE="$DECRYPTED_FILE"
+fi
+
 if [[ "${NODE_ENV:-development}" == "production" && "${CONFIRM_PRODUCTION_RESTORE:-}" != "I_UNDERSTAND_THIS_RESTORES_PRODUCTION_DATA" ]]; then
   fail "Production restore requires CONFIRM_PRODUCTION_RESTORE=I_UNDERSTAND_THIS_RESTORES_PRODUCTION_DATA."
 fi

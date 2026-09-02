@@ -13,16 +13,20 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   Client,
+  ClientDebt,
+  ClientPayment,
   CreateClientPaymentPayload,
   SalesOrder,
 } from "@/lib/api/sales";
+import { useAuthStore } from "@/stores/auth-store";
+import { formatCurrency } from "@/lib/utils";
 
 const allocationSchema = z.object({
   orderId: z.string().min(1, "Buyurtma tanlanishi shart."),
   amount: z
     .string()
     .transform((value) => value.trim())
-    .refine((value) => Number(value) > 0, "Taqsimot summasi musbat bo‘lishi kerak."),
+    .refine((value) => Number(value) > 0, "To‘lovni taqsimlash summasi musbat bo‘lishi kerak."),
 });
 
 const paymentFormSchema = z
@@ -50,7 +54,7 @@ const paymentFormSchema = z
       return Math.abs(paymentAmount - allocationTotal) < 0.000001;
     },
     {
-      message: "Taqsimotlar jami to‘lov summasiga teng bo‘lishi kerak.",
+      message: "To‘lov taqsimoti jami to‘lov summasiga teng bo‘lishi kerak.",
       path: ["allocations"],
     },
   );
@@ -66,17 +70,19 @@ const paymentStatusLabel: Record<string, string> = {
 interface PaymentCreateDrawerProps {
   open: boolean;
   clients: Client[];
+  debts: ClientDebt[];
   orders: SalesOrder[];
   isSubmitting: boolean;
   isOptionsLoading: boolean;
   errorMessage?: string | null;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: CreateClientPaymentPayload) => Promise<void>;
+  onSubmit: (payload: CreateClientPaymentPayload) => Promise<ClientPayment>;
 }
 
 export function PaymentCreateDrawer({
   open,
   clients,
+  debts,
   orders,
   isSubmitting,
   isOptionsLoading,
@@ -85,6 +91,11 @@ export function PaymentCreateDrawer({
   onSubmit,
 }: PaymentCreateDrawerProps) {
   const submissionRef = useRef(false);
+  const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
+  const activeFactoryName =
+    accessibleFactories.find((factory) => factory.id === activeFactoryId)?.name ??
+    "Fabrika tanlanmagan";
   const {
     control,
     register,
@@ -148,6 +159,13 @@ export function PaymentCreateDrawer({
     (total, allocation) => total + Number(allocation.amount || 0),
     0,
   );
+  const unallocatedAmount = Number.isFinite(paymentAmount)
+    ? paymentAmount - allocationTotal
+    : 0;
+  const selectedClient = clients.find((client) => client.id === selectedClientId);
+  const selectedClientDebt = debts.find(
+    (debt) => debt.client.id === selectedClientId,
+  );
   const formDisabled = isSubmitting || isOptionsLoading;
 
   return (
@@ -193,7 +211,7 @@ export function PaymentCreateDrawer({
             <Input
               id="paymentAmount"
               type="number"
-              min={0}
+              min={0.01}
               step="0.01"
               disabled={formDisabled}
               aria-invalid={Boolean(errors.amount)}
@@ -232,7 +250,7 @@ export function PaymentCreateDrawer({
         <section className="space-y-3 rounded-xl border bg-muted/10 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-semibold">Taqsimotlar</p>
+              <p className="font-semibold">To‘lovni buyurtmalarga taqsimlash</p>
               <p className="text-xs text-muted-foreground">
                 To‘lov summasi to‘liq buyurtmalarga bog‘lanishi shart.
               </p>
@@ -269,7 +287,7 @@ export function PaymentCreateDrawer({
                     <option value="">Buyurtma tanlang</option>
                     {clientOrders.map((order) => (
                       <option key={order.id} value={order.id}>
-                        {order.orderNumber} · {order.totalAmount} so‘m ·{" "}
+                        {order.orderNumber} · {formatCurrency(order.totalAmount)} ·{" "}
                         {paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}
                       </option>
                     ))}
@@ -278,7 +296,7 @@ export function PaymentCreateDrawer({
 
                 <FormField
                   htmlFor={`paymentAllocationAmount-${field.id}`}
-                  label="Taqsimot summasi"
+                  label="Buyurtmaga ajratiladigan summa"
                   error={errors.allocations?.[index]?.amount?.message}
                   required
                 >
@@ -299,7 +317,7 @@ export function PaymentCreateDrawer({
                     variant="outline"
                     disabled={formDisabled || fields.length === 1}
                     onClick={() => remove(index)}
-                    aria-label="Taqsimot qatorini o‘chirish"
+                    aria-label="To‘lov taqsimoti qatorini o‘chirish"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -325,10 +343,13 @@ export function PaymentCreateDrawer({
         </FormField>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
-          <p className="font-medium">Taqsimot tekshiruvi</p>
+          <p className="font-medium">To‘lov taqsimotini tekshirish</p>
           <p className="text-muted-foreground">
+            Fabrika: {activeFactoryName} · Mijoz: {selectedClient?.name ?? "Tanlanmagan"} ·
+            Joriy qarz: {selectedClientDebt ? formatCurrency(selectedClientDebt.debt) : "—"} ·
             To‘lov: {Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("uz-UZ") : "0"} so‘m ·
-            Taqsimot: {allocationTotal.toLocaleString("uz-UZ")} so‘m. Tizim yakuniy tekshiruvni qayta bajaradi.
+            Buyurtmalarga ajratildi: {allocationTotal.toLocaleString("uz-UZ")} so‘m ·
+            Taqsimlanmagan: {unallocatedAmount.toLocaleString("uz-UZ")} so‘m. Backend yakuniy tekshiruvni qayta bajaradi.
           </p>
         </div>
 
@@ -350,7 +371,12 @@ export function PaymentCreateDrawer({
         <Button
           type="submit"
           className="w-full"
-          disabled={formDisabled || clients.length === 0 || orders.length === 0}
+          disabled={
+            formDisabled ||
+            clients.length === 0 ||
+            orders.length === 0 ||
+            Math.abs(unallocatedAmount) > 0.000001
+          }
         >
           {isSubmitting ? "To‘lov saqlanmoqda..." : "To‘lov qayd qilish"}
         </Button>

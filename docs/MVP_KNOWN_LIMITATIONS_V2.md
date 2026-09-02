@@ -50,9 +50,13 @@ scope. It is not a full ERP, accounting ledger, or IoT platform.
 
 ### Factory TV
 
-- Token must stay **server-side** (`FACTORY_TV_ACCESS_TOKEN` on web + API).
-  Browser uses same-origin `/api/factory-tv/summary` proxy; do not put the token in
-  `NEXT_PUBLIC_*` for new deploys.
+- Each factory has its own credential (`FactoryTvCredential`, Sozlamalar →
+  Fabrika TV, Owner-only), carried as `/tv?token=...`. A shared
+  `FACTORY_TV_ACCESS_TOKEN` env var still works as a fallback only when
+  exactly one tenant/factory exists on the deployment (dev/CI convenience) —
+  it refuses to serve any tenant once a second one is created, rather than
+  guess. Never put either token in `NEXT_PUBLIC_*`; the browser only ever
+  goes through the same-origin `/api/factory-tv/summary` proxy.
 - Keep `/tv` on internal network / VPN when possible
 
 ### Warehouse

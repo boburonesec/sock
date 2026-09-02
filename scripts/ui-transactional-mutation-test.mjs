@@ -140,14 +140,15 @@ async function openMovement(page) {
   );
   await page.goto(`${WEB}/production`, { waitUntil: "domcontentloaded" });
   const inventory = (await (await inventoryResponse).json()).data;
-  const averlogInventory = inventory.find((item) => item.stage.name === "Averlog" && Number(item.quantity) > 0);
-  assert.ok(averlogInventory, "positive Averlog inventory fixture missing");
-  await page.getByRole("button", { name: "Smena o‘tkazish (+ ishchilar)" }).click();
-  const dialog = page.getByRole("dialog", { name: "Smena o‘tkazish" });
+  const movableInventory = inventory.find((item) => Number(item.quantity) > 0);
+  assert.ok(movableInventory, "positive stage inventory fixture missing");
+  await page.getByRole("button", { name: "Keyingi bosqichga o‘tkazish" }).click();
+  const dialog = page.getByRole("dialog", { name: "Keyingi bosqichga o‘tkazish" });
   await dialog.waitFor();
-  await dialog.locator("#moveProductVariantId").selectOption(averlogInventory.productVariant.id);
-  await dialog.locator("#sourceStageId").selectOption({ label: "Averlog" });
-  await dialog.locator("#destinationStageId").selectOption({ label: "Dazmol" });
+  await dialog.locator("#moveProductVariantId").selectOption(movableInventory.productVariant.id);
+  await dialog.locator("#sourceStageId").selectOption({ label: movableInventory.stage.name });
+  await dialog.locator("#destinationStageId").waitFor({ state: "visible" });
+  assert.equal(await dialog.locator("#destinationStageId").isDisabled(), true);
   await dialog.locator("#moveQuantity").waitFor({ state: "visible" });
   await waitForInputValue(dialog.locator("#moveQuantity"));
   await dialog.locator('input[type="checkbox"]').first().check();
@@ -174,7 +175,7 @@ async function testMovement(page) {
   await dialog.getByRole("alert").filter({ hasText: "Qoldiq" }).waitFor();
   assert.equal(await dialog.isVisible(), true);
   assert.equal(await dialog.locator("#moveNote").inputValue(), note);
-  assert.equal(await page.getByText("Smena o‘tkazildi", { exact: false }).count(), 0);
+  assert.equal(await page.getByText("bosqichidan", { exact: false }).count(), 0);
   pass("stage movement failure feedback/state preserved");
   await controlled.remove();
 
@@ -186,7 +187,7 @@ async function testMovement(page) {
   const successResponse = page.waitForResponse((r) => r.url().includes("/production/stage-movements") && r.request().method() === "POST" && r.ok());
   await submit.click();
   await successResponse;
-  await page.getByText("Smena o‘tkazildi", { exact: false }).waitFor();
+  await page.getByText("bosqichidan", { exact: false }).waitFor();
   await dialog.waitFor({ state: "hidden" });
   assert.ok(refreshes >= 1);
   page.off("request", countRefresh);
@@ -195,8 +196,8 @@ async function testMovement(page) {
 
 async function openActivity(page) {
   await page.goto(`${WEB}/production`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Qo‘shimcha faollik kiritish" }).click();
-  const dialog = page.getByRole("dialog", { name: "Qo‘shimcha faollik" });
+  await page.getByRole("button", { name: "Qo‘shimcha bajarilgan ishni kiritish" }).click();
+  const dialog = page.getByRole("dialog", { name: "Qo‘shimcha bajarilgan ish" });
   await dialog.waitFor();
   await selectFirst(dialog.locator("#activityStageId"));
   await selectFirst(dialog.locator("#activityEmployeeId"));
@@ -504,6 +505,12 @@ async function main() {
     await login(page);
     if (process.env.UI_TEST_SCOPE === "mechanic") {
       await testMechanicMutation(page);
+      console.log(`transactional browser mutations: ${results.length} passed, 0 failed`);
+      return;
+    }
+    if (process.env.UI_TEST_SCOPE === "week12") {
+      await testMovement(page);
+      await testPayment(page);
       console.log(`transactional browser mutations: ${results.length} passed, 0 failed`);
       return;
     }

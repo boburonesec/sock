@@ -3,11 +3,14 @@ import { Drawer } from "@/components/overlays/drawer";
 import { InfoCard } from "@/components/cards/info-card";
 import type { StockMovement } from "@/lib/api/warehouse";
 import {
+  formatStockMovementReason,
+  formatStockUnit,
   formatWarehouseZoneName,
   labelStatus,
   stockItemTypeLabel,
   stockMovementTypeLabel,
 } from "@/lib/status-labels";
+import { formatDateTimeForUser } from "@/lib/format";
 
 interface MovementDetailsDrawerProps {
   movement: StockMovement | null;
@@ -15,10 +18,7 @@ interface MovementDetailsDrawerProps {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 function itemName(movement: StockMovement): string {
@@ -58,7 +58,7 @@ export function MovementDetailsDrawer({
             <p className="font-semibold">{itemName(movement)}</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {labelStatus(stockItemTypeLabel, movement.itemType)} · {movement.quantity}{" "}
-              {movement.unit}
+              {formatStockUnit(movement.unit)}
             </p>
           </InfoCard>
           <InfoCard title="Zona va mas’ul">
@@ -87,7 +87,7 @@ export function MovementDetailsDrawer({
 
         <InfoCard title="Sabab / Izoh">
           <p className="text-sm text-muted-foreground">
-            {movement.reason ?? movement.note ?? "Izoh kiritilmagan"}
+            {movement.reason ? formatStockMovementReason(movement.reason) : (movement.note ?? "Izoh kiritilmagan")}
           </p>
         </InfoCard>
       </div>

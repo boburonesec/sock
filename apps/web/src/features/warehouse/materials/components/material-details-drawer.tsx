@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/overlays/drawer";
 import { InfoCard } from "@/components/cards/info-card";
 import type { MaterialStock } from "@/lib/api/warehouse";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
+import { formatDateTimeForUser } from "@/lib/format";
 
 interface MaterialDetailsDrawerProps {
   material: MaterialStock | null;
@@ -12,10 +14,7 @@ interface MaterialDetailsDrawerProps {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 export function MaterialDetailsDrawer({
@@ -34,7 +33,7 @@ export function MaterialDetailsDrawer({
       open={Boolean(material)}
       onOpenChange={onOpenChange}
       title={material.material.name}
-      description={`${material.warehouse.name} · ${material.zone.name}`}
+      description={`${formatWarehouseZoneName(material.warehouse.name)} · ${formatWarehouseZoneName(material.zone.name)}`}
       className="max-w-4xl"
     >
       <div className="space-y-6">
@@ -74,8 +73,8 @@ export function MaterialDetailsDrawer({
 
         <InfoCard title="Qoldiq ma’lumoti">
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>Ombor: {material.warehouse.name}</p>
-            <p>Zona: {material.zone.name}</p>
+            <p>Ombor: {formatWarehouseZoneName(material.warehouse.name)}</p>
+            <p>Zona: {formatWarehouseZoneName(material.zone.name)}</p>
             <p>Oxirgi yangilanish: {formatDate(material.updatedAt)}</p>
           </div>
         </InfoCard>

@@ -128,7 +128,7 @@ Har mezon: **nima tekshiriladi**, **qayerda**, **kutilgan natija**, **natija**.
 | SC-03 | Defect qayd | Yozuv bor; avtomatik jarima **yo‘q** | □ |
 | SC-04 | Finished receipt Ombor→stock | Stage ↓ stock ↑ | □ |
 | SC-05 | Material receipt | Material stock oshadi; supplier purchase avtomatik stock bermaydi | □ |
-| SC-06 | Delivery faqat to‘liq paid | Unpaid deliver → blok | □ |
+| SC-06 | Delivery to‘lovdan mustaqil | To‘lanmagan/qisman to‘langan buyurtma ham yetkazilishi mumkin; qarz saqlanadi. Yetkazib berish sex tomonidan, mijozga bepul (haq olinmaydi) | □ |
 | SC-07 | Delivery return → keyin payment reverse mumkin | Delivered holda reverse blok | □ |
 | SC-08 | Closed payroll immutable | Close dan keyin calculate/pay o‘zgarmaydi | □ |
 | SC-09 | Responsive web (mobile browser) | Menyu, form, overflow | □ |
@@ -244,13 +244,13 @@ Yozib oling (qog‘oz/notes):
    - Debt kamayadi, lekin 0 bo‘lmasligi mumkin  
    - □
 
-4. **To‘liq to‘lanmagan** holda Delivery  
-   - **Bloklanishi** kerak  
+4. **To‘liq to‘lanmagan** (yoki umuman to‘lanmagan) holda Delivery  
+   - **Ruxsat etiladi** — yakuniy qaror: yetkazib berish sex tomonidan va
+     mijoz uchun bepul amalga oshiriladi, to‘liq to‘lov shart emas
+   - Status DELIVERED, Finished stock ↓, qarz o‘zgarmaydi (keyin to‘lanadi)
    - □
 
-5. To‘liq to‘lov → Delivery  
-   - Status DELIVERED  
-   - Finished stock ↓  
+5. (SC-06 bilan bir xil stsenariy — alohida "to‘liq to‘lov" talabi yo‘q)
    - □
 
 6. Delivered holda Payment reverse  

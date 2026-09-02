@@ -184,12 +184,21 @@ export class AuthService {
     const nextRefreshTokenHash = this.hashRefreshToken(nextRefreshToken);
     const expiresAt = this.getRefreshExpiresAt();
 
-    await this.prisma.$transaction([
-      this.prisma.refreshSession.update({
-        where: { id: existingSession.id },
+    await this.prisma.$transaction(async (tx) => {
+      // Atomic single-use consume: the WHERE clause re-checks `revokedAt IS
+      // NULL` inside the UPDATE itself, so two concurrent refresh calls with
+      // the same token (a normal double-click, or a stolen token replayed
+      // alongside the legitimate client) cannot both mint a successor session.
+      const { count } = await tx.refreshSession.updateMany({
+        where: { id: existingSession.id, revokedAt: null },
         data: { revokedAt: now },
-      }),
-      this.prisma.refreshSession.create({
+      });
+
+      if (count === 0) {
+        throw new UnauthorizedException('Invalid refresh session.');
+      }
+
+      await tx.refreshSession.create({
         data: {
           tenantId: existingSession.tenantId,
           userId: existingSession.userId,
@@ -198,8 +207,8 @@ export class AuthService {
           ipAddress,
           expiresAt,
         },
-      }),
-    ]);
+      });
+    });
 
     this.authRateLimiter.reset(rateLimitKey);
 

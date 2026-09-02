@@ -10,6 +10,8 @@ import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Advance } from "@/lib/api/finance";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateTimeForUser } from "@/lib/format";
 
 const advanceStatusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -23,21 +25,26 @@ const advanceStatusTone: Record<string, StatusTone> = {
 function formatDate(value: string | null): string {
   if (!value) return "—";
 
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 export function AdvancesTable({
   advances,
   busyId,
+  currentUserId,
+  canApprove = false,
+  canPay = false,
+  allowRequesterBypass = false,
   onApprove,
   onReject,
   onPay,
 }: {
   advances: Advance[];
   busyId?: string | null;
+  currentUserId?: string | null;
+  canApprove?: boolean;
+  canPay?: boolean;
+  allowRequesterBypass?: boolean;
   onApprove?: (advance: Advance) => void;
   onReject?: (advance: Advance) => void;
   onPay?: (advance: Advance) => void;
@@ -60,12 +67,14 @@ export function AdvancesTable({
         {advances.length > 0 ? (
           advances.map((advance) => {
             const busy = busyId === advance.id;
+            const isRequester =
+              !allowRequesterBypass && advance.requestedBy?.id === currentUserId;
             return (
               <DataTableRow key={advance.id}>
                 <DataTableCell className="font-semibold">
                   {advance.employee.name}
                 </DataTableCell>
-                <DataTableCell>{advance.amount} so‘m</DataTableCell>
+                <DataTableCell>{formatCurrency(advance.amount)}</DataTableCell>
                 <DataTableCell>{advance.reason}</DataTableCell>
                 <DataTableCell>
                   <StatusBadge tone={advanceStatusTone[advance.status] ?? "neutral"}>
@@ -77,7 +86,7 @@ export function AdvancesTable({
                 <DataTableCell>{formatDate(advance.paidAt)}</DataTableCell>
                 <DataTableCell>
                   <div className="flex flex-wrap gap-2">
-                    {advance.status === "REQUESTED" ? (
+                    {advance.status === "REQUESTED" && canApprove && !isRequester ? (
                       <>
                         <Button
                           type="button"
@@ -99,7 +108,7 @@ export function AdvancesTable({
                         </Button>
                       </>
                     ) : null}
-                    {advance.status === "APPROVED" ? (
+                    {advance.status === "APPROVED" && canPay && !isRequester ? (
                       <Button
                         type="button"
                         className="h-8 px-2 text-xs"

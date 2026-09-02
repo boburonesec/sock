@@ -9,7 +9,6 @@ import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/layout/page-section";
 import { StatusBadge } from "@/components/data-display/status-badge";
-import { employeesApi } from "@/lib/api/employees";
 import { financeApi, type PayPayrollPeriodPayload } from "@/lib/api/finance";
 import { queryKeys } from "@/lib/api/query-keys";
 import { labelStatus, payrollPeriodStatusLabel } from "@/lib/status-labels";
@@ -22,8 +21,15 @@ import { PayrollPaymentDrawer } from "./components/payroll-payment-drawer";
 import { PayrollPeriodDrawer } from "./components/payroll-period-drawer";
 import { PayrollPeriodsTable } from "./components/payroll-periods-table";
 import { usePayrollPeriodItems, usePayrollPeriods } from "./use-payroll";
+import { useAuthStore } from "@/stores/auth-store";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateShort } from "@/lib/format";
 
 export function PayrollModule() {
+  const roles = useAuthStore((state) => state.roles);
+  const canRecordPayrollPayment =
+    roles.includes("Owner") || roles.includes("Accountant");
+  const canApprovePayroll = roles.includes("Manager");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
   const [adjustmentKind, setAdjustmentKind] =
@@ -36,17 +42,20 @@ export function PayrollModule() {
   const queryClient = useQueryClient();
   const periodsQuery = usePayrollPeriods();
   const employeesQuery = useQuery({
-    queryKey: queryKeys.employees.list(),
-    queryFn: employeesApi.getEmployees,
+    queryKey: queryKeys.finance.payrollEmployees(),
+    queryFn: financeApi.getPayrollEmployees,
   });
   const periods = periodsQuery.data?.data ?? [];
   const selectedPeriod =
     periods.find((period) => period.id === selectedPeriodId) ?? periods[0] ?? null;
   const itemsQuery = usePayrollPeriodItems(selectedPeriod?.id ?? null);
+  const readinessQuery = useQuery({ queryKey: ["finance", "payroll-periods", selectedPeriod?.id, "readiness"], queryFn: () => financeApi.getPayrollPeriodReadiness(selectedPeriod?.id ?? ""), enabled: Boolean(selectedPeriod?.id) });
   const items = itemsQuery.data?.data ?? [];
   const canCalculate = Boolean(selectedPeriod && ["DRAFT", "CALCULATED"].includes(selectedPeriod.status));
-  const canPay = Boolean(selectedPeriod && ["CALCULATED", "PARTIALLY_PAID"].includes(selectedPeriod.status) && items.some((item) => Number(item.remainingAmount) > 0));
-  const canClose = Boolean(selectedPeriod && ["CALCULATED", "PAID"].includes(selectedPeriod.status));
+  const hasCurrentApproval = Boolean(selectedPeriod && selectedPeriod.approvedRevision === selectedPeriod.calculationRevision && selectedPeriod.approvedByUserId && selectedPeriod.approvedAt);
+  const canApprove = Boolean(canApprovePayroll && selectedPeriod?.status === "CALCULATED" && !hasCurrentApproval);
+  const canPay = Boolean(canRecordPayrollPayment && hasCurrentApproval && selectedPeriod && ["CALCULATED", "PARTIALLY_PAID"].includes(selectedPeriod.status) && items.some((item) => Number(item.remainingAmount) > 0));
+  const canClose = Boolean(selectedPeriod?.status === "PAID" && Number(selectedPeriod.totalRemainingAmount) === 0 && hasCurrentApproval);
 
   const invalidatePayroll = async () => {
     await Promise.all([
@@ -90,6 +99,17 @@ export function PayrollModule() {
     onSuccess: async (response) => {
       setSelectedPeriodId(response.data.id);
       setFeedback("Ish haqi davri yopildi.");
+      setActionError(null);
+      await invalidatePayroll();
+    },
+    onError: (error) => setActionError(getErrorMessage(error)),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: financeApi.approvePayrollPeriod,
+    onSuccess: async (response) => {
+      setSelectedPeriodId(response.data.id);
+      setFeedback(`Ish haqi ${response.data.calculationRevision}-reviziya bo‘yicha Manager tasdiqladi.`);
       setActionError(null);
       await invalidatePayroll();
     },
@@ -192,13 +212,13 @@ export function PayrollModule() {
           />
           <KpiCard
             label="Yakuniy oylik"
-            value={`${selectedPeriod?.totalFinalAmount ?? "0"} so‘m`}
+            value={formatCurrency(selectedPeriod?.totalFinalAmount ?? 0)}
             description="Tizim hisoblagan jami summa"
             accent="success"
           />
           <KpiCard
             label="Qoldiq"
-            value={`${selectedPeriod?.totalRemainingAmount ?? "0"} so‘m`}
+            value={formatCurrency(selectedPeriod?.totalRemainingAmount ?? 0)}
             description="To‘lanmagan summa"
             accent="warning"
           />
@@ -234,13 +254,16 @@ export function PayrollModule() {
                 </StatusBadge>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{getNextStep(selectedPeriod.status, selectedPeriod.totalRemainingAmount)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Hisob reviziyasi: {selectedPeriod.calculationRevision}. {hasCurrentApproval ? "Manager tasdiqlagan." : "Manager tasdig‘i kutilmoqda."}</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               {canCalculate ? <Button type="button" disabled={calculateMutation.isPending} onClick={() => { calculateMutation.reset(); setActionError(null); setIsCalculateConfirmOpen(true); }}>{selectedPeriod.status === "CALCULATED" ? "Qayta hisoblash" : "Ish haqini hisoblash"}</Button> : null}
+              {canApprove ? <Button type="button" variant="outline" disabled={approveMutation.isPending} onClick={() => selectedPeriod && approveMutation.mutate(selectedPeriod.id)}>Manager tasdiqlaydi</Button> : null}
               {canPay ? <Button type="button" onClick={() => { payMutation.reset(); setActionError(null); setIsPaymentOpen(true); }}>Xodimga to‘lov</Button> : null}
               {canClose ? <Button type="button" variant="outline" disabled={closeMutation.isPending} onClick={() => { closeMutation.reset(); setActionError(null); setIsCloseConfirmOpen(true); }}>Davrni yopish</Button> : null}
             </div>
           </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">{(readinessQuery.data?.data.checks ?? []).map((check) => <div key={check.code} className={`rounded-lg border p-3 ${check.status === "BLOCKER" ? "border-rose-500/40 bg-rose-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}><p className="font-medium">{check.status === "BLOCKER" ? "To‘xtatadi" : "Tayyor"} · {check.label}</p><p className="mt-1 text-sm text-muted-foreground">{check.detail}</p>{check.status === "BLOCKER" ? <p className="mt-1 text-sm">Keyingi qadam: {check.action}</p> : null}</div>)}</div>
         </div>
         : null}
 
@@ -333,7 +356,7 @@ export function PayrollModule() {
         errorMessage={closeMutation.isError ? actionError : null}
         onOpenChange={setIsCloseConfirmOpen}
         title="Ish haqi davrini yopish"
-        description={selectedPeriod ? `${formatMonth(selectedPeriod.month)} davri yopiladi. Qoldiq: ${selectedPeriod.totalRemainingAmount} so‘m. Yopilgandan keyin qayta hisoblash va to‘lov kiritish bloklanadi.` : "Davr tanlanmagan."}
+        description={selectedPeriod ? `${formatMonth(selectedPeriod.month)} davri yopiladi. Qoldiq: ${formatCurrency(selectedPeriod.totalRemainingAmount)}. Yopilgandan keyin qayta hisoblash va to‘lov kiritish bloklanadi.` : "Davr tanlanmagan."}
         confirmLabel="Yopish"
         destructive
         onConfirm={async () => {
@@ -348,17 +371,14 @@ export function PayrollModule() {
 
 function getNextStep(status: string, remainingAmount: string): string {
   if (status === "DRAFT") return "Keyingi qadam: xodimlar ish haqini hisoblash.";
-  if (status === "CALCULATED") return Number(remainingAmount) > 0 ? "Natijani tekshiring va xodimlar to‘lovini kiriting yoki davrni yopish qarorini tasdiqlang." : "Natijani tekshiring va davrni yoping.";
+  if (status === "CALCULATED") return Number(remainingAmount) > 0 ? "Manager joriy hisobni tasdiqlaydi, keyin Accountant to‘lov kiritadi." : "Manager joriy hisobni tasdiqlaydi.";
   if (status === "PARTIALLY_PAID") return "Keyingi qadam: qolgan xodimlar to‘lovini davom ettirish.";
   if (status === "PAID") return "Barcha to‘lovlar kiritilgan. Davrni yopish mumkin.";
   return "Bu davr yopilgan va faqat ko‘rish uchun mavjud.";
 }
 
 function formatMonth(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
+  return formatDateShort(new Date(value));
 }
 
 function getErrorMessage(error: unknown): string {

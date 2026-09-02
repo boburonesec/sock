@@ -105,6 +105,25 @@ const environmentSchema = Joi.object({
     developmentMin: 16,
     developmentDefault: 'local-development-factory-tv-token-change-me',
   }),
+  // Not secrets — just which tenant/factory the single shared TV token
+  // resolves to. Required in production because auto-detecting "the only
+  // tenant" is unsafe once a second tenant exists on the same deployment.
+  FACTORY_TV_TENANT_ID: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().required().messages({
+      'any.required':
+        'FACTORY_TV_TENANT_ID is required in production — Factory TV must not guess which tenant to serve.',
+    }),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  FACTORY_TV_FACTORY_ID: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().required().messages({
+      'any.required':
+        'FACTORY_TV_FACTORY_ID is required in production — Factory TV must not guess which factory to serve.',
+    }),
+    otherwise: Joi.string().allow('').optional(),
+  }),
 });
 
 export function validateEnvironment(

@@ -122,7 +122,7 @@ async function waitForHealth() {
   throw new Error(`API did not become healthy at ${baseUrl}/health`);
 }
 
-function startServerIfNeeded() {
+async function startServerIfNeeded() {
   if (!shouldStartServer) {
     return;
   }
@@ -139,6 +139,22 @@ function startServerIfNeeded() {
     );
   }
 
+  // Factory TV no longer guesses which tenant/factory to serve once more than
+  // one exists (see FactoryTvContextService) — this suite deliberately
+  // creates a "Foreign Tenant" later (cross-tenant isolation checks), so pin
+  // the spawned server to the baseline seed's tenant/factory up front,
+  // exactly as a real deployment would via env config.
+  const baselineTenant = await prisma.tenant.findFirst({
+    where: { id: 'seed-demo-paypoq-factory' },
+    select: { id: true },
+  });
+  const baselineFactory = baselineTenant
+    ? await prisma.factory.findFirst({
+        where: { tenantId: baselineTenant.id, name: 'Main Factory', deletedAt: null },
+        select: { id: true },
+      })
+    : null;
+
   serverProcess = spawn(process.execPath, [mainPath], {
     cwd: repoRoot,
     env: {
@@ -146,6 +162,12 @@ function startServerIfNeeded() {
       NODE_ENV: process.env.NODE_ENV ?? 'development',
       PORT: port,
       FACTORY_TV_ACCESS_TOKEN: factoryTvAccessToken,
+      ...(baselineTenant && baselineFactory
+        ? {
+            FACTORY_TV_TENANT_ID: baselineTenant.id,
+            FACTORY_TV_FACTORY_ID: baselineFactory.id,
+          }
+        : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -293,7 +315,7 @@ async function createEmployeeAndSalaryRate(variantId) {
       workProfile: 'STAGE_WORKER',
       compensationType: 'PIECE_RATE',
       workShiftId: dayShift.id,
-      stageIds: [firstStage.id, secondStage.id],
+      stageIds: stages.filter((stage) => stage.sortOrder < omborStage.sortOrder).map((stage) => stage.id),
     },
   })).data;
 
@@ -323,7 +345,7 @@ async function createEmployeeAndSalaryRate(variantId) {
   // Salary rates are stage-level only (amount per piece). At most one active
   // rate per stage (partial unique index). Stage moves and manual activities
   // both require an active rate on the stage being worked.
-  const stagesNeedingRates = [firstStage.id, secondStage.id];
+  const stagesNeedingRates = stages.filter((stage) => stage.sortOrder < omborStage.sortOrder).map((stage) => stage.id);
   const existingRates = (await request('/settings/salary-rates')).data ?? [];
   for (const rate of existingRates) {
     const stageId = rate.stageId ?? rate.productionStageId ?? rate.stage?.id;
@@ -374,6 +396,7 @@ async function runProductionChain({
   machineOperator,
   firstStage,
   secondStage,
+  stages,
   omborStage,
   variant,
   product,
@@ -490,7 +513,7 @@ async function runProductionChain({
       reason: `Smoke defect ${suffix}`,
     },
   });
-  await request('/production/stage-movements', {
+  await expectStatus('/production/stage-movements', 409, {
     method: 'POST',
     body: {
       sourceStageId: firstStage.id,
@@ -500,6 +523,28 @@ async function runProductionChain({
       employeeIds: [employee.id],
     },
   });
+  await expectStatus('/warehouse/finished-product-receipts', 409, {
+    method: 'POST',
+    body: { productVariantId: variant.id, quantity: 5, note: `Smoke premature receipt ${suffix}` },
+  });
+  const orderedStages = [...stages].sort((a, b) => a.sortOrder - b.sortOrder);
+  const secondIndex = orderedStages.findIndex((stage) => stage.id === secondStage.id);
+  const handoffIndex = orderedStages.findIndex((stage) => stage.id === omborStage.id);
+  assert(secondIndex >= 0 && handoffIndex > secondIndex, 'configured handoff stage must follow the second production stage');
+  for (let index = secondIndex; index < handoffIndex; index += 1) {
+    await request('/production/stage-movements', {
+      method: 'POST',
+      body: {
+        sourceStageId: orderedStages[index].id,
+        destinationStageId: orderedStages[index + 1].id,
+        productVariantId: variant.id,
+        quantity: 5,
+        employeeIds: [employee.id],
+      },
+    });
+  }
+  const handoffBeforeReceipt = (await request('/production/stage-inventory')).data.find((item) => item.stage.id === omborStage.id && item.productVariant.id === variant.id)?.quantity ?? 0;
+  assert(handoffBeforeReceipt === 5, `configured handoff stage should contain exactly 5 units before receipt, got ${handoffBeforeReceipt}`);
   await request('/warehouse/finished-product-receipts', {
     method: 'POST',
     body: {
@@ -508,8 +553,10 @@ async function runProductionChain({
       note: `Smoke finished receipt ${suffix}`,
     },
   });
+  const handoffAfterReceipt = (await request('/production/stage-inventory')).data.find((item) => item.stage.id === omborStage.id && item.productVariant.id === variant.id)?.quantity ?? 0;
+  assert(handoffAfterReceipt === 0, `configured handoff stage should decrement by exactly 5 units, got ${handoffAfterReceipt}`);
 
-  pass('production run, idempotent intake, quality recheck, notification, stage movement, and finished receipt');
+  pass('production run, idempotent intake, quality recheck, notification, next-stage guard, stage movement, and finished receipt');
 
   return { workerActivity };
 }
@@ -935,22 +982,24 @@ async function runPayrollFlow({ context, workerActivity }) {
   assert(calculated.status === 'CALCULATED', 'payroll period should calculate');
   assert(items.length > 0, 'payroll calculation should create at least one item');
 
+  const managerToken = await loginAs('manager@paypoq.local');
+  await withAccessToken(managerToken, async () => {
+    await request(`/finance/payroll-periods/${period.id}/approve`, { method: 'POST' });
+  });
+
   const payableItem = items.find((item) => Number(item.remainingAmount) > 0);
-
-  if (payableItem) {
-    await request(`/finance/payroll-periods/${period.id}/pay`, {
-      method: 'POST',
-      body: {
-        payrollItemId: payableItem.id,
-        amount: payableItem.remainingAmount,
-        method: 'CASH',
-      },
-    });
-  }
-
-  const closed = (await request(`/finance/payroll-periods/${period.id}/close`, {
-    method: 'POST',
-  })).data;
+  const accountantToken = await loginAs('accountant@paypoq.local');
+  const closed = await withAccessToken(accountantToken, async () => {
+    if (payableItem) {
+      await request(`/finance/payroll-periods/${period.id}/pay`, {
+        method: 'POST',
+        body: { payrollItemId: payableItem.id, amount: payableItem.remainingAmount, method: 'CASH' },
+      });
+    }
+    return (await request(`/finance/payroll-periods/${period.id}/close`, {
+      method: 'POST', body: { confirm: true },
+    })).data;
+  });
 
   assert(closed.status === 'CLOSED', 'payroll period should close');
   pass('payroll calculate pay close', { payrollPeriodId: period.id });
@@ -1014,7 +1063,7 @@ async function verifyCriticalAudits(tenantId) {
 }
 
 async function runSmokeSuite() {
-  startServerIfNeeded();
+  await startServerIfNeeded();
   await waitForHealth();
 
   const context = await loginAndVerifyContext();

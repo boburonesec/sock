@@ -9,13 +9,18 @@ import {
   employeeWorkProfileLabels,
   type Employee,
 } from "@/lib/api/employees";
+import { formatRoleName } from "@/lib/status-labels";
 import { telegramApi, type TelegramLinkTokenCreated } from "@/lib/api/telegram";
 import { TelegramLinkCodeCard } from "@/features/telegram/telegram-link-code-card";
 import { EmployeePayrollTab } from "./employee-payroll-tab";
 
+// Mirrors EmployeeService's accountRequiredProfiles: Mechanic, Mechanic
+// Master and Staff must have a linked User login; other profiles never do.
+const accountRequiredProfiles = new Set(["MECHANIC", "MECHANIC_MASTER", "STAFF"]);
+
 type EmployeeTab = "activities" | "payroll" | "bonuses" | "penalties" | "advances";
 const tabs: { id: EmployeeTab; label: string }[] = [
-  { id: "activities", label: "Faollik" }, { id: "payroll", label: "Ish haqi" }, { id: "bonuses", label: "Bonuslar" }, { id: "penalties", label: "Jarimalar" }, { id: "advances", label: "Avanslar" },
+  { id: "activities", label: "Bajarilgan ish" }, { id: "payroll", label: "Ish haqi hisob-kitobi" }, { id: "bonuses", label: "Bonuslar" }, { id: "penalties", label: "Jarimalar" }, { id: "advances", label: "Avanslar" },
 ];
 
 interface EmployeeDetailsDrawerProps {
@@ -58,13 +63,35 @@ export function EmployeeDetailsDrawer({
       <InfoCard title="Lavozim">
         <p className="text-sm text-muted-foreground">
           {employeeWorkProfileLabels[employee.workProfile]}
+          {" · "}
+          {employee.compensationType === "PIECE_RATE" ? "Ishbay" : "Oylik"}
         </p>
+      </InfoCard>
+      <InfoCard title="Dastur hisobi">
+        {employee.account ? (
+          <p className="text-sm text-muted-foreground">
+            {employee.account.email}
+            {" · "}
+            {employee.account.roleNames.map(formatRoleName).join(", ")}
+          </p>
+        ) : accountRequiredProfiles.has(employee.workProfile) ? (
+          <p className="text-sm text-rose-300">
+            Bu lavozim uchun dastur hisobi majburiy, lekin hali bog‘lanmagan.
+            “Ma’lumotlarni tahrirlash” orqali hisob qo‘shing.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Bu lavozim uchun dastur hisobi kerak emas — xodim ishini Smena
+            qabul qiluvchi tizimga kiritadi. Ixtiyoriy ravishda pastdagi
+            Telegram orqali o‘z ish haqini ko‘rishi mumkin.
+          </p>
+        )}
       </InfoCard>
       <InfoCard title="Ish smenasi">
         <p className="text-sm text-muted-foreground">
           {employee.workShift
             ? `${employee.workShift.name} · ${String(Math.floor(employee.workShift.startMinute / 60)).padStart(2, "0")}:${String(employee.workShift.startMinute % 60).padStart(2, "0")}–${String(Math.floor(employee.workShift.endMinute / 60)).padStart(2, "0")}:${String(employee.workShift.endMinute % 60).padStart(2, "0")}`
-            : "Smena tanlanmagan. Faollik yozishdan oldin tahrirlang."}
+            : "Smena tanlanmagan. Bajarilgan ishni yozishdan oldin tahrirlang."}
         </p>
       </InfoCard>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button variant="outline" className="h-11 sm:h-9" onClick={() => onEdit(employee)}>Ma’lumotlarni tahrirlash</Button><Button variant="outline" className="h-11 border-rose-500/40 text-rose-300 hover:bg-rose-500/10 sm:h-9" disabled={isInactivating} onClick={() => onInactivate(employee)}>{isInactivating ? "Nofaol qilinmoqda..." : "Xodimni nofaol qilish"}</Button></div>
@@ -79,7 +106,7 @@ export function EmployeeDetailsDrawer({
         }}
       />
       <div className="flex gap-1 overflow-x-auto border-b">{tabs.map((tab) => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 border-b-2 px-3 py-2 text-sm font-medium ${activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{tab.label}</button>)}</div>
-      {activeTab === "activities" && <UnavailableState title="Faollik ma’lumotlari" />}
+      {activeTab === "activities" && <UnavailableState title="Bajarilgan ish ma’lumotlari" />}
       {activeTab === "payroll" && <EmployeePayrollTab employee={employee} />}
       {["bonuses", "penalties", "advances"].includes(activeTab) && <UnavailableState title="Qo‘shimcha ma’lumotlar" />}
     </div>

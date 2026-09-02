@@ -10,6 +10,8 @@ import type {
   WarehouseStockSummary,
   WarehouseZone,
 } from "@/lib/api/warehouse";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
+import { formatDateTimeForUser } from "@/lib/format";
 
 type ZoneSummary = WarehouseStockSummary["zoneSummaries"][number];
 
@@ -23,10 +25,7 @@ interface ZoneDetailsDrawerProps {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 function movementItemName(movement: StockMovement): string {
@@ -56,8 +55,8 @@ export function ZoneDetailsDrawer({
     <Drawer
       open={Boolean(zone)}
       onOpenChange={onOpenChange}
-      title={zone.zoneName}
-      description={`${zone.warehouseName} · ${
+      title={formatWarehouseZoneName(zone.zoneName)}
+      description={`${formatWarehouseZoneName(zone.warehouseName)} · ${
         zone.status === "NORMAL"
           ? "Me’yorda"
           : zone.status === "ATTENTION"
@@ -69,7 +68,7 @@ export function ZoneDetailsDrawer({
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-3">
           <InfoCard title="Zona">
-            <p className="text-xl font-bold">{zoneInfo?.name ?? zone.zoneName}</p>
+            <p className="text-xl font-bold">{formatWarehouseZoneName(zoneInfo?.name ?? zone.zoneName)}</p>
           </InfoCard>
           <InfoCard title="Qoldiq yozuvlari">
             <p className="text-xl font-bold">

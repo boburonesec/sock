@@ -23,6 +23,7 @@ import { PaymentDetailsDrawer } from "./components/payment-details-drawer";
 import { PaymentReverseDialog } from "./components/payment-reverse-dialog";
 import { PaymentsTable } from "./components/payments-table";
 import { usePayments } from "./use-payments";
+import { formatCurrency } from "@/lib/utils";
 
 export function PaymentsModule() {
   const queryClient = useQueryClient();
@@ -34,6 +35,10 @@ export function PaymentsModule() {
   const ordersQuery = useQuery({
     queryKey: queryKeys.sales.orders(),
     queryFn: salesApi.getOrders,
+  });
+  const debtsQuery = useQuery({
+    queryKey: queryKeys.sales.debts(),
+    queryFn: salesApi.getDebts,
   });
   const [selectedPayment, setSelectedPayment] = useState<ClientPayment | null>(
     null,
@@ -178,19 +183,23 @@ export function PaymentsModule() {
       <PaymentCreateDrawer
         open={isCreateDrawerOpen}
         clients={clients}
+        debts={debtsQuery.data?.data ?? []}
         orders={orders}
         isSubmitting={createPayment.isPending}
-        isOptionsLoading={clientsQuery.isPending || ordersQuery.isPending}
+        isOptionsLoading={
+          clientsQuery.isPending || ordersQuery.isPending || debtsQuery.isPending
+        }
         errorMessage={createError}
         onOpenChange={setIsCreateDrawerOpen}
         onSubmit={async (payload: CreateClientPaymentPayload) => {
           setFeedback(null);
-          await createPayment.mutateAsync(payload);
+          const response = await createPayment.mutateAsync(payload);
           setFeedback({
             tone: "success",
-            message: "To‘lov qayd qilindi va buyurtmaga allocation qilindi.",
+            message: `${response.data.client.name} uchun ${formatCurrency(response.data.amount)} to‘lov qayd qilindi va buyurtmalarga taqsimlandi. Qarz ma’lumoti backenddan yangilanmoqda.`,
           });
           setIsCreateDrawerOpen(false);
+          return response.data;
         }}
       />
     </div>

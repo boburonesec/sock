@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { DevContextService } from '../../common/dev-context/dev-context.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { IdentityModule } from '../identity/identity.module';
 import { ProductionModule } from '../production/production.module';
@@ -7,6 +6,8 @@ import { WarehouseModule } from '../warehouse/warehouse.module';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { FactoryTvAccessGuard } from './factory-tv-access.guard';
+import { FactoryTvContextService } from './factory-tv-context.service';
+import { FactoryTvCredentialService } from './factory-tv-credential.service';
 
 /**
  * Read-only cross-domain dashboard projections.
@@ -18,6 +19,11 @@ import { FactoryTvAccessGuard } from './factory-tv-access.guard';
 @Module({
   imports: [PrismaModule, IdentityModule, ProductionModule, WarehouseModule],
   controllers: [DashboardController],
-  providers: [DevContextService, DashboardService, FactoryTvAccessGuard],
+  providers: [
+    FactoryTvContextService,
+    FactoryTvCredentialService,
+    DashboardService,
+    FactoryTvAccessGuard,
+  ],
 })
 export class DashboardModule {}

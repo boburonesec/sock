@@ -2,6 +2,7 @@ import { DataTable, DataTableCell, DataTableHead, DataTableHeader, DataTableRow 
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { ExecutiveHealthStatus, ExecutiveSummary } from "@/lib/api/dashboard";
+import { formatCurrency } from "@/lib/utils";
 
 type TopClient = ExecutiveSummary["topClients"][number];
 
@@ -36,9 +37,9 @@ export function TopClients({ clients }: { clients: TopClient[] }) {
           clients.map((client) => (
             <DataTableRow key={client.clientId}>
               <DataTableCell className="font-semibold">{client.clientName}</DataTableCell>
-              <DataTableCell>{client.totalOrders} so‘m</DataTableCell>
-              <DataTableCell>{client.totalPaid} so‘m</DataTableCell>
-              <DataTableCell>{client.debt} so‘m</DataTableCell>
+              <DataTableCell>{formatCurrency(client.totalOrders)}</DataTableCell>
+              <DataTableCell>{formatCurrency(client.totalPaid)}</DataTableCell>
+              <DataTableCell>{formatCurrency(client.debt)}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTones[client.debtStatus]}>
                   {statusLabels[client.debtStatus]}

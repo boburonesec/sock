@@ -577,7 +577,8 @@ pnpm restore:db path/to/backup.dump
 4. Closed payroll immutable  
 5. Employee delete emas — inactive  
 6. Manfiy inventory yo‘q  
-7. Delivery faqat to‘liq paid  
+7. Delivery to‘lovdan mustaqil — sex o‘zi va mijoz uchun bepul yetkazadi;
+   to‘liq to‘lov shart emas (qarz saqlanadi, keyin to‘lanadi)  
 8. Supplier purchase ≠ material stock  
 
 ---
@@ -599,9 +600,10 @@ agreement, ishbay mexanik/operator uchun esa model stavkasi ishlatiladi.
 ### Stanok va mexanik nazorati
 
 `Stanoklar` sahifasida stanok yarating, smena/vaqt bo‘yicha mexanikni biriktiring
-va operator bilan production runni boshlang. Output qabuli Stage Inventoryni va
-ikki ishbay activityni bitta transactionda yozadi. `Manual qabul (legacy)`
-payroll yaratmaydi.
+va operator bilan stanok ishini boshlang. Stanokdan chiqqan mahsulotni qabul
+qilish bosqichdagi qoldiqni va ikki xodimning ishbay bajarilgan ishini bitta
+amalda yozadi. `Qo‘lda qabul qilish (eski usul)` ish haqi hisob-kitobini
+yaratmaydi.
 
 Mexanik `Mexanik` sahifasida tasklar, inspection roundlar va target/min/max
 o‘lchovlarini ko‘radi. Normadan chiqish runni avtomatik to‘xtatmaydi; 30
@@ -658,7 +660,54 @@ Modal/dialog skrinshotlari keyingi iteratsiyada qo‘shilishi mumkin
 
 ---
 
-## 25. Golden rule
+## 25. Pilot navigatsiya matritsasi
+
+Pilot rejimi standart holatda yoqilgan. Faqat pilot kundalik ishiga kerakli
+bo‘limlar menyuda ko‘rinadi va URL orqali ham ochiladi. Mavjud modullar
+o‘chirilmagan; keyingi bosqich uchun `NEXT_PUBLIC_PILOT_SCOPE_MODE=false` bilan
+to‘liq permission-based navigatsiyani qayta yoqish mumkin.
+
+| Rol | Pilotda ko‘rinadigan bo‘limlar | Birinchi sahifa |
+| --- | --- | --- |
+| Owner | Boshqaruv paneli, Ishlab chiqarish, Stanoklar, Ombor, Sotuvlar, Moliya, Xodimlar, Sozlamalar | Boshqaruv paneli |
+| Manager | Boshqaruv paneli, Ishlab chiqarish, Ombor, Sotuvlar, Moliya, Xodimlar, Sozlamalar | Boshqaruv paneli |
+| Shift Receiver (smena nazoratchisi) | Ishlab chiqarish, Stanoklar | Ishlab chiqarish |
+| Warehouse Operator (omborchi) | Ombor | Ombor |
+| Seller (sotuvchi) | Sotuvlar | Sotuvlar |
+| Accountant (buxgalter) | Moliya | Moliya |
+
+Profil va Bildirishnomalar barcha login qilgan pilot rollarida ochiq. Pilotda
+Operatsiyalar paneli, Hisobotlar, Audit jurnali, Mexanik ish maydoni va Davomat
+menyudan ham, to‘g‘ridan-to‘g‘ri URL orqali ham yashiriladi. Backend permission
+guardlari o‘zgarmagan va mustaqil himoya qatlamidir.
+
+Ishlab chiqarish operatori uchun uchta asosiy amal alohida ko‘rsatiladi:
+
+1. `Stanok ishini boshlash`
+2. `Stanokdan chiqqan mahsulotni qabul qilish`
+3. `Keyingi bosqichga o‘tkazish`
+
+### Week 2 moliya vakolatlari
+
+| Amal | Pilotdagi vakolat |
+| --- | --- |
+| Xarajat yoki avans so‘rovini yaratish | Moliya yozish huquqi bor foydalanuvchi |
+| Xarajat yoki avansni tasdiqlash/rad etish | Manager |
+| Tasdiqlangan xarajat yoki avansni to‘lash | Accountant |
+| Ish haqini to‘lash | Accountant |
+
+So‘rovchi o‘z xarajat yoki avans so‘rovini tasdiqlay olmaydi va o‘zi so‘ragan
+to‘lovni bajara olmaydi. Owner uchun favqulodda ma’muriy istisno hozircha
+saqlangan; bu istisnoni olib tashlash alohida biznes qaroridir.
+
+### DELIVERY POLICY — BLOCKED BY CUSTOMER CONFIRMATION
+
+Pilot uchun `UNPAID`, `PARTIALLY_PAID` va `PAID` buyurtmalarni yetkazish qoidasi
+hali tasdiqlanmagan. Shu sabab Week 2 doirasida delivery, return, payment
+reversal yoki client debt biznes qoidalari o‘zgartirilmadi. Bu holatlar bo‘yicha
+yangi xulq va’da qilinmasin yoki operatorga yakuniy siyosat sifatida o‘rgatilmasin.
+
+## 26. Golden rule
 
 ```text
 Do not build a generic ERP.
@@ -668,7 +717,7 @@ Build Paypoq OS according to the product specification.
 Operator uchun:
 
 ```text
-Stage Inventory — haqiqat.
+Bosqichdagi qoldiq — haqiqat.
 Backend — hisob-kitob manbai.
-Xato — o‘chirish bilan emas, correction/reversal bilan tuzatiladi.
+Xato — o‘chirish bilan emas, qoldiqni tuzatish yoki to‘lovni bekor qilish bilan tuzatiladi.
 ```

@@ -2,13 +2,14 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { InfoCard } from "@/components/cards/info-card";
 import type { ExecutiveSummary } from "@/lib/api/dashboard";
+import { formatCurrency } from "@/lib/utils";
 
 export function SalesOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
   const items = [
-    { label: "Oylik sotuv", value: `${kpis.monthlySales} so‘m` },
-    { label: "Oylik xarajat", value: `${kpis.monthlyExpenses} so‘m` },
-    { label: "Mijoz qarzi", value: `${kpis.totalClientDebt} so‘m` },
-    { label: "Yetkazib beruvchi qarzi", value: `${kpis.totalSupplierDebt} so‘m` },
+    { label: "Oylik sotuv", value: formatCurrency(kpis.monthlySales) },
+    { label: "Oylik xarajat", value: formatCurrency(kpis.monthlyExpenses) },
+    { label: "Mijoz qarzi", value: formatCurrency(kpis.totalClientDebt) },
+    { label: "Yetkazib beruvchi qarzi", value: formatCurrency(kpis.totalSupplierDebt) },
   ];
 
   return (

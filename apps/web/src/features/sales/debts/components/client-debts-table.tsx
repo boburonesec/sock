@@ -7,6 +7,7 @@ import {
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import type { ClientDebt } from "@/lib/api/sales";
+import { formatCurrency } from "@/lib/utils";
 
 export function ClientDebtsTable({
   debts,
@@ -39,10 +40,10 @@ export function ClientDebtsTable({
                 </button>
               </DataTableCell>
               <DataTableCell>{debt.client.phone ?? "—"}</DataTableCell>
-              <DataTableCell>{debt.totalOrders} so‘m</DataTableCell>
-              <DataTableCell>{debt.totalPaid} so‘m</DataTableCell>
+              <DataTableCell>{formatCurrency(debt.totalOrders)}</DataTableCell>
+              <DataTableCell>{formatCurrency(debt.totalPaid)}</DataTableCell>
               <DataTableCell className="font-semibold">
-                {debt.debt} so‘m
+                {formatCurrency(debt.debt)}
               </DataTableCell>
             </DataTableRow>
           ))

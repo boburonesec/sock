@@ -17,6 +17,7 @@ import type {
   Supplier,
   SupplierPurchase,
 } from "@/lib/api/supplier";
+import { formatCurrency } from "@/lib/utils";
 
 const allocationSchema = z.object({
   purchaseId: z.string().min(1, "Xarid tanlanishi shart."),
@@ -271,7 +272,7 @@ export function SupplierPaymentDrawer({
                     <option value="">Xarid tanlang</option>
                     {supplierPurchases.map((purchase) => (
                       <option key={purchase.id} value={purchase.id}>
-                        {purchase.purchaseNumber} · {purchase.totalAmount} so‘m ·{" "}
+                        {purchase.purchaseNumber} · {formatCurrency(purchase.totalAmount)} ·{" "}
                         {paymentStatusLabel[purchase.paymentStatus] ?? purchase.paymentStatus}
                       </option>
                     ))}
@@ -355,7 +356,7 @@ export function SupplierPaymentDrawer({
       open={Boolean(pendingPayload)}
       onOpenChange={(nextOpen) => { if (!nextOpen && !isSubmitting) setPendingPayload(null); }}
       title="Yetkazib beruvchi to‘lovini tasdiqlash"
-      description={pendingPayload && selectedSupplier ? `${selectedSupplier.name} · ${pendingPayload.amount} so‘m · ${paymentMethodLabel(pendingPayload.method)} · ${pendingPayload.paymentDate ?? "bugun"}. Taqsimot: ${reviewPurchases}. Tasdiqlansa qarz ${pendingPayload.amount} so‘mga kamayadi; ortiqcha to‘lov yoki taqsimlanmagan kreditga ruxsat yo‘q.` : "To‘lov ma’lumotlarini tekshiring."}
+      description={pendingPayload && selectedSupplier ? `${selectedSupplier.name} · ${formatCurrency(pendingPayload.amount)} · ${paymentMethodLabel(pendingPayload.method)} · ${pendingPayload.paymentDate ?? "bugun"}. Taqsimot: ${reviewPurchases}. Tasdiqlansa qarz ${formatCurrency(pendingPayload.amount)}ga kamayadi; ortiqcha to‘lov yoki taqsimlanmagan kreditga ruxsat yo‘q.` : "To‘lov ma’lumotlarini tekshiring."}
       confirmLabel="To‘lovni tasdiqlash"
       isPending={isSubmitting}
       errorMessage={errorMessage}

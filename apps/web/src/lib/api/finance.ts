@@ -62,9 +62,15 @@ export interface PayrollPeriod {
   totalRemainingAmount: string;
   calculatedAt: ApiDateTime | null;
   closedAt: ApiDateTime | null;
+  calculationRevision: number;
+  approvedRevision: number | null;
+  approvedByUserId: string | null;
+  approvedAt: ApiDateTime | null;
   createdAt: ApiDateTime;
   updatedAt: ApiDateTime;
 }
+
+export interface PayrollReadiness { checks: Array<{ code: string; label: string; status: "READY" | "BLOCKER"; detail: string; action: string }>; blockers: Array<{ code: string }>; approver: UserReference | null; calculationRevision: number; approvedRevision: number | null }
 
 export interface PayrollItem {
   id: string;
@@ -84,6 +90,12 @@ export interface PayrollItem {
     name: string;
     status: string;
   };
+}
+
+export interface PayrollEmployee {
+  id: string;
+  name: string;
+  status: string;
 }
 
 export interface PayrollPayment {
@@ -142,7 +154,10 @@ export interface CreateExpensePayload {
 
 export const financeApi = {
   getSummary: () => apiClient<{ data: FinanceSummary }>("/finance/summary"),
-  getExpenses: () => apiClient<ApiCollection<Expense>>("/finance/expenses"),
+  getExpenses: () =>
+    apiClient<ApiCollection<Expense> & { totalPaidAmount: string }>(
+      "/finance/expenses",
+    ),
   createExpense: (payload: CreateExpensePayload) =>
     apiClient<{ data: Expense }>("/finance/expenses", {
       method: "POST",
@@ -174,6 +189,8 @@ export const financeApi = {
   getPenalties: () => apiClient<ApiCollection<Advance>>("/finance/penalties"),
   getPayrollPeriods: () =>
     apiClient<ApiCollection<PayrollPeriod>>("/finance/payroll-periods"),
+  getPayrollEmployees: () =>
+    apiClient<ApiCollection<PayrollEmployee>>("/finance/payroll-employees"),
   createPayrollPeriod: (payload: CreatePayrollPeriodPayload) =>
     apiClient<{ data: PayrollPeriod }>("/finance/payroll-periods", {
       method: "POST",
@@ -185,10 +202,15 @@ export const financeApi = {
       `/finance/payroll-periods/${encodeURIComponent(payrollPeriodId)}/calculate`,
       { method: "POST" },
     ),
+  approvePayrollPeriod: (payrollPeriodId: string) =>
+    apiClient<{ data: PayrollPeriod }>(
+      `/finance/payroll-periods/${encodeURIComponent(payrollPeriodId)}/approve`,
+      { method: "POST" },
+    ),
   closePayrollPeriod: (payrollPeriodId: string) =>
     apiClient<{ data: PayrollPeriod }>(
       `/finance/payroll-periods/${encodeURIComponent(payrollPeriodId)}/close`,
-      { method: "POST" },
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: true }) },
     ),
   payPayrollPeriod: (
     payrollPeriodId: string,
@@ -206,6 +228,7 @@ export const financeApi = {
     apiClient<ApiCollection<PayrollItem>>(
       `/finance/payroll-periods/${encodeURIComponent(payrollPeriodId)}/items`,
     ),
+  getPayrollPeriodReadiness: (payrollPeriodId: string) => apiClient<{ data: PayrollReadiness }>(`/finance/payroll-periods/${encodeURIComponent(payrollPeriodId)}/readiness`),
   createAdvance: (payload: CreateEmployeeAdjustmentPayload) =>
     apiClient<{ data: Advance }>("/finance/advances", {
       method: "POST",

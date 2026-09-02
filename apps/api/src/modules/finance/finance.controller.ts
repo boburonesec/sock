@@ -5,6 +5,7 @@ import { RequirePermissions } from '../identity/authorization/require-permission
 import { CurrentContext } from '../identity/request-context/current-context.decorator';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import {
+  ClosePayrollPeriodDto,
   CreateEmployeeAdjustmentDto,
   CreateExpenseDto,
   CreatePayrollPeriodDto,
@@ -15,8 +16,10 @@ import {
   AdvanceResponse,
   CollectionResponse,
   ExpenseResponse,
+  ExpensesCollectionResponse,
   FinanceSummaryResponse,
   PayrollItemResponse,
+  PayrollEmployeeResponse,
   PayrollPaymentResponse,
   PayrollPeriodResponse,
   SingleResponse,
@@ -29,7 +32,7 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Get('expenses')
-  getExpenses(@CurrentContext() context: RequestContext): Promise<CollectionResponse<ExpenseResponse>> {
+  getExpenses(@CurrentContext() context: RequestContext): Promise<ExpensesCollectionResponse> {
     return this.financeService.getExpenses(context);
   }
 
@@ -157,6 +160,13 @@ export class FinanceController {
     return this.financeService.getPayrollPeriods(context);
   }
 
+  @Get('payroll-employees')
+  getPayrollEmployees(
+    @CurrentContext() context: RequestContext,
+  ): Promise<CollectionResponse<PayrollEmployeeResponse>> {
+    return this.financeService.getPayrollEmployees(context);
+  }
+
   @Post('payroll-periods')
   @RequirePermissions('finance.write')
   createPayrollPeriod(
@@ -180,8 +190,18 @@ export class FinanceController {
   closePayrollPeriod(
     @CurrentContext() context: RequestContext,
     @Param('id') payrollPeriodId: string,
+    @Body() dto: ClosePayrollPeriodDto,
   ): Promise<SingleResponse<PayrollPeriodResponse>> {
-    return this.financeService.closePayrollPeriod(context, payrollPeriodId);
+    return this.financeService.closePayrollPeriod(context, payrollPeriodId, dto);
+  }
+
+  @Post('payroll-periods/:id/approve')
+  @RequirePermissions('finance.write')
+  approvePayrollPeriod(
+    @CurrentContext() context: RequestContext,
+    @Param('id') payrollPeriodId: string,
+  ): Promise<SingleResponse<PayrollPeriodResponse>> {
+    return this.financeService.approvePayrollPeriod(context, payrollPeriodId);
   }
 
   @Post('payroll-periods/:id/pay')
@@ -200,5 +220,10 @@ export class FinanceController {
     @Param('id') payrollPeriodId: string,
   ): Promise<CollectionResponse<PayrollItemResponse>> {
     return this.financeService.getPayrollPeriodItems(context, payrollPeriodId);
+  }
+
+  @Get('payroll-periods/:id/readiness')
+  getPayrollPeriodReadiness(@CurrentContext() context: RequestContext, @Param('id') payrollPeriodId: string) {
+    return this.financeService.getPayrollPeriodReadiness(context, payrollPeriodId);
   }
 }

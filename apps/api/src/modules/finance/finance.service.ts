@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { AuditService } from '../audit/audit.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import { requireActiveFactoryId } from '../identity/request-context/request-context.utils';
 import {
+  ClosePayrollPeriodDto,
   CreateEmployeeAdjustmentDto,
   CreateExpenseDto,
   CreatePayrollPeriodDto,
@@ -26,8 +28,10 @@ import {
   AdvanceResponse,
   CollectionResponse,
   ExpenseResponse,
+  ExpensesCollectionResponse,
   FinanceSummaryResponse,
   PayrollItemResponse,
+  PayrollEmployeeResponse,
   PayrollPaymentResponse,
   PayrollPeriodResponse,
   SingleResponse,
@@ -58,35 +62,44 @@ export class FinanceService {
     private readonly auditService: AuditService,
   ) {}
 
-  async getExpenses(context: RequestContext): Promise<CollectionResponse<ExpenseResponse>> {
+  async getExpenses(context: RequestContext): Promise<ExpensesCollectionResponse> {
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
-    const expenses = await this.prisma.expense.findMany({
-      where: { tenantId, factoryId },
-      orderBy: { requestedAt: 'desc' },
-      select: {
-        id: true,
-        amount: true,
-        reason: true,
-        status: true,
-        requestedAt: true,
-        approvedAt: true,
-        paidAt: true,
-        cancelledAt: true,
-        createdAt: true,
-        updatedAt: true,
-        category: { select: { id: true, name: true } },
-        requestedBy: { select: { id: true, name: true } },
-        approvedBy: { select: { id: true, name: true } },
-        paidBy: { select: { id: true, name: true } },
-      },
-    });
+    const [expenses, paidAggregate] = await Promise.all([
+      this.prisma.expense.findMany({
+        where: { tenantId, factoryId },
+        orderBy: { requestedAt: 'desc' },
+        select: {
+          id: true,
+          amount: true,
+          reason: true,
+          status: true,
+          requestedAt: true,
+          approvedAt: true,
+          paidAt: true,
+          cancelledAt: true,
+          createdAt: true,
+          updatedAt: true,
+          category: { select: { id: true, name: true } },
+          requestedBy: { select: { id: true, name: true } },
+          approvedBy: { select: { id: true, name: true } },
+          paidBy: { select: { id: true, name: true } },
+        },
+      }),
+      // Backend-authoritative Decimal sum — not a browser Number() reduce
+      // over whichever rows happen to be loaded (AGENTS.md frontend rule).
+      this.prisma.expense.aggregate({
+        where: { tenantId, factoryId, status: ExpenseStatus.PAID },
+        _sum: { amount: true },
+      }),
+    ]);
 
     return {
       data: expenses.map((expense) => ({
         ...expense,
         amount: expense.amount.toString(),
       })),
+      totalPaidAmount: this.decimalOrZero(paidAggregate._sum.amount).toString(),
     };
   }
 
@@ -220,6 +233,7 @@ export class FinanceService {
     context: RequestContext,
     advanceId: string,
   ): Promise<SingleResponse<AdvanceResponse>> {
+    this.assertFinanceTransitionRole(context, ['Manager'], 'Avansni tasdiqlash');
     return this.transitionAdvance(
       context,
       advanceId,
@@ -233,6 +247,7 @@ export class FinanceService {
     context: RequestContext,
     advanceId: string,
   ): Promise<SingleResponse<AdvanceResponse>> {
+    this.assertFinanceTransitionRole(context, ['Manager'], 'Avansni rad etish');
     return this.transitionAdvance(
       context,
       advanceId,
@@ -246,6 +261,7 @@ export class FinanceService {
     context: RequestContext,
     advanceId: string,
   ): Promise<SingleResponse<AdvanceResponse>> {
+    this.assertFinanceTransitionRole(context, ['Accountant'], 'Avansni to‘lash');
     return this.transitionAdvance(
       context,
       advanceId,
@@ -327,6 +343,7 @@ export class FinanceService {
     context: RequestContext,
     expenseId: string,
   ): Promise<SingleResponse<ExpenseResponse>> {
+    this.assertFinanceTransitionRole(context, ['Manager'], 'Xarajatni tasdiqlash');
     return this.transitionExpense(
       context,
       expenseId,
@@ -340,6 +357,7 @@ export class FinanceService {
     context: RequestContext,
     expenseId: string,
   ): Promise<SingleResponse<ExpenseResponse>> {
+    this.assertFinanceTransitionRole(context, ['Manager'], 'Xarajatni rad etish');
     return this.transitionExpense(
       context,
       expenseId,
@@ -353,6 +371,7 @@ export class FinanceService {
     context: RequestContext,
     expenseId: string,
   ): Promise<SingleResponse<ExpenseResponse>> {
+    this.assertFinanceTransitionRole(context, ['Accountant'], 'Xarajatni to‘lash');
     return this.transitionExpense(
       context,
       expenseId,
@@ -389,12 +408,31 @@ export class FinanceService {
       }
 
       const now = new Date();
-      const updated = await tx.expense.update({
-        where: { id: existing.id },
+      const { count } = await tx.expense.updateMany({
+        where: {
+          id: existing.id,
+          tenantId,
+          factoryId,
+          status: { in: [ExpenseStatus.REQUESTED, ExpenseStatus.APPROVED] },
+        },
         data: {
           status: ExpenseStatus.CANCELLED,
           cancelledAt: now,
         },
+      });
+
+      if (count === 0) {
+        const current = await tx.expense.findFirst({
+          where: { id: existing.id, tenantId, factoryId },
+          select: { status: true },
+        });
+        throw new ConflictException(
+          `Expense with status ${current?.status ?? 'UNKNOWN'} cannot be cancelled.`,
+        );
+      }
+
+      const updated = await tx.expense.findFirstOrThrow({
+        where: { id: existing.id, tenantId, factoryId },
         select: expenseSelect,
       });
       const response = this.mapExpense(updated);
@@ -584,36 +622,43 @@ export class FinanceService {
     const periods = await this.prisma.payrollPeriod.findMany({
       where: { tenantId, factoryId },
       orderBy: { month: 'desc' },
-      select: {
-        id: true,
-        month: true,
-        status: true,
-        totalWorkedAmount: true,
-        totalBonusAmount: true,
-        totalPenaltyAmount: true,
-        totalAdvanceAmount: true,
-        totalFinalAmount: true,
-        totalPaidAmount: true,
-        totalRemainingAmount: true,
-        calculatedAt: true,
-        closedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: payrollPeriodSelect,
     });
 
     return {
-      data: periods.map((period) => ({
-        ...period,
-        totalWorkedAmount: period.totalWorkedAmount.toString(),
-        totalBonusAmount: period.totalBonusAmount.toString(),
-        totalPenaltyAmount: period.totalPenaltyAmount.toString(),
-        totalAdvanceAmount: period.totalAdvanceAmount.toString(),
-        totalFinalAmount: period.totalFinalAmount.toString(),
-        totalPaidAmount: period.totalPaidAmount.toString(),
-        totalRemainingAmount: period.totalRemainingAmount.toString(),
-      })),
+      data: periods.map((period) => this.mapPayrollPeriod(period)),
     };
+  }
+
+  async getPayrollEmployees(
+    context: RequestContext,
+  ): Promise<CollectionResponse<PayrollEmployeeResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const employees = await this.prisma.employee.findMany({
+      where: { tenantId, factoryId, status: 'ACTIVE' },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, status: true },
+    });
+
+    return { data: employees };
+  }
+
+  async getPayrollPeriodReadiness(context: RequestContext, payrollPeriodId: string) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context);
+    const period = await this.prisma.payrollPeriod.findFirst({ where: { id: payrollPeriodId, tenantId, factoryId }, select: payrollPeriodSelect });
+    if (!period) throw new NotFoundException('Ish haqi davri topilmadi.');
+    const [openCorrections, approver] = await Promise.all([
+      this.prisma.correctionRequest.count({ where: { tenantId, factoryId, status: 'OPEN', domain: { in: ['PRODUCTION_MOVEMENT', 'WORKER_ACTIVITY'] } } }),
+      period.approvedByUserId ? this.prisma.user.findFirst({ where: { id: period.approvedByUserId, tenantId }, select: { id: true, name: true } }) : null,
+    ]);
+    const currentApproval = period.approvedRevision === period.calculationRevision && Boolean(period.approvedByUserId && period.approvedAt);
+    const checks = [
+      { code: 'CURRENT_CALCULATION', label: 'Amaldagi hisob', status: period.calculationRevision > 0 ? 'READY' : 'BLOCKER', detail: period.calculationRevision > 0 ? `${period.calculationRevision}-reviziya hisoblangan.` : 'Ish haqi hali hisoblanmagan.', action: period.calculationRevision > 0 ? 'Amal talab qilinmaydi.' : 'Ish haqini hisoblang.' },
+      { code: 'MANAGER_APPROVAL', label: 'Manager tasdig‘i', status: currentApproval ? 'READY' : 'BLOCKER', detail: currentApproval ? `${period.calculationRevision}-reviziyani ${approver?.name ?? 'Manager'} tasdiqlagan.` : 'Amaldagi reviziya Manager tomonidan tasdiqlanmagan.', action: currentApproval ? 'Amal talab qilinmaydi.' : 'Manager amaldagi hisobni tekshirib tasdiqlashi kerak.' },
+      { code: 'OPEN_CORRECTIONS', label: 'Ochiq tuzatish so‘rovlari', status: openCorrections ? 'BLOCKER' : 'READY', detail: openCorrections ? `Ish haqi natijasiga ta’sir qilishi mumkin bo‘lgan ochiq so‘rovlar: ${openCorrections}.` : 'Ochiq ishlab chiqarish yoki ishchi faoliyati so‘rovi yo‘q.', action: openCorrections ? 'Manager tuzatish so‘rovlarini ko‘rib chiqib yopishi kerak.' : 'Amal talab qilinmaydi.' },
+    ];
+    return { data: { checks, blockers: checks.filter((item) => item.status === 'BLOCKER'), approver, calculationRevision: period.calculationRevision, approvedRevision: period.approvedRevision } };
   }
 
   async createPayrollPeriod(
@@ -661,7 +706,6 @@ export class FinanceService {
         entityId: createdPeriod.id,
         after: response,
       });
-
       return response;
     });
 
@@ -676,6 +720,11 @@ export class FinanceService {
     const factoryId = requireActiveFactoryId(context);
 
     const period = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "PayrollPeriod"
+        WHERE "id" = ${payrollPeriodId} AND "tenantId" = ${tenantId} AND "factoryId" = ${factoryId}
+        FOR UPDATE
+      `);
       const existingPeriod = await tx.payrollPeriod.findFirst({
         where: { id: payrollPeriodId, tenantId, factoryId },
         select: payrollPeriodSelect,
@@ -910,6 +959,10 @@ export class FinanceService {
           totalPaidAmount: new Prisma.Decimal(0),
           totalRemainingAmount: totalFinalAmount,
           calculatedAt: new Date(),
+          calculationRevision: { increment: 1 },
+          approvedRevision: null,
+          approvedByUserId: null,
+          approvedAt: null,
         },
         select: payrollPeriodSelect,
       });
@@ -928,8 +981,18 @@ export class FinanceService {
           activityCount: activities.length,
           adjustmentCount: adjustments.length,
           itemCount: itemInputs.length,
+          approvalInvalidated: existingPeriod.approvedRevision !== null,
         },
       });
+      if (existingPeriod.approvedRevision !== null) {
+        await this.auditService.createWithTransaction(tx, {
+          tenantId, factoryId, userId: context.userId,
+          action: 'PAYROLL_APPROVAL_INVALIDATED', entityType: 'PayrollPeriod', entityId: payrollPeriodId,
+          before: { approvedRevision: existingPeriod.approvedRevision, approvedByUserId: existingPeriod.approvedByUserId, approvedAt: existingPeriod.approvedAt },
+          after: { approvedRevision: null, approvedByUserId: null, approvedAt: null },
+          metadata: { newCalculationRevision: updatedPeriod.calculationRevision },
+        });
+      }
 
       return response;
     });
@@ -937,14 +1000,53 @@ export class FinanceService {
     return { data: period };
   }
 
-  async closePayrollPeriod(
+  async approvePayrollPeriod(
     context: RequestContext,
     payrollPeriodId: string,
   ): Promise<SingleResponse<PayrollPeriodResponse>> {
+    if (!context.roles.includes('Manager')) {
+      throw new ForbiddenException('Payrollni tasdiqlash uchun Manager roli talab qilinadi.');
+    }
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
+    await this.assertNoPayrollReadinessBlockers(tenantId, factoryId);
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "PayrollPeriod"
+        WHERE "id" = ${payrollPeriodId} AND "tenantId" = ${tenantId} AND "factoryId" = ${factoryId}
+        FOR UPDATE
+      `);
+      const existing = await tx.payrollPeriod.findFirst({ where: { id: payrollPeriodId, tenantId, factoryId }, select: payrollPeriodSelect });
+      if (!existing) throw new NotFoundException('Payroll period not found.');
+      if (existing.status !== PayrollPeriodStatus.CALCULATED) throw new ConflictException('Faqat hisoblangan va hali to‘lanmagan payroll tasdiqlanadi.');
+      if (existing.calculationRevision < 1) throw new ConflictException('Payrollning amaldagi hisob-kitob reviziyasi mavjud emas.');
+      const updated = await tx.payrollPeriod.update({
+        where: { id_tenantId_factoryId: { id: payrollPeriodId, tenantId, factoryId } },
+        data: { approvedRevision: existing.calculationRevision, approvedByUserId: context.userId, approvedAt: new Date() },
+        select: payrollPeriodSelect,
+      });
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'PAYROLL_REVISION_APPROVED', entityType: 'PayrollPeriod', entityId: payrollPeriodId, before: this.mapPayrollPeriod(existing), after: this.mapPayrollPeriod(updated), metadata: { calculationRevision: existing.calculationRevision } });
+      return this.mapPayrollPeriod(updated);
+    });
+    return { data: result };
+  }
+
+  async closePayrollPeriod(
+    context: RequestContext,
+    payrollPeriodId: string,
+    dto: ClosePayrollPeriodDto,
+  ): Promise<SingleResponse<PayrollPeriodResponse>> {
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    if (!dto.confirm) throw new BadRequestException('Payrollni yopish uchun aniq tasdiq talab qilinadi.');
+    await this.assertNoPayrollReadinessBlockers(tenantId, factoryId);
 
     const period = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "PayrollPeriod"
+        WHERE "id" = ${payrollPeriodId} AND "tenantId" = ${tenantId} AND "factoryId" = ${factoryId}
+        FOR UPDATE
+      `);
       const existingPeriod = await tx.payrollPeriod.findFirst({
         where: { id: payrollPeriodId, tenantId, factoryId },
         select: payrollPeriodSelect,
@@ -958,14 +1060,10 @@ export class FinanceService {
         throw new ConflictException('Payroll period is already closed.');
       }
 
-      if (
-        existingPeriod.status === PayrollPeriodStatus.DRAFT ||
-        existingPeriod.status === PayrollPeriodStatus.PARTIALLY_PAID
-      ) {
-        throw new ConflictException(
-          'Payroll period can be closed only after calculation and final payment review.',
-        );
+      if (existingPeriod.status !== PayrollPeriodStatus.PAID || !existingPeriod.totalRemainingAmount.eq(0)) {
+        throw new ConflictException('Payroll faqat to‘liq to‘langan va qoldiq 0 bo‘lganda yopiladi.');
       }
+      this.assertCurrentPayrollApproval(existingPeriod);
 
       const updatedPeriod = await tx.payrollPeriod.update({
         where: { id_tenantId_factoryId: { id: payrollPeriodId, tenantId, factoryId } },
@@ -999,19 +1097,40 @@ export class FinanceService {
     payrollPeriodId: string,
     dto: PayPayrollPeriodDto,
   ): Promise<SingleResponse<PayrollPaymentResponse>> {
+    this.assertFinanceTransitionRole(
+      context,
+      ['Accountant'],
+      'Ish haqini to‘lash',
+    );
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
     const amount = this.parsePositiveDecimal(dto.amount, 'Payment amount');
+    await this.assertNoPayrollReadinessBlockers(tenantId, factoryId);
 
     const payment = await this.prisma.$transaction(async (tx) => {
+      const lockedPeriods = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "PayrollPeriod"
+          WHERE "id" = ${payrollPeriodId}
+            AND "tenantId" = ${tenantId}
+            AND "factoryId" = ${factoryId}
+          FOR UPDATE
+        `,
+      );
+
+      if (lockedPeriods.length === 0) {
+        throw new NotFoundException('Payroll period not found.');
+      }
+
       const period = await tx.payrollPeriod.findFirst({
         where: { id: payrollPeriodId, tenantId, factoryId },
         select: payrollPeriodSelect,
       });
 
-      if (!period) {
-        throw new NotFoundException('Payroll period not found.');
-      }
+      if (!period) throw new NotFoundException('Payroll period not found.');
+
+      this.assertCurrentPayrollApproval(period);
 
       if (
         period.status !== PayrollPeriodStatus.CALCULATED &&
@@ -1070,8 +1189,9 @@ export class FinanceService {
 
       const periodTotals = await tx.payrollItem.aggregate({
         where: { tenantId, factoryId, payrollPeriodId },
-        _sum: { paidAmount: true, remainingAmount: true },
+        _sum: { finalAmount: true, paidAmount: true, remainingAmount: true },
       });
+      const totalFinalAmount = this.decimalOrZero(periodTotals._sum.finalAmount);
       const totalPaidAmount = this.decimalOrZero(periodTotals._sum.paidAmount);
       const totalRemainingAmount = this.decimalOrZero(
         periodTotals._sum.remainingAmount,
@@ -1083,6 +1203,7 @@ export class FinanceService {
       const updatedPeriod = await tx.payrollPeriod.update({
         where: { id_tenantId_factoryId: { id: payrollPeriodId, tenantId, factoryId } },
         data: {
+          totalFinalAmount,
           totalPaidAmount,
           totalRemainingAmount,
           status: nextPeriodStatus,
@@ -1251,22 +1372,7 @@ export class FinanceService {
       where: { tenantId, factoryId },
       orderBy: { month: 'desc' },
       take,
-      select: {
-        id: true,
-        month: true,
-        status: true,
-        totalWorkedAmount: true,
-        totalBonusAmount: true,
-        totalPenaltyAmount: true,
-        totalAdvanceAmount: true,
-        totalFinalAmount: true,
-        totalPaidAmount: true,
-        totalRemainingAmount: true,
-        calculatedAt: true,
-        closedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: payrollPeriodSelect,
     });
 
     return periods.map((period) => ({
@@ -1305,6 +1411,8 @@ export class FinanceService {
         );
       }
 
+      this.assertRequesterSeparated(context, existing.requestedBy?.id, auditAction);
+
       const now = new Date();
       const data: Prisma.EmployeeAdjustmentUncheckedUpdateInput = {
         status: toStatus,
@@ -1324,9 +1432,33 @@ export class FinanceService {
         data.paidByUserId = context.userId;
       }
 
-      const updated = await tx.employeeAdjustment.update({
-        where: { id: existing.id },
+      // Atomic compare-and-swap: the WHERE clause re-checks `status = fromStatus`
+      // inside the same UPDATE statement, so a concurrent approve/reject/pay
+      // racing against this one can affect at most one of the two attempts —
+      // the loser's matched-row count is 0 instead of silently overwriting.
+      const { count } = await tx.employeeAdjustment.updateMany({
+        where: {
+          id: existing.id,
+          tenantId,
+          factoryId,
+          type: EmployeeAdjustmentType.ADVANCE,
+          status: fromStatus,
+        },
         data,
+      });
+
+      if (count === 0) {
+        const current = await tx.employeeAdjustment.findFirst({
+          where: { id: existing.id, tenantId, factoryId },
+          select: { status: true },
+        });
+        throw new ConflictException(
+          `Advance with status ${current?.status ?? 'UNKNOWN'} cannot transition to ${toStatus}.`,
+        );
+      }
+
+      const updated = await tx.employeeAdjustment.findFirstOrThrow({
+        where: { id: existing.id, tenantId, factoryId },
         select: adjustmentSelect,
       });
       const response = this.mapAdjustment(updated);
@@ -1374,6 +1506,8 @@ export class FinanceService {
         );
       }
 
+      this.assertRequesterSeparated(context, existing.requestedBy?.id, auditAction);
+
       const now = new Date();
       const data: Prisma.ExpenseUncheckedUpdateInput = {
         status: toStatus,
@@ -1389,9 +1523,25 @@ export class FinanceService {
         data.paidByUserId = context.userId;
       }
 
-      const updated = await tx.expense.update({
-        where: { id: existing.id },
+      // Atomic compare-and-swap — see transitionAdvance for why this closes
+      // the approve/reject/pay race instead of a plain read-then-update.
+      const { count } = await tx.expense.updateMany({
+        where: { id: existing.id, tenantId, factoryId, status: fromStatus },
         data,
+      });
+
+      if (count === 0) {
+        const current = await tx.expense.findFirst({
+          where: { id: existing.id, tenantId, factoryId },
+          select: { status: true },
+        });
+        throw new ConflictException(
+          `Expense with status ${current?.status ?? 'UNKNOWN'} cannot transition to ${toStatus}.`,
+        );
+      }
+
+      const updated = await tx.expense.findFirstOrThrow({
+        where: { id: existing.id, tenantId, factoryId },
         select: expenseSelect,
       });
       const response = this.mapExpense(updated);
@@ -1429,6 +1579,53 @@ export class FinanceService {
       ...expense,
       amount: expense.amount.toString(),
     };
+  }
+
+  private assertFinanceTransitionRole(
+    context: RequestContext,
+    allowedRoles: readonly string[],
+    actionLabel: string,
+  ): void {
+    // Owner behavior is intentionally preserved until the Product Owner and
+    // pilot customer decide whether emergency/admin bypass is allowed.
+    if (context.roles.includes('Owner')) return;
+
+    if (!allowedRoles.some((role) => context.roles.includes(role))) {
+      throw new ForbiddenException(
+        `${actionLabel} uchun ${allowedRoles.join(' yoki ')} roli talab qilinadi.`,
+      );
+    }
+  }
+
+  private assertCurrentPayrollApproval(period: { calculationRevision: number; approvedRevision: number | null; approvedByUserId: string | null; approvedAt: Date | null }): void {
+    if (
+      period.approvedRevision !== period.calculationRevision ||
+      !period.approvedByUserId ||
+      !period.approvedAt
+    ) {
+      throw new ConflictException('Payrollning amaldagi hisob-kitob reviziyasi Manager tomonidan tasdiqlanmagan.');
+    }
+  }
+
+  private async assertNoPayrollReadinessBlockers(tenantId: string, factoryId: string): Promise<void> {
+    const count = await this.prisma.correctionRequest.count({
+      where: { tenantId, factoryId, status: 'OPEN', domain: { in: ['PRODUCTION_MOVEMENT', 'WORKER_ACTIVITY'] } },
+    });
+    if (count > 0) throw new ConflictException('Payroll bo‘yicha ochiq ishlab chiqarish yoki ishchi faoliyati tuzatish so‘rovi mavjud.');
+  }
+
+  private assertRequesterSeparated(
+    context: RequestContext,
+    requestedByUserId: string | undefined,
+    action: string,
+  ): void {
+    if (context.roles.includes('Owner')) return;
+
+    if (requestedByUserId && requestedByUserId === context.userId) {
+      throw new ForbiddenException(
+        `So‘rovni yaratgan foydalanuvchi ${action} amalini bajara olmaydi.`,
+      );
+    }
   }
 
   private mapAdjustment(
@@ -1590,6 +1787,10 @@ const payrollPeriodSelect = {
   totalRemainingAmount: true,
   calculatedAt: true,
   closedAt: true,
+  calculationRevision: true,
+  approvedRevision: true,
+  approvedByUserId: true,
+  approvedAt: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.PayrollPeriodSelect;

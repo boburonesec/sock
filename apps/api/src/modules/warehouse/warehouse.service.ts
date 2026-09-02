@@ -39,7 +39,6 @@ import {
 } from '../../common/factory-defaults';
 
 const RECENT_MOVEMENT_LIMIT = 50;
-const PRODUCTION_WAREHOUSE_STAGE_NAME = 'Ombor';
 
 @Injectable()
 export class WarehouseService {
@@ -57,7 +56,7 @@ export class WarehouseService {
     const now = new Date();
 
     const created = await this.prisma.$transaction(async (tx) => {
-      const [productVariant, omborStage, targetZone] = await Promise.all([
+      const [productVariant, handoffFactory, targetZone] = await Promise.all([
         tx.productVariant.findFirst({
           where: {
             id: dto.productVariantId,
@@ -67,14 +66,9 @@ export class WarehouseService {
           },
           select: productVariantSelect,
         }),
-        tx.productionStage.findFirst({
-          where: {
-            tenantId,
-            factoryId,
-            name: PRODUCTION_WAREHOUSE_STAGE_NAME,
-            deletedAt: null,
-          },
-          select: { id: true, name: true, sortOrder: true },
+        tx.factory.findFirst({
+          where: { id: factoryId, tenantId, deletedAt: null },
+          select: { warehouseHandoffStage: { select: { id: true, name: true, sortOrder: true, deletedAt: true } } },
         }),
         this.findTargetFinishedProductZone(tx, {
           tenantId,
@@ -87,9 +81,10 @@ export class WarehouseService {
         throw new NotFoundException('Product variant not found.');
       }
 
-      if (!omborStage) {
+      const omborStage = handoffFactory?.warehouseHandoffStage;
+      if (!omborStage || omborStage.deletedAt) {
         throw new ConflictException(
-          'Active Ombor production stage is required before receiving finished products.',
+          'Omborga topshirish uchun faol ishlab chiqarish bosqichi sozlanishi kerak.',
         );
       }
 

@@ -185,10 +185,29 @@ Recommended next operational step:
 - Run a full restore into a clean staging database with PostgreSQL CLI tools or
   the Docker fallback and keep the generated backup file outside the app server.
 
+## Encryption at rest
+
+Set `BACKUP_ENCRYPTION_KEY` before running `backup-db.sh` to AES-256-CBC
+encrypt the dump (OpenSSL, PBKDF2-derived key) and delete the plaintext file —
+the script never leaves an unencrypted dump on disk when the key is set. The
+output file gets a `.enc` suffix. Pass the same `BACKUP_ENCRYPTION_KEY` to
+`restore-db.sh` (it detects `.enc` automatically) to decrypt into a private
+temp file that is removed as soon as `pg_restore` finishes, even on failure.
+
+Store `BACKUP_ENCRYPTION_KEY` in a secrets manager, not in the repo or in
+plain environment files committed anywhere. Losing the key makes existing
+backups unrecoverable — treat it with the same care as a database password.
+
+```bash
+BACKUP_ENCRYPTION_KEY="$(cat /path/to/secret)" bash scripts/backup-db.sh
+BACKUP_ENCRYPTION_KEY="$(cat /path/to/secret)" bash scripts/restore-db.sh backups/paypoq-os-*.dump.enc
+```
+
 ## Limitations
 
 - Backups are not yet scheduled automatically.
-- Backup encryption is not implemented by these scripts.
+- Encryption covers the dump file itself; key management, off-host copy
+  automation, and rotation policy remain operator responsibilities.
 - Off-server storage is not automated.
 - Restore does not automatically create a database; create the clean target DB
   first.

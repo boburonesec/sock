@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { NotificationDeliveryStatus, Prisma, QualityIssueStatus } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
@@ -18,10 +18,19 @@ export interface CreateNotificationInput {
 @Injectable()
 export class NotificationService implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
+  private readonly logger = new Logger(NotificationService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   onModuleInit(): void {
-    this.timer = setInterval(() => void this.scheduleDueNotifications(), 60_000);
+    // This runs unattended every 60s for the life of the process, across every
+    // tenant on this server — an unhandled rejection here (a transient DB
+    // blip, anything) previously crashed the entire API for every tenant.
+    // One tick failing must never take the next one down with it.
+    this.timer = setInterval(() => {
+      this.scheduleDueNotifications().catch((error) => {
+        this.logger.error('scheduleDueNotifications failed; will retry next tick.', error instanceof Error ? error.stack : error);
+      });
+    }, 60_000);
     this.timer.unref();
   }
   onModuleDestroy(): void { if (this.timer) clearInterval(this.timer); }

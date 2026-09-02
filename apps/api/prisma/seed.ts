@@ -1,4 +1,5 @@
 import { createPrismaClient } from '../src/prisma/client';
+import { DEFAULT_WAREHOUSE_NAME } from '../src/common/factory-defaults';
 import * as argon2 from 'argon2';
 
 const prisma = createPrismaClient();
@@ -247,13 +248,13 @@ async function main(): Promise<void> {
     where: {
       factoryId_name: {
         factoryId: factory.id,
-        name: 'Main Warehouse',
+        name: DEFAULT_WAREHOUSE_NAME,
       },
     },
     create: {
       tenantId: tenant.id,
       factoryId: factory.id,
-      name: 'Main Warehouse',
+      name: DEFAULT_WAREHOUSE_NAME,
     },
     update: {
       deletedAt: null,

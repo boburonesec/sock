@@ -78,6 +78,29 @@ export const stockItemTypeLabel: Record<string, string> = {
   MATERIAL: "Material",
 };
 
+/**
+ * Stock movement `reason` codes → Uzbek label. A stock-correction reason is
+ * free text the user typed in ("Sabab" field), so unknown values pass through
+ * unchanged instead of being blanked out.
+ */
+export const stockMovementReasonLabel: Record<string, string> = {
+  FINISHED_PRODUCT_RECEIPT: "Tayyor mahsulot qabul qilindi",
+  MATERIAL_RECEIPT: "Xomashyo qabul qilindi",
+  PRODUCTION_BATCH_CREATED: "Ishlab chiqarish partiyasi ochildi",
+  ORDER_DELIVERY: "Buyurtma yetkazib berildi",
+  ORDER_DELIVERY_RETURN: "Yetkazib berish qaytarildi",
+};
+
+export function formatStockMovementReason(reason: string | null | undefined): string {
+  if (!reason) return "—";
+  return stockMovementReasonLabel[reason] ?? reason;
+}
+
+/** Some historical records store the English "pcs" unit; normalize to "dona" for display. */
+export function formatStockUnit(unit: string): string {
+  return unit === "pcs" ? "dona" : unit;
+}
+
 /** Warehouse zone canonical names → operator-facing Uzbek */
 export const warehouseZoneNameLabel: Record<string, string> = {
   "Finished Products": "Tayyor mahsulot",

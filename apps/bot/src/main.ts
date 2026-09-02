@@ -1,15 +1,38 @@
+import http from 'http';
 import { BotApiClient } from './api-client';
 import { createEmployeeBot } from './bot';
 import { loadConfig } from './config';
 import { startNotificationDeliveryWorker } from './notification-worker';
 
+function startHealthServer(): http.Server {
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
+  const server = http.createServer((req, res) => {
+    if (req.url === '/health' || req.url === '/') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', service: 'paypoq-bot' }));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+  });
+
+  server.listen(port, () => {
+    console.log(`Paypoq Bot health listener running on port ${port}`);
+  });
+
+  return server;
+}
+
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
   const apiClient = new BotApiClient(config);
+  const healthServer = startHealthServer();
+
   if (config.mode === 'disabled') {
     const shutdown = waitForShutdown();
     console.log('Paypoq OS Telegram bot started with external polling disabled.');
     await shutdown;
+    healthServer.close();
     return;
   }
 
@@ -33,6 +56,7 @@ async function bootstrap(): Promise<void> {
     if (stopping) return;
     stopping = true;
     stopWorker();
+    healthServer.close();
     bot.stop(signal);
   };
   process.once('SIGINT', () => stop('SIGINT'));
@@ -60,3 +84,4 @@ bootstrap().catch((error) => {
   console.error('Paypoq OS Telegram bot failed to start.', error);
   process.exitCode = 1;
 });
+

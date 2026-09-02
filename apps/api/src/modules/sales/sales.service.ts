@@ -495,6 +495,7 @@ export class SalesService {
     const now = new Date();
 
     const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      await this.lockSalesOrder(tx, orderId, tenantId, factoryId);
       const existing = await tx.salesOrder.findFirst({
         where: { id: orderId, tenantId, factoryId },
         select: {
@@ -604,6 +605,7 @@ export class SalesService {
     const now = new Date();
 
     const cancelledOrder = await this.prisma.$transaction(async (tx) => {
+      await this.lockSalesOrder(tx, orderId, tenantId, factoryId);
       const existing = await tx.salesOrder.findFirst({
         where: { id: orderId, tenantId, factoryId },
         select: {
@@ -676,6 +678,7 @@ export class SalesService {
         : null;
 
     const deliveredOrder = await this.prisma.$transaction(async (tx) => {
+      await this.lockSalesOrder(tx, orderId, tenantId, factoryId);
       const order = await tx.salesOrder.findFirst({
         where: { id: orderId, tenantId, factoryId },
         select: salesOrderSelect,
@@ -767,11 +770,11 @@ export class SalesService {
             movementType: StockMovementType.ISSUE,
             productVariantId: item.productVariant.id,
             quantity: new Prisma.Decimal(item.quantity),
-            unit: 'pcs',
+            unit: 'dona',
             beforeQuantity: new Prisma.Decimal(stock.quantity),
             afterQuantity: new Prisma.Decimal(afterQuantity),
-            reason: 'Order delivery',
-            note: `Order ${order.orderNumber} delivered`,
+            reason: 'ORDER_DELIVERY',
+            note: `Buyurtma ${order.orderNumber} yetkazib berildi`,
             recordedByUserId: context.userId,
             occurredAt: now,
           },
@@ -876,6 +879,7 @@ export class SalesService {
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
     const returnedOrder = await this.prisma.$transaction(async (tx) => {
+      await this.lockSalesOrder(tx, orderId, tenantId, factoryId);
       const order = await tx.salesOrder.findFirst({
         where: { id: orderId, tenantId, factoryId },
         select: salesOrderSelect,
@@ -968,11 +972,11 @@ export class SalesService {
             movementType: StockMovementType.RETURN,
             productVariantId: item.productVariant.id,
             quantity: new Prisma.Decimal(item.quantity),
-            unit: 'pcs',
+            unit: 'dona',
             beforeQuantity: new Prisma.Decimal(beforeQuantity),
             afterQuantity: new Prisma.Decimal(stockAfter.quantity),
             reason: 'ORDER_DELIVERY_RETURN',
-            note: `Order ${order.orderNumber} delivery returned`,
+            note: `Buyurtma ${order.orderNumber} yetkazib berish qaytarildi`,
             recordedByUserId: context.userId,
             occurredAt: now,
           },
@@ -1398,19 +1402,21 @@ export class SalesService {
         })),
       };
 
-      await tx.clientPayment.update({
-        where: {
-          id_tenantId: {
-            id: payment.id,
-            tenantId,
-          },
-        },
+      // Atomic compare-and-swap: only reverses while still un-reversed, so two
+      // concurrent reversal requests for the same payment can't both apply
+      // (and double-adjust order payment status below).
+      const { count } = await tx.clientPayment.updateMany({
+        where: { id: payment.id, tenantId, reversedAt: null },
         data: {
           reversedAt: now,
           reversedByUserId: context.userId,
           reversalReason: reason,
         },
       });
+
+      if (count === 0) {
+        throw new ConflictException('Client payment is already reversed.');
+      }
 
       await this.auditService.createWithTransaction(tx, {
         tenantId,
@@ -1549,6 +1555,25 @@ export class SalesService {
         };
       }),
     };
+  }
+
+  /**
+   * Row-locks a SalesOrder for the duration of the enclosing transaction so
+   * two concurrent status-changing calls (e.g. cancel + deliver) on the same
+   * order cannot both pass their read-time precondition check — the second
+   * caller blocks here until the first commits, then re-reads a fresh status.
+   */
+  private async lockSalesOrder(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    tenantId: string,
+    factoryId: string,
+  ): Promise<void> {
+    await tx.$queryRaw(Prisma.sql`
+      SELECT "id" FROM "SalesOrder"
+      WHERE "id" = ${orderId} AND "tenantId" = ${tenantId} AND "factoryId" = ${factoryId}
+      FOR UPDATE
+    `);
   }
 
   private sumDecimal(values: Prisma.Decimal[]): Prisma.Decimal {

@@ -12,6 +12,8 @@ import { StatusBadge } from "@/components/data-display/status-badge";
 import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import type { ClientPayment } from "@/lib/api/sales";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateTimeForUser } from "@/lib/format";
 
 const methodLabel: Record<string, string> = {
   CASH: "Naqd",
@@ -20,10 +22,7 @@ const methodLabel: Record<string, string> = {
 };
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 interface PaymentDetailsDrawerProps {
@@ -87,7 +86,7 @@ export function PaymentDetailsDrawer({
           </InfoCard>
           <InfoCard title="To‘lov ma’lumoti">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xl font-bold">{payment.amount} so‘m</p>
+              <p className="text-xl font-bold">{formatCurrency(payment.amount)}</p>
               <StatusBadge tone={payment.reversedAt ? "danger" : "success"}>
                 {payment.reversedAt ? "Bekor qilingan" : "Faol"}
               </StatusBadge>
@@ -122,7 +121,7 @@ export function PaymentDetailsDrawer({
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeader>Buyurtma raqami</DataTableHeader>
-                <DataTableHeader>Taqsimot summasi</DataTableHeader>
+                <DataTableHeader>Buyurtmaga ajratilgan summa</DataTableHeader>
               </DataTableRow>
             </DataTableHead>
             <tbody>
@@ -133,7 +132,7 @@ export function PaymentDetailsDrawer({
                       {allocation.order.orderNumber}
                     </DataTableCell>
                     <DataTableCell className="font-semibold">
-                      {allocation.amount} so‘m
+                      {formatCurrency(allocation.amount)}
                     </DataTableCell>
                   </DataTableRow>
                 ))

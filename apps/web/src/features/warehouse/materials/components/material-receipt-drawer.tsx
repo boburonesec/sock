@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
@@ -13,8 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import type { MasterDataItem } from "@/lib/api/product";
 import type {
   MaterialReceiptPayload,
+  MaterialReceipt,
   WarehouseZone,
 } from "@/lib/api/warehouse";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
+import { useAuthStore } from "@/stores/auth-store";
 
 const materialReceiptFormSchema = z.object({
   materialId: z.string().min(1, "Material tanlanishi kerak."),
@@ -29,7 +32,7 @@ const materialReceiptFormSchema = z.object({
     .string()
     .transform((value) => value.trim())
     .pipe(z.string().min(1, "Birlik kiritilishi shart.")),
-  warehouseZoneId: z.string().optional(),
+  warehouseZoneId: z.string().min(1, "Ombor joyi tanlanishi kerak."),
   note: z.string().optional(),
 });
 
@@ -42,7 +45,7 @@ interface MaterialReceiptDrawerProps {
   isSubmitting: boolean;
   errorMessage?: string | null;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: MaterialReceiptPayload) => Promise<void>;
+  onSubmit: (payload: MaterialReceiptPayload) => Promise<MaterialReceipt>;
 }
 
 export function MaterialReceiptDrawer({
@@ -54,10 +57,17 @@ export function MaterialReceiptDrawer({
   onOpenChange,
   onSubmit,
 }: MaterialReceiptDrawerProps) {
+  const submissionRef = useRef(false);
+  const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
+  const activeFactoryName =
+    accessibleFactories.find((factory) => factory.id === activeFactoryId)?.name ??
+    "Fabrika tanlanmagan";
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<MaterialReceiptFormValues>({
     resolver: zodResolver(materialReceiptFormSchema),
@@ -69,6 +79,12 @@ export function MaterialReceiptDrawer({
       note: "",
     },
   });
+  const selectedMaterialId = watch("materialId");
+  const selectedZoneId = watch("warehouseZoneId");
+  const quantity = watch("quantity");
+  const unit = watch("unit");
+  const selectedMaterial = materials.find((item) => item.id === selectedMaterialId);
+  const selectedZone = zones.find((item) => item.id === selectedZoneId);
 
   useEffect(() => {
     if (!open) {
@@ -91,7 +107,15 @@ export function MaterialReceiptDrawer({
     >
       <form
         className="space-y-4"
-        onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
+        onSubmit={handleSubmit(async (values) => {
+          if (submissionRef.current) return;
+          submissionRef.current = true;
+          try {
+            await onSubmit(buildPayload(values));
+          } finally {
+            submissionRef.current = false;
+          }
+        })}
       >
         <FormField
           htmlFor="materialReceiptMaterialId"
@@ -152,21 +176,37 @@ export function MaterialReceiptDrawer({
           </FormField>
         </div>
 
-        <FormField htmlFor="materialReceiptZoneId" label="Zona">
+        <FormField
+          htmlFor="materialReceiptZoneId"
+          label="Ombor joyi"
+          error={errors.warehouseZoneId?.message}
+          required
+        >
           <Select
             id="materialReceiptZoneId"
             defaultValue=""
             disabled={isSubmitting}
             {...register("warehouseZoneId")}
           >
-            <option value="">Raw Materials zonasi avtomatik</option>
+            <option value="">Ombor va joyni tanlang</option>
             {zones.map((zone) => (
               <option key={zone.id} value={zone.id}>
-                {zone.warehouse.name} · {zone.name}
+                {formatWarehouseZoneName(zone.warehouse.name)} · {formatWarehouseZoneName(zone.name)}
               </option>
             ))}
           </Select>
         </FormField>
+
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
+          <p className="font-semibold">Qabul qilishdan oldin tekshiring</p>
+          <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div><dt className="text-muted-foreground">Fabrika</dt><dd>{activeFactoryName}</dd></div>
+            <div><dt className="text-muted-foreground">Ombor</dt><dd>{selectedZone ? formatWarehouseZoneName(selectedZone.warehouse.name) : "Tanlanmagan"}</dd></div>
+            <div><dt className="text-muted-foreground">Ombor joyi</dt><dd>{selectedZone ? formatWarehouseZoneName(selectedZone.name) : "Tanlanmagan"}</dd></div>
+            <div><dt className="text-muted-foreground">Material</dt><dd>{selectedMaterial?.name ?? "Tanlanmagan"}</dd></div>
+            <div><dt className="text-muted-foreground">Miqdor va birlik</dt><dd>{quantity && unit ? `${quantity} ${unit}` : "—"}</dd></div>
+          </dl>
+        </div>
 
         <FormField htmlFor="materialReceiptNote" label="Izoh">
           <Textarea
@@ -196,7 +236,7 @@ export function MaterialReceiptDrawer({
         <Button
           type="submit"
           className="w-full"
-          disabled={isSubmitting || materials.length === 0}
+          disabled={isSubmitting || materials.length === 0 || !selectedZone}
         >
           {isSubmitting ? "Qabul qilinmoqda..." : "Materialni qabul qilish"}
         </Button>
@@ -214,7 +254,7 @@ function buildPayload(
     materialId: values.materialId,
     quantity: values.quantity,
     unit: values.unit,
-    warehouseZoneId: values.warehouseZoneId || null,
+    warehouseZoneId: values.warehouseZoneId,
     note: note ? note : undefined,
   };
 }

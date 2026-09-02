@@ -44,4 +44,26 @@ if [[ ! -s "$BACKUP_FILE" ]]; then
   fail "Backup file was not created or is empty: ${BACKUP_FILE}"
 fi
 
+chmod 600 "$BACKUP_FILE" 2>/dev/null || true
+
+# This script is a dump primitive, not a full protected backup system —
+# encryption-at-rest, off-host copy, retention and restore rehearsal remain
+# operator responsibilities (see docs/BACKUP_AND_RECOVERY_V1.md). Setting
+# BACKUP_ENCRYPTION_KEY closes the "readable on disk / in transit" part of
+# that gap: the plaintext dump is encrypted and then deleted, never left on
+# disk unencrypted.
+if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+  command -v openssl >/dev/null 2>&1 || fail "BACKUP_ENCRYPTION_KEY is set but openssl was not found."
+  ENCRYPTED_FILE="${BACKUP_FILE}.enc"
+  log "Encrypting backup (AES-256-CBC) before leaving it on disk."
+  openssl enc -aes-256-cbc -salt -pbkdf2 -iter 100000 \
+    -pass env:BACKUP_ENCRYPTION_KEY \
+    -in "$BACKUP_FILE" -out "$ENCRYPTED_FILE"
+  shred -u "$BACKUP_FILE" 2>/dev/null || rm -f "$BACKUP_FILE"
+  chmod 600 "$ENCRYPTED_FILE"
+  BACKUP_FILE="$ENCRYPTED_FILE"
+else
+  log "BACKUP_ENCRYPTION_KEY not set — backup file is written unencrypted. Set it for anything beyond local development."
+fi
+
 log "Backup created: ${BACKUP_FILE}"

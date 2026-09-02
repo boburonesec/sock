@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Server-side Factory TV proxy.
- * Keeps FACTORY_TV_ACCESS_TOKEN off the browser bundle (no NEXT_PUBLIC required).
+ *
+ * Each factory now carries its own token in the page URL (?token=...,
+ * generated per-factory in Sozlamalar) — this route only ever forwards it to
+ * the API, never the browser bundle. With no token param it falls back to
+ * the legacy shared FACTORY_TV_ACCESS_TOKEN (single-tenant/dev deployments;
+ * the API resolves that one to whichever single factory it can identify).
  */
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,22 +26,22 @@ function resolveApiBaseUrl(): string {
   return base.replace(/\/+$/, "");
 }
 
-function resolveFactoryTvToken(): string {
-  const token = process.env.FACTORY_TV_ACCESS_TOKEN?.trim();
+function resolveFactoryTvToken(requestToken: string | null): string {
+  const token = requestToken?.trim() || process.env.FACTORY_TV_ACCESS_TOKEN?.trim();
 
   if (!token) {
     throw new Error(
-      "FACTORY_TV_ACCESS_TOKEN is not configured on the web server.",
+      "No Factory TV token in the URL, and FACTORY_TV_ACCESS_TOKEN is not configured on the web server.",
     );
   }
 
   return token;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const apiBase = resolveApiBaseUrl();
-    const token = resolveFactoryTvToken();
+    const token = resolveFactoryTvToken(request.nextUrl.searchParams.get("token"));
 
     const upstream = await fetch(`${apiBase}/dashboard/factory-tv-summary`, {
       method: "GET",

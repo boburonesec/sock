@@ -1,6 +1,7 @@
 import { DataTable, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import type { ExecutiveSummary } from "@/lib/api/dashboard";
+import { formatCurrency } from "@/lib/utils";
 
 type TopProduct = ExecutiveSummary["topProducts"][number];
 
@@ -28,7 +29,7 @@ export function TopProducts({ products }: { products: TopProduct[] }) {
               <DataTableCell>{product.materialName}</DataTableCell>
               <DataTableCell>{product.seasonName}</DataTableCell>
               <DataTableCell>{product.quantity}</DataTableCell>
-              <DataTableCell className="font-semibold">{product.value} so‘m</DataTableCell>
+              <DataTableCell className="font-semibold">{formatCurrency(product.value)}</DataTableCell>
             </DataTableRow>
           ))
         )}

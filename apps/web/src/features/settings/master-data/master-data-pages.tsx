@@ -366,7 +366,7 @@ function MasterDataFormDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? `${title}: yangi yozuv` : `${title}: tahrirlash`}
-      description="Master-data yozuvi tizim orqali saqlanadi."
+      description="Asosiy ma’lumotlar yozuvi tizim orqali saqlanadi."
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <FormField htmlFor="masterDataName" label="Nomi" error={errors.name?.message} required>

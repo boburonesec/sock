@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getDefaultHomePath } from "@/lib/access-control";
 import { navigationItems } from "@/lib/navigation";
+import { isPilotPathVisible } from "@/lib/pilot-scope";
 import { useAuthStore } from "@/stores/auth-store";
 
 const sectionLabels: Record<(typeof navigationItems)[number]["section"], string> = {
@@ -18,8 +19,12 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
   const pathname = usePathname();
   const roles = useAuthStore((state) => state.roles);
   const permissions = useAuthStore((state) => state.permissions);
-  const homePath = getDefaultHomePath(permissions);
+  const homePath = getDefaultHomePath(permissions, roles);
   const visibleNavigationItems = navigationItems.filter((item) => {
+    if (!isPilotPathVisible(item.href, roles)) {
+      return false;
+    }
+
     if (item.ownerOnly && !roles.includes("Owner")) {
       return false;
     }

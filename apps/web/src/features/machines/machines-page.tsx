@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useRef, useState } from "react";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -205,8 +206,8 @@ export function MachinesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Stanoklar va ishlab chiqarish"
-        description="Stanok, biriktirilgan mexanik va tayyorlangan mahsulotni qabul qilish"
+        title="Stanok ishi"
+        description="Stanok ishini boshlash va stanokdan chiqqan mahsulotni qabul qilish"
       />
       {success && (
         <p
@@ -236,7 +237,7 @@ export function MachinesPage() {
             {[
               canManageMachines && ["create-machine", "Yangi stanok qo‘shish"],
               canManageMachines && ["assign-mechanic", "Mexanik biriktirish"],
-              canManageProduction && ["start-run", "Ishlab chiqarishni boshlash"],
+              canManageProduction && ["start-run", "Stanok ishini boshlash"],
               canManageMachines && ["piece-rate", "Ishbay stavka belgilash"],
               canAssignTasks && ["maintenance-task", "Mexanikka vazifa berish"],
               canConfigureQuality && ["inspection-slots", "Tekshiruv vaqtlarini sozlash"],
@@ -400,7 +401,7 @@ export function MachinesPage() {
                 );
               }}
             >
-              <h2 className="font-semibold">Ishlab chiqarishni boshlash</h2>
+              <h2 className="font-semibold">Stanok ishini boshlash</h2>
               <p className="text-xs text-muted-foreground">Stanok, mahsulot, operator va smenani tanlang.</p>
               <p className="text-xs font-medium">Stanok</p>
               <Select
@@ -465,7 +466,7 @@ export function MachinesPage() {
                 ))}
               </Select>
               <Button className="w-full" disabled={createRun.isPending}>
-                Ishlab chiqarishni boshlash
+                Stanok ishini boshlash
               </Button>
             </form>
           )}
@@ -823,10 +824,20 @@ export function MachinesPage() {
           )}
         </section>
       )}
-      <section className="space-y-3">
+      <section id="machine-output" className="scroll-mt-20 space-y-3">
         <h2 className="text-lg font-semibold">
-          Faol ishlab chiqarish{canManageProduction ? " va mahsulot qabuli" : ""}
+          {canManageProduction
+            ? "Stanokdan chiqqan mahsulotni qabul qilish"
+            : "Faol stanok ishlari"}
         </h2>
+        {(runs.data?.data ?? []).filter((r) =>
+          ["RUNNING", "HOLD"].includes(r.status),
+        ).length === 0 && (
+          <EmptyState
+            title="Faol stanok ishi yo‘q"
+            description="Stanok ishga tushirilgach, u shu yerda ko‘rinadi."
+          />
+        )}
         {(runs.data?.data ?? [])
           .filter((r) => ["RUNNING", "HOLD"].includes(r.status))
           .map((r) => (
@@ -849,8 +860,8 @@ export function MachinesPage() {
                     type="number"
                     min={1}
                     disabled={createIntake.isPending}
-                    aria-label="Qabul qilinadigan mahsulot soni"
-                    placeholder="Mahsulot soni"
+                    aria-label="Stanokdan chiqqan mahsulot soni"
+                    placeholder="Chiqqan dona"
                     value={intake[r.id] ?? ""}
                     onChange={(e) =>
                       setIntake({ ...intake, [r.id]: e.target.value })
@@ -866,7 +877,7 @@ export function MachinesPage() {
                       })
                     }
                   >
-                    Qabul qilish
+                    Chiqqan mahsulotni qabul qilish
                   </Button>
                 </>
               )}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { InfoCard } from "@/components/cards/info-card";
 import { Drawer } from "@/components/overlays/drawer";
 import type { ClientDebt } from "@/lib/api/sales";
+import { formatCurrency } from "@/lib/utils";
 
 interface ClientDebtDetailsDrawerProps {
   debt: ClientDebt | null;
@@ -48,14 +49,14 @@ export function ClientDebtDetailsDrawer({
 
         <div className="grid gap-4 sm:grid-cols-3">
           <InfoCard title="Jami buyurtma">
-            <p className="text-xl font-bold">{debt.totalOrders} so‘m</p>
+            <p className="text-xl font-bold">{formatCurrency(debt.totalOrders)}</p>
           </InfoCard>
           <InfoCard title="To‘langan">
-            <p className="text-xl font-bold">{debt.totalPaid} so‘m</p>
+            <p className="text-xl font-bold">{formatCurrency(debt.totalPaid)}</p>
           </InfoCard>
           <InfoCard title="Qarz">
             <p className="text-xl font-bold text-amber-500">
-              {debt.debt} so‘m
+              {formatCurrency(debt.debt)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Tizim hisob-kitob qiymati.

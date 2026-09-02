@@ -2,6 +2,15 @@ export interface CollectionResponse<T> {
   data: T[];
 }
 
+/**
+ * Expenses list is unpaginated today, but the paid-total KPI must stay
+ * backend-authoritative even so — Decimal aggregation here, not a browser
+ * `Number(item.amount)` reduce over whatever rows happen to be loaded.
+ */
+export interface ExpensesCollectionResponse extends CollectionResponse<ExpenseResponse> {
+  totalPaidAmount: string;
+}
+
 export interface SingleResponse<T> {
   data: T;
 }
@@ -69,6 +78,10 @@ export interface PayrollPeriodResponse {
   totalRemainingAmount: string;
   calculatedAt: Date | null;
   closedAt: Date | null;
+  calculationRevision: number;
+  approvedRevision: number | null;
+  approvedByUserId: string | null;
+  approvedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +104,12 @@ export interface PayrollItemResponse {
     name: string;
     status: string;
   };
+}
+
+export interface PayrollEmployeeResponse {
+  id: string;
+  name: string;
+  status: string;
 }
 
 export interface PayrollPaymentResponse {

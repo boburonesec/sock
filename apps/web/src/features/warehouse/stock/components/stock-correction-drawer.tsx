@@ -16,6 +16,7 @@ import type {
   StockCorrectionPayload,
   WarehouseZone,
 } from "@/lib/api/warehouse";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
 
 const stockCorrectionSchema = z
   .object({
@@ -229,7 +230,7 @@ export function StockCorrectionDrawer({
             </option>
             {zones.map((zone) => (
               <option key={zone.id} value={zone.id}>
-                {zone.warehouse.name} · {zone.name}
+                {formatWarehouseZoneName(zone.warehouse.name)} · {formatWarehouseZoneName(zone.name)}
               </option>
             ))}
           </Select>

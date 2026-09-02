@@ -243,3 +243,25 @@ After every task, report:
 Do not build a generic ERP.
 
 Build Paypoq OS according to the product specification.
+
+## Factory Zero-Setup & Onboarding Sequence (No Mock Data)
+
+When bootstrapping a clean factory from zero:
+
+1. **Bootstrap database:** Run `empty-seed.ts` (only platform super-admin created; no tenants/factories).
+2. **Platform Admin setup (`/admin/login`):** Create Tenant, Factory, and Tenant Owner. System auto-provisions Warehouse ('Asosiy ombor'), 5 WarehouseZones, 10 ProductionStages, ExpenseCategories, and RBAC roles.
+3. **Master Data (`/settings`):** Owner/Manager creates WorkShifts (`DAY`, `NIGHT` + night bonus), Colors, Materials, Seasons, Products, ProductVariants, and ProductPrices.
+4. **Machines & Quality (`/machines`):** Register Machines, setup MeasurementSpecification per product model.
+5. **Workforce & Piece Rates (`/employees`, `/settings`, `/machines`):**
+   - Create Employees (`MACHINE_OPERATOR`, `MECHANIC`, `STAGE_WORKER`, `Shift Receiver`, `Seller`, `Warehouse Operator`, `Accountant`).
+   - Assign active Mechanic to each Machine/Shift.
+   - Set `MachinePieceRate` for Mechanic and Operator.
+   - Set `SalaryRate` for each production stage.
+6. **Warehouse & Counterparties (`/warehouse`, `/sales`, `/finance`):** Register Clients, Suppliers, and record initial Raw Material intake (`StockMovement: RECEIPT`).
+7. **Live Production Flow (`/production`):**
+   - Start `ProductionRun` on machine.
+   - Receive batch via `ProductionRunIntake` (credits first stage inventory, creates operator & mechanic worker activity).
+   - Move through stages (`StageMovement`), logging piece-rate worker activity at each stage.
+   - Final stage to 'Ombor' moves finished goods into Warehouse finished products stock.
+   - Fulfill sales orders, collect payments, manage expenses, and compute payroll periods.
+

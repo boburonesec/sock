@@ -22,7 +22,11 @@ import { settingsApi } from "@/lib/api/settings";
 import { warehouseApi } from "@/lib/api/warehouse";
 import { queryKeys } from "@/lib/api/query-keys";
 import { formatDateShort } from "@/lib/format";
-import { formatPermissionKey, formatRoleName } from "@/lib/status-labels";
+import {
+  formatPermissionKey,
+  formatRoleName,
+  formatWarehouseZoneName,
+} from "@/lib/status-labels";
 
 export function SettingsZonesPage() {
   const { data, error, isError, isPending, refetch } = useQuery({
@@ -76,8 +80,8 @@ export function SettingsZonesPage() {
           {zones.length > 0 ? (
             zones.map((zone) => (
               <DataTableRow key={zone.id}>
-                <DataTableCell className="font-semibold">{zone.name}</DataTableCell>
-                <DataTableCell>{zone.warehouse.name}</DataTableCell>
+                <DataTableCell className="font-semibold">{formatWarehouseZoneName(zone.name)}</DataTableCell>
+                <DataTableCell>{formatWarehouseZoneName(zone.warehouse.name)}</DataTableCell>
                 <DataTableCell>{zone.productStockRecordCount}</DataTableCell>
                 <DataTableCell>{zone.materialStockRecordCount}</DataTableCell>
               </DataTableRow>
@@ -336,7 +340,7 @@ export function SettingsThresholdsPage() {
               <option value="">Tanlang</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name}
+                  {formatWarehouseZoneName(warehouse.name)}
                 </option>
               ))}
             </select>
@@ -400,7 +404,7 @@ export function SettingsThresholdsPage() {
             thresholds.map((threshold) => (
               <DataTableRow key={threshold.id}>
                 <DataTableCell className="font-semibold">{threshold.material.name}</DataTableCell>
-                <DataTableCell>{threshold.warehouse.name}</DataTableCell>
+                <DataTableCell>{formatWarehouseZoneName(threshold.warehouse.name)}</DataTableCell>
                 <DataTableCell>{threshold.quantity}</DataTableCell>
                 <DataTableCell>{formatDateShort(threshold.updatedAt)}</DataTableCell>
               </DataTableRow>

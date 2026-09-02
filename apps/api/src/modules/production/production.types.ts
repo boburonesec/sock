@@ -94,6 +94,8 @@ export interface ProductionBatchCreationResponse {
 
 export interface StageMovementCreationResponse {
   data: {
+    sourceStageInventoryBefore: StageInventoryResponse;
+    destinationStageInventoryBefore: StageInventoryResponse | null;
     sourceStageInventory: StageInventoryResponse;
     destinationStageInventory: StageInventoryResponse;
     stageMovement: StageMovementResponse;

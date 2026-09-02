@@ -10,7 +10,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Employee } from "@/lib/api/employees";
+import type { PayrollEmployee } from "@/lib/api/finance";
 
 export type PayrollAdjustmentKind = "advance" | "bonus" | "penalty";
 
@@ -32,7 +32,7 @@ type FormValues = z.infer<typeof schema>;
 interface PayrollAdjustmentDrawerProps {
   kind: PayrollAdjustmentKind;
   open: boolean;
-  employees: Employee[];
+  employees: PayrollEmployee[];
   isSubmitting: boolean;
   errorMessage?: string | null;
   onOpenChange: (open: boolean) => void;

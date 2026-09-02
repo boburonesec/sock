@@ -14,10 +14,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { financeApi, type Expense } from "@/lib/api/finance";
 import { queryKeys } from "@/lib/api/query-keys";
 import { settingsApi } from "@/lib/api/settings";
+import { formatCurrency } from "@/lib/utils";
 import { ExpensesTable } from "./components/expenses-table";
 import { useExpenses } from "./use-expenses";
+import { useAuthStore } from "@/stores/auth-store";
 
 export function ExpensesModule() {
+  const roles = useAuthStore((state) => state.roles);
+  const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null);
+  const isOwner = roles.includes("Owner");
+  const canApprove = isOwner || roles.includes("Manager");
+  const canPay = isOwner || roles.includes("Accountant");
   const queryClient = useQueryClient();
   const { data, error, isError, isPending, refetch } = useExpenses();
   const categoriesQuery = useQuery({
@@ -100,9 +107,9 @@ export function ExpensesModule() {
   const expenses = data?.data ?? [];
   const categories = categoriesQuery.data?.data ?? [];
   const pendingCount = expenses.filter((item) => item.status === "REQUESTED").length;
-  const paidSum = expenses
-    .filter((item) => item.status === "PAID")
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  // Backend-aggregated Decimal sum (not a browser reduce over loaded rows —
+  // see ExpensesCollectionResponse.totalPaidAmount).
+  const paidSum = data?.totalPaidAmount ?? "0";
 
   return (
     <div className="space-y-8">
@@ -122,7 +129,7 @@ export function ExpensesModule() {
           />
           <KpiCard
             label="To‘langan jami"
-            value={`${paidSum.toLocaleString("uz-UZ")} so‘m`}
+            value={formatCurrency(paidSum)}
             description="ro‘yxatdagi to‘langanlar"
             accent="success"
           />
@@ -146,6 +153,10 @@ export function ExpensesModule() {
         <ExpensesTable
           expenses={expenses}
           busyId={busyId}
+          currentUserId={currentUserId}
+          canApprove={canApprove}
+          canPay={canPay}
+          allowRequesterBypass={isOwner}
           onApprove={(expense) => runAction(expense, "approve")}
           onReject={(expense) => runAction(expense, "reject")}
           onPay={(expense) => runAction(expense, "pay")}

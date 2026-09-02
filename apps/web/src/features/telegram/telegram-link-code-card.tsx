@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api/client";
 import type { TelegramLinkTokenCreated } from "@/lib/api/telegram";
 import { Button } from "@/components/ui/button";
+import { formatDateTimeForUser } from "@/lib/format";
 
 interface TelegramLinkCodeCardProps {
   targetName: string;
@@ -67,10 +68,7 @@ export function TelegramLinkCodeCard({
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 function getErrorMessage(error: unknown): string {

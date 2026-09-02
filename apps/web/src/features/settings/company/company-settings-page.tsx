@@ -9,7 +9,7 @@ import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { employeesApi } from "@/lib/api/employees";
+import { employeesApi, employeeWorkProfileLabels } from "@/lib/api/employees";
 import {
   organizationApi,
   type OrganizationFactory,
@@ -549,7 +549,7 @@ export function CompanySettingsPage() {
                 <FormField htmlFor="employee-link" label="Mavjud xodim profiliga bog‘lash" required>
                   <select id="employee-link" className="flex h-11 w-full rounded-lg border bg-background px-3 text-sm" value={selectedEmployeeId} onChange={(event) => setSelectedEmployeeId(event.target.value)}>
                     <option value="">Xodimni tanlang</option>
-                    {(employeesQuery.data?.data ?? []).filter((employee) => !employee.account && ["STAFF", "MECHANIC", "MECHANIC_MASTER"].includes(employee.workProfile)).map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.workProfile}</option>)}
+                    {(employeesQuery.data?.data ?? []).filter((employee) => !employee.account && ["STAFF", "MECHANIC", "MECHANIC_MASTER"].includes(employee.workProfile)).map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employeeWorkProfileLabels[employee.workProfile]}</option>)}
                   </select>
                 </FormField>
                 <p className="text-xs text-muted-foreground">Yangi xodim profili «Xodimlar» bo‘limida yaratiladi.</p>

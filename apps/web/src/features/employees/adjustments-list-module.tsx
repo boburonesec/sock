@@ -17,6 +17,7 @@ import { financeApi } from "@/lib/api/finance";
 import { queryKeys } from "@/lib/api/query-keys";
 import { formatDateTimeForUser } from "@/lib/format";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
 
 type Kind = "bonus" | "penalty";
 
@@ -76,7 +77,7 @@ export function AdjustmentsListModule({ kind }: { kind: Kind }) {
           rows.map((row) => (
             <DataTableRow key={row.id}>
               <DataTableCell className="font-semibold">{row.employee.name}</DataTableCell>
-              <DataTableCell>{row.amount} so‘m</DataTableCell>
+              <DataTableCell>{formatCurrency(row.amount)}</DataTableCell>
               <DataTableCell>{row.reason}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone="info">

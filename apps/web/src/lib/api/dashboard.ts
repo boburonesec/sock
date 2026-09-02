@@ -88,15 +88,39 @@ export interface FactoryTvSummary {
   }>;
 }
 
+export interface FactoryTvCredentialStatus {
+  hasActiveCredential: boolean;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface FactoryTvCredentialCreated extends FactoryTvCredentialStatus {
+  token: string;
+}
+
 export const dashboardApi = {
   getExecutiveSummary: () =>
     apiClient<{ data: ExecutiveSummary }>("/dashboard/executive-summary"),
+  getFactoryTvCredentialStatus: () =>
+    apiClient<{ data: FactoryTvCredentialStatus }>("/dashboard/factory-tv-credential"),
+  generateFactoryTvCredential: () =>
+    apiClient<{ data: FactoryTvCredentialCreated }>("/dashboard/factory-tv-credential", {
+      method: "POST",
+    }),
+  revokeFactoryTvCredential: () =>
+    apiClient<{ data: { revoked: true } }>("/dashboard/factory-tv-credential", {
+      method: "DELETE",
+    }),
   /**
-   * Factory TV goes through the same-origin Next.js proxy so the access token
-   * stays on the server (FACTORY_TV_ACCESS_TOKEN), not in the browser bundle.
+   * Factory TV goes through the same-origin Next.js proxy. Each factory now
+   * has its own token (generated in Sozlamalar), carried in the page URL —
+   * the proxy only ever forwards it server-side, never the browser bundle.
+   * With no token param it falls back to the legacy shared
+   * FACTORY_TV_ACCESS_TOKEN for single-tenant/dev deployments.
    */
-  getFactoryTvSummary: async () => {
-    const response = await fetch("/api/factory-tv/summary", {
+  getFactoryTvSummary: async (token?: string | null) => {
+    const query = token ? `?token=${encodeURIComponent(token)}` : "";
+    const response = await fetch(`/api/factory-tv/summary${query}`, {
       method: "GET",
       headers: { Accept: "application/json" },
       cache: "no-store",

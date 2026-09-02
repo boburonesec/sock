@@ -141,6 +141,8 @@ export interface CreateStageMovementPayload {
 }
 
 export interface StageMovementCreation {
+  sourceStageInventoryBefore: StageInventory;
+  destinationStageInventoryBefore: StageInventory | null;
   sourceStageInventory: StageInventory;
   destinationStageInventory: StageInventory;
   stageMovement: StageMovement;
@@ -183,6 +185,7 @@ export interface ProductionLookupEmployee {
   status: string;
   jobRole: "STAGE_WORKER" | "MECHANIC" | "MACHINE_OPERATOR";
   workProfile: "STAGE_WORKER" | "MACHINE_OPERATOR" | "MECHANIC" | "MECHANIC_MASTER" | "STAFF";
+  workShift: { id: string; code: string; name: string } | null;
   stages: Array<{ id: string; name: string; sortOrder: number }>;
 }
 
@@ -194,6 +197,33 @@ export interface ProductionLookupVariant {
   material: { id: string; name: string; code: string | null };
   season: { id: string; name: string; code: string | null };
 }
+
+export interface ShiftReconciliation {
+  id: string;
+  workShiftId: string;
+  workDate: ApiDateTime;
+  status: "OPEN" | "READY_FOR_HANDOVER" | "ACCEPTED";
+  warningAcknowledgment: string | null;
+  workShift: { id: string; name: string; code: string };
+  readiness?: ShiftReadiness;
+}
+
+export interface ShiftReadinessCheck {
+  code: string;
+  label: string;
+  status: "READY" | "BLOCKER" | "WARNING";
+  detail: string;
+  action: string;
+}
+
+export interface ShiftReadiness {
+  checks: ShiftReadinessCheck[];
+  blockers: ShiftReadinessCheck[];
+  warnings: ShiftReadinessCheck[];
+  ready: ShiftReadinessCheck[];
+}
+
+export interface WorkShiftReference { id: string; code: string; name: string }
 
 export const productionApi = {
   getRuns: () => apiClient<ApiCollection<ProductionRun>>("/production/runs"),
@@ -222,6 +252,19 @@ export const productionApi = {
     apiClient<ApiCollection<ProductionLookupVariant>>(
       "/production/lookups/product-variants",
     ),
+  getShiftReconciliations: () => apiClient<ApiCollection<ShiftReconciliation>>("/production/shift-reconciliations"),
+  getShiftReadiness: (workShiftId: string, workDate: string) => apiClient<{ data: ShiftReadiness }>(`/production/shift-reconciliations/readiness?workShiftId=${encodeURIComponent(workShiftId)}&workDate=${encodeURIComponent(workDate)}`),
+  getShiftContext: () => apiClient<{ data: { currentWorkShift: WorkShiftReference | null; message: string | null } }>("/production/shift-context"),
+  getLookupWorkShifts: () => apiClient<ApiCollection<WorkShiftReference>>("/production/lookups/work-shifts"),
+  submitShiftReconciliation: (payload: { workShiftId: string; workDate: string }) =>
+    apiClient<{ data: ShiftReconciliation }>("/production/shift-reconciliations/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
+  returnShiftReconciliation: (payload: { workShiftId: string; workDate: string; reason: string }) =>
+    apiClient<{ data: ShiftReconciliation }>("/production/shift-reconciliations/return", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
+  acceptShiftReconciliation: (payload: { workShiftId: string; workDate: string; reason: string }) =>
+    apiClient<{ data: ShiftReconciliation }>("/production/shift-reconciliations/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
+  getWarehouseHandoffStage: () => apiClient<{ data: ProductionStageReference | null }>("/production/warehouse-handoff-stage"),
+  configureWarehouseHandoffStage: (productionStageId: string) =>
+    apiClient<{ data: ProductionStageReference }>("/production/warehouse-handoff-stage", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productionStageId }) }),
   createBatch: (payload: CreateProductionBatchPayload) =>
     apiClient<{ data: ProductionBatchCreation }>("/production/batches", {
       method: "POST",

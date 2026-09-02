@@ -10,6 +10,8 @@ import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Expense } from "@/lib/api/finance";
 import { expenseStatusLabel, labelStatus } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateTimeForUser } from "@/lib/format";
 
 const expenseStatusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -20,15 +22,16 @@ const expenseStatusTone: Record<string, StatusTone> = {
 };
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 export function ExpensesTable({
   expenses,
   busyId,
+  currentUserId,
+  canApprove = false,
+  canPay = false,
+  allowRequesterBypass = false,
   onApprove,
   onReject,
   onPay,
@@ -36,6 +39,10 @@ export function ExpensesTable({
 }: {
   expenses: Expense[];
   busyId?: string | null;
+  currentUserId?: string | null;
+  canApprove?: boolean;
+  canPay?: boolean;
+  allowRequesterBypass?: boolean;
   onApprove?: (expense: Expense) => void;
   onReject?: (expense: Expense) => void;
   onPay?: (expense: Expense) => void;
@@ -60,12 +67,14 @@ export function ExpensesTable({
         {expenses.length > 0 ? (
           expenses.map((expense) => {
             const busy = busyId === expense.id;
+            const isRequester =
+              !allowRequesterBypass && expense.requestedBy?.id === currentUserId;
             return (
               <DataTableRow key={expense.id}>
                 <DataTableCell className="font-semibold">
                   {expense.category.name}
                 </DataTableCell>
-                <DataTableCell>{expense.amount} so‘m</DataTableCell>
+                <DataTableCell>{formatCurrency(expense.amount)}</DataTableCell>
                 <DataTableCell>{expense.reason}</DataTableCell>
                 <DataTableCell>{expense.requestedBy?.name ?? "—"}</DataTableCell>
                 <DataTableCell>
@@ -80,7 +89,7 @@ export function ExpensesTable({
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex flex-wrap gap-2">
-                    {expense.status === "REQUESTED" ? (
+                    {expense.status === "REQUESTED" && canApprove && !isRequester ? (
                       <>
                         <Button
                           type="button"
@@ -100,19 +109,20 @@ export function ExpensesTable({
                         >
                           Rad etish
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8 px-2 text-xs"
-                          disabled={busy}
-                          onClick={() => onCancel?.(expense)}
-                        >
-                          Bekor
-                        </Button>
                       </>
                     ) : null}
-                    {expense.status === "APPROVED" ? (
-                      <>
+                    {expense.status === "REQUESTED" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 px-2 text-xs"
+                        disabled={busy}
+                        onClick={() => onCancel?.(expense)}
+                      >
+                        Bekor
+                      </Button>
+                    ) : null}
+                    {expense.status === "APPROVED" && canPay && !isRequester ? (
                         <Button
                           type="button"
                           className="h-8 px-2 text-xs"
@@ -121,6 +131,8 @@ export function ExpensesTable({
                         >
                           To‘lash
                         </Button>
+                    ) : null}
+                    {expense.status === "APPROVED" ? (
                         <Button
                           type="button"
                           variant="outline"
@@ -130,7 +142,6 @@ export function ExpensesTable({
                         >
                           Bekor
                         </Button>
-                      </>
                     ) : null}
                     {expense.status !== "REQUESTED" && expense.status !== "APPROVED" ? (
                       <span className="text-xs text-muted-foreground">—</span>

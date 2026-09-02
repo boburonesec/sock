@@ -15,6 +15,7 @@ import { productApi } from "@/lib/api/product";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { MaterialStock } from "@/lib/api/warehouse";
 import { warehouseApi, type MaterialReceiptPayload } from "@/lib/api/warehouse";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
 import { MaterialDetailsDrawer } from "./components/material-details-drawer";
 import { MaterialReceiptDrawer } from "./components/material-receipt-drawer";
@@ -114,7 +115,7 @@ export function MaterialsModule() {
 
       <PageSection
         title="Materiallar"
-        description="Yarn, elastic, labels va packaging materiallari."
+        description="Barcha xomashyo materiallari va ularning ombordagi qoldig‘i."
       >
         {canWriteWarehouse ? (
           <div className="mb-4 flex justify-end">
@@ -164,12 +165,13 @@ export function MaterialsModule() {
         }}
         onSubmit={async (payload: MaterialReceiptPayload) => {
           setFeedback(null);
-          await receiptMutation.mutateAsync(payload);
+          const response = await receiptMutation.mutateAsync(payload);
           setFeedback({
             tone: "success",
-            message: "Material omborga qabul qilindi.",
+            message: `${response.data.materialStock.material.name}: ${response.data.stockMovement.quantity} ${response.data.materialStock.unit} «${formatWarehouseZoneName(response.data.materialStock.warehouse.name)} · ${formatWarehouseZoneName(response.data.materialStock.zone.name)}» joyiga qabul qilindi. Yangi qoldiq: ${response.data.materialStock.quantity} ${response.data.materialStock.unit}.`,
           });
           setIsReceiptOpen(false);
+          return response.data;
         }}
       />
     </div>

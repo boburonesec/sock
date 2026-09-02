@@ -19,6 +19,7 @@ export default function LoginPage() {
   const isLoadingSession = useAuthStore((state) => state.isLoadingSession);
   const hasLoadedSession = useAuthStore((state) => state.hasLoadedSession);
   const permissions = useAuthStore((state) => state.permissions);
+  const roles = useAuthStore((state) => state.roles);
 
   useEffect(() => {
     if (!hasLoadedSession) {
@@ -28,9 +29,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace(getDefaultHomePath(permissions));
+      router.replace(getDefaultHomePath(permissions, roles));
     }
-  }, [isAuthenticated, permissions, router]);
+  }, [isAuthenticated, permissions, roles, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,7 +40,8 @@ export default function LoginPage() {
     try {
       await login(email, password);
       const nextPermissions = useAuthStore.getState().permissions;
-      router.replace(getDefaultHomePath(nextPermissions));
+      const nextRoles = useAuthStore.getState().roles;
+      router.replace(getDefaultHomePath(nextPermissions, nextRoles));
     } catch {
       setError("Email/parol noto‘g‘ri yoki tenant vaqtincha bloklangan.");
     }

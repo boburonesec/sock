@@ -8,17 +8,17 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import type { StockMovement } from "@/lib/api/warehouse";
 import {
+  formatStockMovementReason,
+  formatStockUnit,
   formatWarehouseZoneName,
   labelStatus,
   stockItemTypeLabel,
   stockMovementTypeLabel,
 } from "@/lib/status-labels";
+import { formatDateTimeForUser } from "@/lib/format";
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeForUser(new Date(value));
 }
 
 function itemName(movement: StockMovement): string {
@@ -67,10 +67,12 @@ export function MovementsTable({
               <DataTableCell>{itemName(movement)}</DataTableCell>
               <DataTableCell>{labelStatus(stockItemTypeLabel, movement.itemType)}</DataTableCell>
               <DataTableCell>{movement.quantity}</DataTableCell>
-              <DataTableCell>{movement.unit}</DataTableCell>
+              <DataTableCell>{formatStockUnit(movement.unit)}</DataTableCell>
               <DataTableCell>{formatWarehouseZoneName(movement.zone.name)}</DataTableCell>
               <DataTableCell>{movement.recordedBy.name}</DataTableCell>
-              <DataTableCell>{movement.reason ?? movement.note ?? "—"}</DataTableCell>
+              <DataTableCell>
+                {movement.reason ? formatStockMovementReason(movement.reason) : (movement.note ?? "—")}
+              </DataTableCell>
             </DataTableRow>
           ))
         ) : (

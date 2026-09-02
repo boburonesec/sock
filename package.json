@@ -39,6 +39,7 @@
     "test:ui-routes": "node scripts/ui-route-case-test.mjs",
     "test:ui-transactions": "node scripts/ui-transactional-mutation-test.mjs",
     "test:ui-stage-stock": "node scripts/ui-stage-stock-browser-test.mjs",
+    "test:week12-invalid-browser": "node scripts/week12-invalid-browser-test.mjs",
     "test:https-auth": "node scripts/https-auth-browser-test.mjs",
     "capture:user-guide": "node scripts/capture-user-guide-screenshots.mjs",
     "verify:acceptance-fixture": "pnpm acceptance:seed",

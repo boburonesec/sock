@@ -13,6 +13,7 @@ import {
   type Employee,
 } from "@/lib/api/employees";
 import { formatDateTimeForUser } from "@/lib/format";
+import { formatRoleName } from "@/lib/status-labels";
 
 interface EmployeeTableProps { employees: Employee[]; onSelect: (employee: Employee) => void; }
 export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
@@ -22,6 +23,7 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
         <DataTableRow>
           <DataTableHeader>Ism</DataTableHeader>
           <DataTableHeader>Lavozim</DataTableHeader>
+          <DataTableHeader>Dastur hisobi</DataTableHeader>
           <DataTableHeader>Smena</DataTableHeader>
           <DataTableHeader>Ish bosqichlari</DataTableHeader>
           <DataTableHeader>Holat</DataTableHeader>
@@ -56,6 +58,15 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
               </DataTableCell>
               <DataTableCell>{employeeWorkProfileLabels[employee.workProfile]}</DataTableCell>
               <DataTableCell>
+                {employee.account ? (
+                  <StatusBadge tone="info">
+                    {employee.account.roleNames.map(formatRoleName).join(", ")}
+                  </StatusBadge>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Kerak emas</span>
+                )}
+              </DataTableCell>
+              <DataTableCell>
                 {employee.workShift ? (
                   <span className="text-sm font-medium">{employee.workShift.name}</span>
                 ) : (
@@ -77,7 +88,7 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
           ))
         ) : (
           <EmptyTableState
-            colSpan={6}
+            colSpan={7}
             title="Xodimlar yo‘q"
             description="Xodim qo‘shilgach, shu ro‘yxatda ko‘rinadi."
           />

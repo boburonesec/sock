@@ -16,8 +16,14 @@ import { financeApi, type Advance } from "@/lib/api/finance";
 import { queryKeys } from "@/lib/api/query-keys";
 import { AdvancesTable } from "./components/advances-table";
 import { useAdvances } from "./use-advances";
+import { useAuthStore } from "@/stores/auth-store";
 
 export function AdvancesModule() {
+  const roles = useAuthStore((state) => state.roles);
+  const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null);
+  const isOwner = roles.includes("Owner");
+  const canApprove = isOwner || roles.includes("Manager");
+  const canPay = isOwner || roles.includes("Accountant");
   const queryClient = useQueryClient();
   const { data, error, isError, isPending, refetch } = useAdvances();
   const employeesQuery = useQuery({
@@ -139,6 +145,10 @@ export function AdvancesModule() {
         <AdvancesTable
           advances={advances}
           busyId={busyId}
+          currentUserId={currentUserId}
+          canApprove={canApprove}
+          canPay={canPay}
+          allowRequesterBypass={isOwner}
           onApprove={(advance) => runAction(advance, "approve")}
           onReject={(advance) => runAction(advance, "reject")}
           onPay={(advance) => runAction(advance, "pay")}

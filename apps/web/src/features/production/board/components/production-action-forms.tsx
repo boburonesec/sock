@@ -14,9 +14,11 @@ import type {
   CreateProductionBatchPayload,
   CreateStageMovementPayload,
   CreateWorkerActivityPayload,
+  StageMovementCreation,
   StageInventory,
 } from "@/lib/api/production";
 import type { FinishedProductReceiptPayload } from "@/lib/api/warehouse";
+import { useAuthStore } from "@/stores/auth-store";
 import type { ProductionAction } from "./production-action-types";
 import {
   DEFAULT_STAGE_MOVEMENT_BATCH_SIZE,
@@ -148,6 +150,7 @@ export interface ProductVariantOption {
 export interface StageOption {
   id: string;
   label: string;
+  sortOrder: number;
 }
 
 export interface EmployeeOption {
@@ -156,6 +159,7 @@ export interface EmployeeOption {
   jobRole: "STAGE_WORKER" | "MECHANIC" | "MACHINE_OPERATOR";
   /** Biriktirilgan bosqich ID lari (filter uchun). */
   stageIds?: string[];
+  workShift?: { id: string; code: string; name: string } | null;
 }
 
 export interface WarehouseZoneOption {
@@ -182,7 +186,9 @@ interface ProductionActionFormProps {
   defectError?: string | null;
   finishedProductReceiptError?: string | null;
   onCreateBatch: (values: CreateProductionBatchPayload) => Promise<void>;
-  onMoveStage: (values: CreateStageMovementPayload) => Promise<void>;
+  onMoveStage: (
+    values: CreateStageMovementPayload,
+  ) => Promise<StageMovementCreation>;
   onCreateWorkerActivity: (values: CreateWorkerActivityPayload) => Promise<void>;
   onCreateDefect: (values: CreateDefectPayload) => Promise<void>;
   onCreateFinishedProductReceipt: (
@@ -305,7 +311,7 @@ function CreateBatchForm({
       >
         {isCreateBatchPending
           ? "Yuborilmoqda..."
-          : "Manual qabul (legacy)"}
+          : "Qo‘lda qabul qilish (eski usul)"}
       </Button>
     </form>
   );
@@ -337,6 +343,11 @@ function MoveStageForm({
   onMoveStage,
   onSuccess,
 }: Omit<ProductionActionFormProps, "action" | "isCreateBatchPending" | "createBatchError" | "onCreateBatch">) {
+  const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
+  const activeFactoryName =
+    accessibleFactories.find((factory) => factory.id === activeFactoryId)?.name ??
+    "Fabrika tanlanmagan";
   const {
     register,
     handleSubmit,
@@ -374,6 +385,24 @@ function MoveStageForm({
       sourceStageId &&
       employee.stageIds?.length &&
       employee.stageIds.includes(sourceStageId),
+  );
+  const selectedProduct = productVariantOptions.find(
+    (option) => option.id === productVariantId,
+  );
+  const selectedSourceStage = stageOptions.find(
+    (option) => option.id === sourceStageId,
+  );
+  const allowedDestinationStage = selectedSourceStage
+    ? [...stageOptions]
+        .filter((stage) => stage.sortOrder > selectedSourceStage.sortOrder)
+        .sort((first, second) => first.sortOrder - second.sortOrder)[0] ?? null
+    : null;
+  const selectedShifts = Array.from(
+    new Set(
+      selectedEmployeeIds
+        .map((id) => employeeOptions.find((employee) => employee.id === id)?.workShift?.name)
+        .filter((name): name is string => Boolean(name)),
+    ),
   );
   const selectedInventory = stageInventory.find(
     (item) =>
@@ -432,7 +461,7 @@ function MoveStageForm({
         employeeId,
         quantity: Number(values.workerQuantities[employeeId]) || 0,
       }));
-      await onMoveStage({
+      const result = await onMoveStage({
         sourceStageId: values.sourceStageId,
         destinationStageId: values.destinationStageId,
         productVariantId: values.productVariantId,
@@ -443,7 +472,7 @@ function MoveStageForm({
       });
       reset();
       onSuccess(
-        "Smena o‘tkazildi. Tanlangan ishchilarga faollik avtomatik yozildi.",
+        `${result.stageMovement.quantity} dona «${result.sourceStageInventoryBefore.stage.name}» bosqichidan «${result.destinationStageInventory.stage.name}» bosqichiga o‘tkazildi. Manba qoldig‘i: ${result.sourceStageInventoryBefore.quantity} → ${result.sourceStageInventory.quantity} dona. Qabul qiluvchi bosqich qoldig‘i: ${result.destinationStageInventoryBefore?.quantity ?? 0} → ${result.destinationStageInventory.quantity} dona.`,
       );
     } catch {
       // The mutation error is rendered from parent state so the drawer remains open.
@@ -493,6 +522,16 @@ function MoveStageForm({
     // Bosqich o‘zgarsa — tanlovni tozalash (boshqa bosqich ishchilari yaroqsiz).
     setValue("employeeIds", [], { shouldValidate: true });
     setValue("workerQuantities", {}, { shouldValidate: true });
+    const source = stageOptions.find((stage) => stage.id === nextStageId);
+    const nextDestination = source
+      ? [...stageOptions]
+          .filter((stage) => stage.sortOrder > source.sortOrder)
+          .sort((first, second) => first.sortOrder - second.sortOrder)[0]
+      : undefined;
+    setValue("destinationStageId", nextDestination?.id ?? "", {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
     initializedSelectionRef.current = "";
     workerSharesAreAutomaticRef.current = true;
     clearErrors("quantity");
@@ -565,11 +604,20 @@ function MoveStageForm({
             <option value="" disabled>
               Tanlang
             </option>
-            {stageOptions.map((option) => (
+            {stageOptions
+              .filter((option) =>
+                stageInventory.some(
+                  (item) =>
+                    item.stage.id === option.id &&
+                    item.productVariant.id === productVariantId &&
+                    item.quantity > 0,
+                ),
+              )
+              .map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
-            ))}
+              ))}
           </Select>
         </FormField>
 
@@ -581,19 +629,19 @@ function MoveStageForm({
         >
           <Select
             id="destinationStageId"
-            defaultValue=""
-            disabled={isMoveStagePending || stageOptions.length === 0}
+            value={allowedDestinationStage?.id ?? ""}
+            disabled
             aria-invalid={Boolean(errors.destinationStageId)}
             {...register("destinationStageId")}
           >
             <option value="" disabled>
               Tanlang
             </option>
-            {stageOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
+            {allowedDestinationStage ? (
+              <option value={allowedDestinationStage.id}>
+                {allowedDestinationStage.label}
               </option>
-            ))}
+            ) : null}
           </Select>
         </FormField>
       </div>
@@ -760,6 +808,19 @@ function MoveStageForm({
         />
       </FormField>
 
+      <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
+        <p className="font-semibold">O‘tkazishdan oldin tekshiring</p>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div><dt className="text-muted-foreground">Fabrika</dt><dd>{activeFactoryName}</dd></div>
+          <div><dt className="text-muted-foreground">Smena</dt><dd>{selectedShifts.join(", ") || "Ishchi tanlang"}</dd></div>
+          <div><dt className="text-muted-foreground">Mahsulot</dt><dd>{selectedProduct?.label ?? "Tanlanmagan"}</dd></div>
+          <div><dt className="text-muted-foreground">Joriy bosqich</dt><dd>{selectedSourceStage?.label ?? "Tanlanmagan"}</dd></div>
+          <div><dt className="text-muted-foreground">Mavjud qoldiq</dt><dd>{hasInventorySelection ? `${availableQuantity} dona` : "—"}</dd></div>
+          <div><dt className="text-muted-foreground">Keyingi bosqich</dt><dd>{allowedDestinationStage?.label ?? "Mavjud emas"}</dd></div>
+          <div><dt className="text-muted-foreground">O‘tkaziladigan miqdor</dt><dd>{quantity > 0 ? `${quantity} dona` : "—"}</dd></div>
+        </dl>
+      </div>
+
       {moveStageError ? (
         <p role="alert" className="text-sm text-rose-500">
           {moveStageError}
@@ -774,7 +835,8 @@ function MoveStageForm({
           !hasRequiredOptions ||
           !hasInventorySelection ||
           availableQuantity < 1 ||
-          exceedsAvailableQuantity
+          exceedsAvailableQuantity ||
+          !allowedDestinationStage
         }
       >
         {isMoveStagePending ? "Yuborilmoqda..." : "Smenani saqlash"}
@@ -1016,7 +1078,7 @@ function WorkerActivityForm({
         className="w-full"
         disabled={isWorkerActivityPending || !hasRequiredOptions}
       >
-        {isWorkerActivityPending ? "Yuborilmoqda..." : "Faollik qo‘shish"}
+        {isWorkerActivityPending ? "Yuborilmoqda..." : "Bajarilgan ishni qo‘shish"}
       </Button>
     </form>
   );

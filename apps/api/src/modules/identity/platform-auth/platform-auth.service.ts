@@ -163,12 +163,19 @@ export class PlatformAuthService {
     const nextRefreshTokenHash = this.hashRefreshToken(nextRefreshToken);
     const expiresAt = this.getRefreshExpiresAt();
 
-    await this.prisma.$transaction([
-      this.prisma.platformRefreshSession.update({
-        where: { id: existingSession.id },
+    await this.prisma.$transaction(async (tx) => {
+      // Atomic single-use consume — see AuthService.refresh for why the
+      // conditional WHERE is what actually prevents two live successors.
+      const { count } = await tx.platformRefreshSession.updateMany({
+        where: { id: existingSession.id, revokedAt: null },
         data: { revokedAt: now },
-      }),
-      this.prisma.platformRefreshSession.create({
+      });
+
+      if (count === 0) {
+        throw new UnauthorizedException('Invalid platform refresh session.');
+      }
+
+      await tx.platformRefreshSession.create({
         data: {
           platformAdminId: existingSession.platformAdminId,
           tokenHash: nextRefreshTokenHash,
@@ -176,16 +183,17 @@ export class PlatformAuthService {
           ipAddress,
           expiresAt,
         },
-      }),
-      this.prisma.platformAuditLog.create({
+      });
+
+      await tx.platformAuditLog.create({
         data: {
           platformAdminId: existingSession.platformAdminId,
           action: 'PLATFORM_ADMIN_REFRESH',
           entityType: 'PlatformRefreshSession',
           entityId: existingSession.id,
         },
-      }),
-    ]);
+      });
+    });
 
     this.authRateLimiter.reset(rateLimitKey);
 

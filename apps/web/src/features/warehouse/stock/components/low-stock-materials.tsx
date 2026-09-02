@@ -6,6 +6,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
 import type { WarehouseStockSummary } from "@/lib/api/warehouse";
 
 type LowStockMaterial = WarehouseStockSummary["lowStockMaterials"][number];
@@ -28,7 +29,7 @@ export function LowStockMaterials({ materials }: { materials: LowStockMaterial[]
               <DataTableCell className="font-semibold">{material.materialName}</DataTableCell>
               <DataTableCell>{material.quantity} {material.unit}</DataTableCell>
               <DataTableCell>{material.threshold} {material.unit}</DataTableCell>
-              <DataTableCell>{material.warehouseName}</DataTableCell>
+              <DataTableCell>{formatWarehouseZoneName(material.warehouseName)}</DataTableCell>
             </DataTableRow>
           ))
         ) : (

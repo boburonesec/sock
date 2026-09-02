@@ -1,3 +1,5 @@
+import { getPilotHomePath, isPilotPathVisible } from "@/lib/pilot-scope";
+
 /**
  * Frontend access control — mirror of backend permission gates.
  * Sidebar hiding alone is not enough: URL paste must also be blocked.
@@ -150,6 +152,14 @@ export function resolveRouteAccess(
     return { allowed: true };
   }
 
+  if (!isPilotPathVisible(normalized, roles)) {
+    return {
+      allowed: false,
+      reason: "Bu bo‘lim pilot doirasiga kiritilmagan.",
+      requiredPermissions: [],
+    };
+  }
+
   const rule = ROUTE_PERMISSION_RULES.find((entry) => entry.match(normalized));
 
   if (!rule) {
@@ -180,7 +190,13 @@ export function resolveRouteAccess(
   return { allowed: true };
 }
 
-export function getDefaultHomePath(permissions: readonly string[]): string {
+export function getDefaultHomePath(
+  permissions: readonly string[],
+  roles: readonly string[] = [],
+): string {
+  const pilotHomePath = getPilotHomePath(roles);
+  if (pilotHomePath) return pilotHomePath;
+
   for (const candidate of HOME_CANDIDATES) {
     if (!candidate.permission || permissions.includes(candidate.permission)) {
       return candidate.href;

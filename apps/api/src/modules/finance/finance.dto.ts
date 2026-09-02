@@ -5,6 +5,7 @@ import {
   IsNumberString,
   IsOptional,
   IsString,
+  IsBoolean,
   MinLength,
 } from 'class-validator';
 import { PaymentMethod } from '../../prisma/client';
@@ -33,6 +34,11 @@ export class PayPayrollPeriodDto {
   @IsOptional()
   @IsString()
   note?: string;
+}
+
+export class ClosePayrollPeriodDto {
+  @IsBoolean()
+  confirm!: boolean;
 }
 
 export class CreateEmployeeAdjustmentDto {

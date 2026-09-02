@@ -9,6 +9,7 @@ import { PayrollPeriodsTable } from "./components/payroll-periods-table";
 import { RecentAdvancesTable } from "./components/recent-advances-table";
 import { RecentExpensesTable } from "./components/recent-expenses-table";
 import { useFinanceSummary } from "./use-finance-summary";
+import { formatCurrency } from "@/lib/utils";
 
 export function FinanceOverviewModule() {
   const { data, error, isError, isPending, refetch } = useFinanceSummary();
@@ -57,25 +58,25 @@ export function FinanceOverviewModule() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             label="Oylik xarajatlar"
-            value={`${summary.kpis.monthlyExpenses} so‘m`}
+            value={formatCurrency(summary.kpis.monthlyExpenses)}
             description="Tizim hisoblagan joriy oy xarajatlari"
             accent="danger"
           />
           <KpiCard
             label="Kutilayotgan xarajatlar"
-            value={`${summary.kpis.pendingExpenses} so‘m`}
+            value={formatCurrency(summary.kpis.pendingExpenses)}
             description="Tasdiqlanishi kutilayotgan xarajatlar summasi"
             accent="warning"
           />
           <KpiCard
             label="Kutilayotgan avanslar"
-            value={`${summary.kpis.pendingAdvances} so‘m`}
+            value={formatCurrency(summary.kpis.pendingAdvances)}
             description="Kutilayotgan yoki tasdiqlangan avanslar"
             accent="warning"
           />
           <KpiCard
             label="Ish haqi qoldig‘i"
-            value={`${summary.kpis.payrollRemaining} so‘m`}
+            value={formatCurrency(summary.kpis.payrollRemaining)}
             description="Tizim hisoblagan ish haqi qoldig‘i"
             accent="primary"
           />

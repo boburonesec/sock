@@ -16,6 +16,7 @@ import Link from "next/link";
  */
 export function ApiErrorBanner() {
   const permissions = useAuthStore((state) => state.permissions);
+  const roles = useAuthStore((state) => state.roles);
   const [detail, setDetail] = useState<ApiForbiddenDetail | null>(null);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function ApiErrorBanner() {
 
   if (!detail) return null;
 
-  const homePath = getDefaultHomePath(permissions);
+  const homePath = getDefaultHomePath(permissions, roles);
 
   return (
     <div

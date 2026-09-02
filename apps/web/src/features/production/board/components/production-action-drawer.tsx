@@ -5,6 +5,7 @@ import type {
   CreateProductionBatchPayload,
   CreateStageMovementPayload,
   CreateWorkerActivityPayload,
+  StageMovementCreation,
   StageInventory,
 } from "@/lib/api/production";
 import type { FinishedProductReceiptPayload } from "@/lib/api/warehouse";
@@ -25,15 +26,15 @@ const actionContent: Record<ProductionAction, { title: string; description: stri
     icon: Plus,
   },
   "move-stage": {
-    title: "Smena o‘tkazish",
+    title: "Keyingi bosqichga o‘tkazish",
     description:
-      "Mahsulotni keyingi bosqichga o‘tkazing va ishlagan ishchi(lar)ni tanlang — faollik avtomatik yoziladi.",
+      "Mahsulotni keyingi bosqichga o‘tkazing va ishlagan ishchilarni tanlang — bajarilgan ish avtomatik yoziladi.",
     icon: ArrowRightLeft,
   },
   "add-activity": {
-    title: "Qo‘shimcha faollik",
+    title: "Qo‘shimcha bajarilgan ish",
     description:
-      "Faqat tuzatish yoki ko‘chirishdan tashqari ish uchun. Oddiy oqimda smena o‘tkazishdan foydalaning.",
+      "Faqat alohida bajarilgan ishni tuzatish uchun. Oddiy oqimda keyingi bosqichga o‘tkazish amalidan foydalaning.",
     icon: ClipboardPlus,
   },
   "register-defect": { title: "Brak qayd qilish", description: "Brakni tizim orqali audit qilinadigan yozuv sifatida qayd qiladi.", icon: AlertTriangle },
@@ -60,7 +61,9 @@ interface ProductionActionDrawerProps {
   defectError?: string | null;
   finishedProductReceiptError?: string | null;
   onCreateBatch: (values: CreateProductionBatchPayload) => Promise<void>;
-  onMoveStage: (values: CreateStageMovementPayload) => Promise<void>;
+  onMoveStage: (
+    values: CreateStageMovementPayload,
+  ) => Promise<StageMovementCreation>;
   onCreateWorkerActivity: (values: CreateWorkerActivityPayload) => Promise<void>;
   onCreateDefect: (values: CreateDefectPayload) => Promise<void>;
   onCreateFinishedProductReceipt: (

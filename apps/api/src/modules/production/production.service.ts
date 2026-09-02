@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import {
   Prisma,
   ProductionRunStatus,
   WorkerActivitySource,
+  CorrectionRequestDomain,
 } from '../../prisma/client';
 import { sanitizeOperatorText } from '../../common/sanitize-operator-text';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -26,6 +28,11 @@ import {
   CreateProductionRunDto,
   CreateProductionRunIntakeDto,
   ChangeProductionRunStatusDto,
+  ConfigureWarehouseHandoffStageDto,
+  CreateCorrectionRequestDto,
+  ResolveCorrectionRequestDto,
+  ShiftReconciliationDto,
+  ShiftReconciliationReasonDto,
 } from './production.dto';
 import {
   CollectionResponse,
@@ -93,7 +100,18 @@ export class ProductionService {
       PLANNED: ['RUNNING', 'CANCELLED'], RUNNING: ['HOLD', 'STOPPED', 'COMPLETED'], HOLD: ['RUNNING', 'STOPPED', 'CANCELLED'], STOPPED: ['RUNNING', 'COMPLETED'], COMPLETED: [], CANCELLED: [],
     };
     if (!allowed[run.status].includes(dto.status)) throw new ConflictException(`${run.status} dan ${dto.status} ga o‘tish mumkin emas.`);
-    return { data: await this.prisma.productionRun.update({ where: { id }, data: { status: dto.status, ...(dto.status === 'COMPLETED' || dto.status === 'CANCELLED' ? { endedAt: new Date(), endedByUserId: context.userId } : {}), ...(dto.status === 'RUNNING' && !run.startedAt ? { startedAt: new Date() } : {}) } }) };
+    // Atomic compare-and-swap: guards against a second concurrent status
+    // change (e.g. STOPPED and COMPLETED both fired from RUNNING) silently
+    // overwriting the loser's transition instead of failing with a conflict.
+    const { count } = await this.prisma.productionRun.updateMany({
+      where: { id, tenantId, factoryId, status: run.status },
+      data: { status: dto.status, ...(dto.status === 'COMPLETED' || dto.status === 'CANCELLED' ? { endedAt: new Date(), endedByUserId: context.userId } : {}), ...(dto.status === 'RUNNING' && !run.startedAt ? { startedAt: new Date() } : {}) },
+    });
+    if (count === 0) {
+      const current = await this.prisma.productionRun.findFirst({ where: { id, tenantId, factoryId } });
+      throw new ConflictException(`${current?.status ?? run.status} dan ${dto.status} ga o‘tish mumkin emas.`);
+    }
+    return { data: await this.prisma.productionRun.findFirstOrThrow({ where: { id, tenantId, factoryId } }) };
   }
 
   async createRunIntake(context: RequestContext, runId: string, dto: CreateProductionRunIntakeDto) {
@@ -366,6 +384,25 @@ export class ProductionService {
         throw new NotFoundException('Destination production stage not found.');
       }
 
+      const nextStage = await tx.productionStage.findFirst({
+        where: {
+          tenantId,
+          factoryId,
+          deletedAt: null,
+          sortOrder: { gt: sourceStage.sortOrder },
+        },
+        orderBy: { sortOrder: 'asc' },
+        select: productionStageSelect,
+      });
+
+      if (!nextStage || destinationStage.id !== nextStage.id) {
+        throw new ConflictException(
+          nextStage
+            ? `Mahsulot faqat keyingi «${nextStage.name}» bosqichiga o‘tkazilishi mumkin.`
+            : `«${sourceStage.name}» oxirgi ishlab chiqarish bosqichi.`,
+        );
+      }
+
       const sourceStageInventoryBefore = await tx.stageInventory.findUnique({
         where: {
           tenantId_factoryId_productionStageId_productVariantId: {
@@ -619,6 +656,12 @@ export class ProductionService {
       });
 
       return {
+        sourceStageInventoryBefore: mapStageInventoryResponse(
+          sourceStageInventoryBefore,
+        ),
+        destinationStageInventoryBefore: destinationStageInventoryBefore
+          ? mapStageInventoryResponse(destinationStageInventoryBefore)
+          : null,
         sourceStageInventory: mapStageInventoryResponse(sourceStageInventoryAfter),
         destinationStageInventory: mapStageInventoryResponse(
           destinationStageInventoryAfter,
@@ -1194,6 +1237,244 @@ export class ProductionService {
     };
   }
 
+  async getWarehouseHandoffStage(context: RequestContext) {
+    const factoryId = requireActiveFactoryId(context);
+    const factory = await this.prisma.factory.findFirst({
+      where: { id: factoryId, tenantId: context.tenantId, deletedAt: null },
+      select: { warehouseHandoffStage: { select: { id: true, name: true, sortOrder: true, deletedAt: true } } },
+    });
+    if (!factory) throw new NotFoundException('Factory topilmadi.');
+    return { data: factory.warehouseHandoffStage };
+  }
+
+  async configureWarehouseHandoffStage(context: RequestContext, dto: ConfigureWarehouseHandoffStageDto) {
+    this.assertManager(context, 'Omborga topshirish bosqichini sozlash');
+    const tenantId = context.tenantId;
+    const factoryId = requireActiveFactoryId(context);
+    const stage = await this.prisma.productionStage.findFirst({
+      where: { id: dto.productionStageId, tenantId, factoryId, deletedAt: null },
+      select: { id: true, name: true, sortOrder: true },
+    });
+    if (!stage) throw new BadRequestException('Tanlangan faol bosqich ushbu fabrikaga tegishli emas.');
+    const before = await this.prisma.factory.findUnique({ where: { id: factoryId }, select: { warehouseHandoffStageId: true } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.factory.update({ where: { id: factoryId }, data: { warehouseHandoffStageId: stage.id } });
+      await this.auditService.createWithTransaction(tx, {
+        tenantId, factoryId, userId: context.userId,
+        action: 'WAREHOUSE_HANDOFF_STAGE_CONFIGURED', entityType: 'Factory', entityId: factoryId,
+        before, after: { warehouseHandoffStageId: stage.id },
+      });
+    });
+    return { data: stage };
+  }
+
+  async getShiftReconciliations(context: RequestContext) {
+    const factoryId = requireActiveFactoryId(context);
+    return { data: await this.prisma.shiftReconciliation.findMany({
+      where: { tenantId: context.tenantId, factoryId },
+      include: { workShift: { select: { id: true, name: true, code: true } } },
+      orderBy: [{ workDate: 'desc' }, { createdAt: 'desc' }], take: 100,
+    }) };
+  }
+
+  async submitShiftReconciliation(context: RequestContext, dto: ShiftReconciliationDto) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context);
+    const workDate = this.parseWorkDate(dto.workDate);
+    const readiness = await this.evaluateShiftReadiness(tenantId, factoryId, dto.workShiftId, workDate);
+    if (readiness.blockers.length) throw new ConflictException('Smena topshirishga tayyor emas. To\u2018xtatadigan muammolarni bartaraf qiling.');
+    return { data: await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.shiftReconciliation.findUnique({ where: { tenantId_factoryId_workShiftId_workDate: { tenantId, factoryId, workShiftId: dto.workShiftId, workDate } } });
+      if (existing?.status === 'ACCEPTED') throw new ConflictException('Qabul qilingan smenani qayta ochib bo‘lmaydi.');
+      if (existing?.status === 'READY_FOR_HANDOVER') return { ...existing, readiness };
+      let record;
+      if (!existing) {
+        record = await tx.shiftReconciliation.create({
+          data: { tenantId, factoryId, workShiftId: dto.workShiftId, workDate, status: 'READY_FOR_HANDOVER', submittedByUserId: context.userId, submittedAt: new Date() },
+        });
+      } else {
+        // Compare-and-swap: re-checks status != ACCEPTED at write time, so an
+        // accept that lands between our read above and this write can't be
+        // silently reopened back to READY_FOR_HANDOVER.
+        const { count } = await tx.shiftReconciliation.updateMany({
+          where: { id: existing.id, tenantId, factoryId, status: { not: 'ACCEPTED' } },
+          data: { status: 'READY_FOR_HANDOVER', submittedByUserId: context.userId, submittedAt: new Date(), returnReason: null },
+        });
+        if (count === 0) throw new ConflictException('Qabul qilingan smenani qayta ochib bo‘lmaydi.');
+        record = await tx.shiftReconciliation.findUniqueOrThrow({ where: { id: existing.id } });
+      }
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'SHIFT_RECONCILIATION_SUBMITTED', entityType: 'ShiftReconciliation', entityId: record.id, after: record, metadata: readiness });
+      return { ...record, readiness };
+    }) };
+  }
+
+  async returnShiftReconciliation(context: RequestContext, dto: ShiftReconciliationReasonDto) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context); const workDate = this.parseWorkDate(dto.workDate);
+    const existing = await this.prisma.shiftReconciliation.findUnique({ where: { tenantId_factoryId_workShiftId_workDate: { tenantId, factoryId, workShiftId: dto.workShiftId, workDate } } });
+    if (!existing || existing.status !== 'READY_FOR_HANDOVER') throw new ConflictException('Faqat topshirishga tayyor smena tuzatishga qaytariladi.');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.shiftReconciliation.updateMany({ where: { id: existing.id, tenantId, factoryId, status: 'READY_FOR_HANDOVER' }, data: { status: 'OPEN', returnedByUserId: context.userId, returnedAt: new Date(), returnReason: dto.reason } });
+      if (changed.count !== 1) throw new ConflictException('Smena holati boshqa foydalanuvchi tomonidan o‘zgartirilgan.');
+      const record = await tx.shiftReconciliation.findUniqueOrThrow({ where: { id: existing.id } });
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'SHIFT_RECONCILIATION_RETURNED', entityType: 'ShiftReconciliation', entityId: existing.id, before: existing, after: record, metadata: { reason: dto.reason } });
+      return record;
+    });
+    return { data: updated };
+  }
+
+  async acceptShiftReconciliation(context: RequestContext, dto: ShiftReconciliationReasonDto) {
+    this.assertManager(context, 'Smenani qabul qilish');
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context); const workDate = this.parseWorkDate(dto.workDate);
+    const readiness = await this.evaluateShiftReadiness(tenantId, factoryId, dto.workShiftId, workDate);
+    if (readiness.blockers.length) throw new ConflictException('Smena qabul qilishga tayyor emas. To\u2018xtatadigan muammolarni bartaraf qiling.');
+    const existing = await this.prisma.shiftReconciliation.findUnique({ where: { tenantId_factoryId_workShiftId_workDate: { tenantId, factoryId, workShiftId: dto.workShiftId, workDate } } });
+    if (!existing || existing.status !== 'READY_FOR_HANDOVER') throw new ConflictException('Smena avval topshirishga tayyor holatiga o‘tkazilishi kerak.');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.shiftReconciliation.updateMany({ where: { id: existing.id, tenantId, factoryId, status: 'READY_FOR_HANDOVER' }, data: { status: 'ACCEPTED', acceptedByUserId: context.userId, acceptedAt: new Date(), warningAcknowledgment: readiness.warnings.length ? dto.reason : null } });
+      if (changed.count !== 1) throw new ConflictException('Smena holati boshqa foydalanuvchi tomonidan o‘zgartirilgan.');
+      const record = await tx.shiftReconciliation.findUniqueOrThrow({ where: { id: existing.id } });
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'SHIFT_RECONCILIATION_ACCEPTED', entityType: 'ShiftReconciliation', entityId: existing.id, before: existing, after: record, metadata: { readiness, warningAcknowledgment: readiness.warnings.length ? dto.reason : null } });
+      return record;
+    });
+    return { data: { ...updated, readiness } };
+  }
+
+  async getCorrectionRequests(context: RequestContext) {
+    if (!context.permissions.includes('production.view') && !context.permissions.includes('finance.view')) {
+      throw new ForbiddenException('Tuzatish so‘rovlarini ko‘rish uchun ruxsat yetarli emas.');
+    }
+    const factoryId = requireActiveFactoryId(context);
+    const records = await this.prisma.correctionRequest.findMany({ where: { tenantId: context.tenantId, factoryId }, orderBy: { requestedAt: 'desc' }, take: 100 });
+    return { data: await Promise.all(records.map((record) => this.enrichCorrectionRequest(record))) };
+  }
+
+  async createCorrectionRequest(context: RequestContext, dto: CreateCorrectionRequestDto) {
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context);
+    this.assertCorrectionPermission(context, dto.domain);
+    await this.assertCorrectionSourceExists(tenantId, factoryId, dto.domain, dto.sourceRecordId);
+    const record = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.correctionRequest.create({ data: { tenantId, factoryId, domain: dto.domain, sourceRecordId: dto.sourceRecordId, reason: dto.reason, requestedByUserId: context.userId } });
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'CORRECTION_REQUEST_CREATED', entityType: 'CorrectionRequest', entityId: created.id, after: created });
+      return created;
+    });
+    return { data: await this.enrichCorrectionRequest(record) };
+  }
+
+  async resolveCorrectionRequest(context: RequestContext, id: string, dto: ResolveCorrectionRequestDto) {
+    this.assertManager(context, 'Tuzatish so‘rovini yopish');
+    const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context);
+    const existing = await this.prisma.correctionRequest.findFirst({ where: { id, tenantId, factoryId } });
+    if (!existing) throw new NotFoundException('Tuzatish so‘rovi topilmadi.');
+    if (existing.status === 'RESOLVED') throw new ConflictException('Tuzatish so‘rovi allaqachon yopilgan.');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.correctionRequest.updateMany({ where: { id, tenantId, factoryId, status: 'OPEN' }, data: { status: 'RESOLVED', resolvedByUserId: context.userId, resolvedAt: new Date(), resolutionNote: dto.resolutionNote } });
+      if (changed.count !== 1) throw new ConflictException('Tuzatish so‘rovi boshqa foydalanuvchi tomonidan yopilgan.');
+      const record = await tx.correctionRequest.findUniqueOrThrow({ where: { id } });
+      await this.auditService.createWithTransaction(tx, { tenantId, factoryId, userId: context.userId, action: 'CORRECTION_REQUEST_RESOLVED', entityType: 'CorrectionRequest', entityId: id, before: existing, after: record });
+      return record;
+    });
+    return { data: await this.enrichCorrectionRequest(updated) };
+  }
+
+  private async enrichCorrectionRequest(record: { id: string; tenantId: string; factoryId: string; domain: CorrectionRequestDomain; sourceRecordId: string; reason: string; status: string; requestedByUserId: string; requestedAt: Date; resolvedByUserId: string | null; resolvedAt: Date | null; resolutionNote: string | null }) {
+    const [requester, resolver] = await Promise.all([
+      this.prisma.user.findFirst({ where: { id: record.requestedByUserId, tenantId: record.tenantId }, select: { id: true, name: true } }),
+      record.resolvedByUserId ? this.prisma.user.findFirst({ where: { id: record.resolvedByUserId, tenantId: record.tenantId }, select: { id: true, name: true } }) : null,
+    ]);
+    let source: { title: string; details: Array<{ label: string; value: string }> } = { title: 'Asl yozuv', details: [] };
+    if (record.domain === CorrectionRequestDomain.PRODUCTION_MOVEMENT) {
+      const item = await this.prisma.stageMovement.findFirst({ where: { id: record.sourceRecordId, tenantId: record.tenantId, factoryId: record.factoryId }, include: { sourceStage: true, destinationStage: true, productVariant: { include: { product: true, color: true } } } });
+      if (item) source = { title: `${item.sourceStage.name} → ${item.destinationStage.name}`, details: [{ label: 'Mahsulot', value: `${item.productVariant.product.name} · ${item.productVariant.color.name}` }, { label: 'Miqdor', value: `${item.quantity} dona` }, { label: 'Vaqt', value: item.occurredAt.toISOString() }] };
+    } else if (record.domain === CorrectionRequestDomain.WORKER_ACTIVITY) {
+      const item = await this.prisma.workerActivity.findFirst({ where: { id: record.sourceRecordId, tenantId: record.tenantId, factoryId: record.factoryId }, include: { employee: true, productionStage: true, productVariant: { include: { product: true, color: true } } } });
+      if (item) source = { title: `${item.employee.name} · ${item.productionStage.name}`, details: [{ label: 'Mahsulot', value: `${item.productVariant.product.name} · ${item.productVariant.color.name}` }, { label: 'Miqdor', value: `${item.quantity} dona` }, { label: 'Sana', value: item.activityDate.toISOString() }] };
+    } else {
+      const item = await this.prisma.supplierPayment.findFirst({ where: { id: record.sourceRecordId, tenantId: record.tenantId, allocations: { some: { purchase: { factoryId: record.factoryId } } } }, include: { supplier: true } });
+      if (item) source = { title: `${item.supplier.name} to‘lovi`, details: [{ label: 'Miqdor', value: `${item.amount.toString()} so‘m` }, { label: 'Usul', value: item.method }, { label: 'Sana', value: item.paymentDate.toISOString() }] };
+    }
+    return { ...record, requester, resolver, source };
+  }
+
+  async getShiftReadiness(context: RequestContext, dto: ShiftReconciliationDto) {
+    const factoryId = requireActiveFactoryId(context);
+    return { data: await this.evaluateShiftReadiness(context.tenantId, factoryId, dto.workShiftId, this.parseWorkDate(dto.workDate)) };
+  }
+
+  async getLookupWorkShifts(context: RequestContext) {
+    const factoryId = requireActiveFactoryId(context);
+    return { data: await this.prisma.workShift.findMany({
+      where: { tenantId: context.tenantId, factoryId, deletedAt: null },
+      select: { id: true, code: true, name: true }, orderBy: { name: 'asc' },
+    }) };
+  }
+
+  async getShiftContext(context: RequestContext) {
+    const factoryId = requireActiveFactoryId(context);
+    const user = await this.prisma.user.findFirst({
+      where: { id: context.userId, tenantId: context.tenantId },
+      select: { employeeId: true },
+    });
+    const employee = user?.employeeId ? await this.prisma.employee.findFirst({ where: { id: user.employeeId, tenantId: context.tenantId, factoryId }, select: { workShift: { select: { id: true, code: true, name: true, factoryId: true, deletedAt: true } } } }) : null;
+    const shift = employee?.workShift;
+    const currentWorkShift = shift && !shift.deletedAt && shift.factoryId === factoryId
+      ? { id: shift.id, code: shift.code, name: shift.name }
+      : null;
+    return { data: { currentWorkShift, message: currentWorkShift ? null : 'Akkauntingizga faol smena biriktirilmagan. Davom etish uchun smenani tanlang.' } };
+  }
+
+  private async evaluateShiftReadiness(tenantId: string, factoryId: string, workShiftId: string, workDate: Date) {
+    const shift = await this.prisma.workShift.findFirst({ where: { id: workShiftId, tenantId, factoryId, deletedAt: null } });
+    if (!shift) throw new BadRequestException('Smena ushbu fabrikaga tegishli emas.');
+    const factory = await this.prisma.factory.findFirst({ where: { id: factoryId, tenantId }, select: { warehouseHandoffStage: { select: { id: true, deletedAt: true } } } });
+    const checks: Array<{ code: string; label: string; status: 'READY' | 'BLOCKER' | 'WARNING'; detail: string; action: string }> = [];
+    const add = (code: string, label: string, status: 'READY' | 'BLOCKER' | 'WARNING', detail: string, action: string) => checks.push({ code, label, status, detail, action });
+    const handoffReady = Boolean(factory?.warehouseHandoffStage && !factory.warehouseHandoffStage.deletedAt);
+    add('WAREHOUSE_HANDOFF_CONFIGURED', 'Omborga topshirish bosqichi', handoffReady ? 'READY' : 'BLOCKER', handoffReady ? 'Bosqich sozlangan.' : 'Omborga topshirish bosqichi sozlanmagan.', handoffReady ? 'Amal talab qilinmaydi.' : 'Manager sozlamadan omborga topshirish bosqichini tanlashi kerak.');
+    const [openRuns, openMovementCorrections] = await Promise.all([
+      this.prisma.productionRun.count({ where: { tenantId, factoryId, workShiftId, status: { in: ['PLANNED', 'RUNNING', 'STOPPED', 'HOLD'] } } }),
+      this.prisma.correctionRequest.count({ where: { tenantId, factoryId, domain: 'PRODUCTION_MOVEMENT', status: 'OPEN' } }),
+    ]);
+    add('OPEN_PRODUCTION_RUNS', 'Ochiq ishlab chiqarish jarayonlari', openRuns ? 'BLOCKER' : 'READY', openRuns ? `Yopilmagan jarayonlar soni: ${openRuns}.` : 'Barcha jarayonlar yopilgan.', openRuns ? 'Jarayonlarni yakunlang yoki bekor qiling.' : 'Amal talab qilinmaydi.');
+    add('PRODUCTION_QUANTITY_CONSISTENCY', 'Ishlab chiqarish miqdori', openMovementCorrections ? 'BLOCKER' : 'READY', openMovementCorrections ? `Ochiq tuzatish so‘rovlari soni: ${openMovementCorrections}.` : 'Ochiq miqdor tuzatish so‘rovi yo‘q.', openMovementCorrections ? 'Manager bilan tuzatish so‘rovlarini yoping.' : 'Amal talab qilinmaydi.');
+    if (factory?.warehouseHandoffStage) {
+      const waiting = await this.prisma.stageInventory.aggregate({ where: { tenantId, factoryId, productionStageId: factory.warehouseHandoffStage.id, quantity: { gt: 0 } }, _sum: { quantity: true } });
+      const quantity = waiting._sum.quantity ?? 0;
+      add('WAREHOUSE_RECEIPT_COMPLETE', 'Tayyor mahsulotni omborga topshirish', quantity > 0 ? 'BLOCKER' : 'READY', quantity > 0 ? `Ombor qabul qilmagan tayyor mahsulot: ${quantity} dona.` : 'Topshirilishi kerak bo‘lgan tayyor mahsulot qolmagan.', quantity > 0 ? 'Ombor qabulini yakunlang.' : 'Amal talab qilinmaydi.');
+    }
+    const nextDay = new Date(workDate); nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const intakes = await this.prisma.productionRunIntake.findMany({ where: { tenantId, productionRun: { factoryId, workShiftId }, createdAt: { gte: workDate, lt: nextDay } }, select: { id: true, activities: { select: { id: true } } } });
+    const missingRequiredActivity = intakes.filter((intake) => intake.activities.length < 2).length;
+    add('REQUIRED_WORKER_ACTIVITY', 'Majburiy ishchi faoliyati', missingRequiredActivity ? 'BLOCKER' : 'READY', missingRequiredActivity ? `Faoliyati to‘liq yozilmagan stanok qabullari: ${missingRequiredActivity}.` : 'Majburiy faoliyat yozuvlari to‘liq.', missingRequiredActivity ? 'Stanok qabullaridagi ishchi faoliyatini to‘ldiring.' : 'Amal talab qilinmaydi.');
+    const defectCount = await this.prisma.defect.count({ where: { tenantId, factoryId, detectedAt: { gte: workDate, lt: nextDay } } });
+    add('DEFECT_REVIEW', 'Nuqsonlar nazorati', defectCount ? 'WARNING' : 'READY', defectCount ? `Shu kundagi nuqson yozuvlari: ${defectCount}. Tizim ularning yopilganini ishonchli aniqlay olmaydi.` : 'Shu kunda nuqson yozuvi yo‘q.', defectCount ? 'Manager nuqsonlarni tekshirib, sabab bilan tasdiqlaydi.' : 'Amal talab qilinmaydi.');
+    return { checks, blockers: checks.filter((item) => item.status === 'BLOCKER'), warnings: checks.filter((item) => item.status === 'WARNING'), ready: checks.filter((item) => item.status === 'READY') };
+  }
+
+  private parseWorkDate(value: string): Date {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestException('Sana YYYY-MM-DD formatida bo‘lishi kerak.');
+    const date = new Date(`${value}T00:00:00.000Z`);
+    if (Number.isNaN(date.getTime())) throw new BadRequestException('Sana noto‘g‘ri.');
+    return date;
+  }
+
+  private assertManager(context: RequestContext, action: string) {
+    if (!context.roles.includes('Manager')) throw new ForbiddenException(`${action} uchun Manager roli talab qilinadi.`);
+  }
+
+  private assertCorrectionPermission(context: RequestContext, domain: CorrectionRequestDomain) {
+    const required = domain === CorrectionRequestDomain.SUPPLIER_PAYMENT ? 'finance.write' : 'production.write';
+    if (!context.permissions.includes(required)) throw new ForbiddenException('Bu tuzatish so‘rovini yaratish uchun ruxsat yetarli emas.');
+  }
+
+  private async assertCorrectionSourceExists(tenantId: string, factoryId: string, domain: CorrectionRequestDomain, id: string) {
+    const exists = domain === CorrectionRequestDomain.PRODUCTION_MOVEMENT
+      ? await this.prisma.stageMovement.findFirst({ where: { id, tenantId, factoryId }, select: { id: true } })
+      : domain === CorrectionRequestDomain.WORKER_ACTIVITY
+        ? await this.prisma.workerActivity.findFirst({ where: { id, tenantId, factoryId }, select: { id: true } })
+        : await this.prisma.supplierPayment.findFirst({ where: { id, tenantId, allocations: { some: { purchase: { factoryId } } } }, select: { id: true } });
+    if (!exists) throw new NotFoundException('Asl yozuv ushbu fabrika va tenant doirasida topilmadi.');
+  }
+
+
   private getStageStatus(quantity: number): OperationsStageStatus {
     if (quantity >= HIGH_STAGE_QUANTITY) {
       return 'HIGH';
@@ -1269,6 +1550,9 @@ export class ProductionService {
         status: true,
         jobRole: true,
         workProfile: true,
+        workShift: {
+          select: { id: true, code: true, name: true },
+        },
         stageAssignments: {
           select: {
             productionStage: {
@@ -1287,6 +1571,7 @@ export class ProductionService {
         status: employee.status,
         jobRole: employee.jobRole,
         workProfile: employee.workProfile,
+        workShift: employee.workShift,
         stages: employee.stageAssignments.map((assignment) => ({
           id: assignment.productionStage.id,
           name: assignment.productionStage.name,

@@ -18,10 +18,12 @@
     "demo:seed": "ALLOW_DEMO_SEED=true node -r ts-node/register prisma/demo-seed.ts",
     "test:demo-seed-safety": "node scripts/demo-seed-safety-test.mjs",
     "test:supplier-payment-integrity": "node scripts/supplier-payment-integrity-test.mjs",
+    "test:payroll-payment-integrity": "node scripts/payroll-payment-integrity-test.mjs",
     "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm acceptance:seed",
     "empty:seed": "node -r ts-node/register prisma/empty-seed.ts",
     "smoke:platform-auth": "node scripts/platform-auth-smoke-test.mjs",
-    "smoke:organization": "node scripts/organization-smoke-test.mjs"
+    "smoke:organization": "node scripts/organization-smoke-test.mjs",
+    "smoke:finance-rbac": "node scripts/finance-rbac-smoke-test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

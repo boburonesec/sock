@@ -12,7 +12,7 @@ export default function WarehousePage() {
       <ModuleNavigation
         items={[
           { href: "/warehouse/materials", label: "Materiallar" },
-          { href: "/warehouse/movements", label: "Harakatlar" },
+          { href: "/warehouse/movements", label: "Kirim-chiqim tarixi" },
           { href: "/warehouse/zones", label: "Zonalar" },
         ]}
       />

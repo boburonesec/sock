@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, ChevronRight, KeyRound, Layers, Palette, Package, Shirt, Tags, Users, WalletCards, Warehouse } from "lucide-react";
+import { Building2, ChevronRight, KeyRound, Layers, MonitorPlay, Palette, Package, Shirt, Tags, Users, WalletCards, Warehouse } from "lucide-react";
 import Link from "next/link";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -82,6 +82,13 @@ const settingsHubItems = [
     title: "Telegram",
     description: "Bot ulanishlari va tokenlar",
     icon: KeyRound,
+  },
+  {
+    href: "/settings/factory-tv",
+    title: "Fabrika TV",
+    description: "Sex zalidagi ekran uchun havola",
+    icon: MonitorPlay,
+    ownerOnly: true,
   },
 ];
 
@@ -170,7 +177,7 @@ export function SettingsOverviewModule() {
       </PageSection>
 
       <PageSection
-        title="Master-data holati"
+        title="Asosiy ma’lumotlar holati"
         description={
           isOwner
             ? "Tizim hisoblagan sozlama kategoriyalari."

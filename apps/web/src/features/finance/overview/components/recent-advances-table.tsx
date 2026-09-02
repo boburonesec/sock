@@ -9,6 +9,8 @@ import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Advance } from "@/lib/api/finance";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateShort } from "@/lib/format";
 
 const statusTone: Record<string, StatusTone> = {
   REQUESTED: "warning",
@@ -20,9 +22,7 @@ const statusTone: Record<string, StatusTone> = {
 };
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return formatDateShort(new Date(value),);
 }
 
 export function RecentAdvancesTable({ advances }: { advances: Advance[] }) {
@@ -43,7 +43,7 @@ export function RecentAdvancesTable({ advances }: { advances: Advance[] }) {
               <DataTableCell className="font-semibold">
                 {advance.employee.name}
               </DataTableCell>
-              <DataTableCell>{advance.amount} so‘m</DataTableCell>
+              <DataTableCell>{formatCurrency(advance.amount)}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone={statusTone[advance.status] ?? "neutral"}>
                   {labelStatus(advanceStatusLabel, advance.status)}

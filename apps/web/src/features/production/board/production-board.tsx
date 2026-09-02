@@ -35,6 +35,7 @@ import {
   type FinishedProductReceiptPayload,
 } from "@/lib/api/warehouse";
 import { formatNumber } from "@/lib/utils";
+import { formatWarehouseZoneName } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
 import { ProductBreakdown } from "./components/product-breakdown";
 import { ProductionActionDrawer } from "./components/production-action-drawer";
@@ -44,14 +45,18 @@ import type {
 } from "./components/production-action-forms";
 import type { ProductionAction } from "./components/production-action-types";
 import { ProductionStageCard } from "./components/production-stage-card";
+import { ShiftReconciliationPanel } from "./components/shift-reconciliation-panel";
+import { CorrectionManagerQueue, CorrectionRequestButton } from "./components/correction-request-panel";
 import { QuickActionsPanel } from "./components/quick-actions-panel";
 import { useProductionBoardData } from "./use-production-board-data";
+import { formatDateTimeForUser } from "@/lib/format";
 
 export function ProductionBoard() {
   const queryClient = useQueryClient();
   const permissions = useAuthStore((state) => state.permissions);
   const canReceiveFinished = permissions.includes("warehouse.write");
   const canViewWarehouseZones = permissions.includes("warehouse.view");
+  const canRequestProductionCorrection = permissions.includes("production.write");
   const { summary, inventory, movements, error, isError, isPending, refetch } =
     useProductionBoardData();
 
@@ -70,6 +75,7 @@ export function ProductionBoard() {
     queryKey: ["production", "lookups", "employees"],
     queryFn: productionApi.getLookupEmployees,
   });
+  const activitiesQuery = useQuery({ queryKey: queryKeys.production.workerActivities(), queryFn: productionApi.getWorkerActivities });
   // Warehouse zones need warehouse.view — Shift Receiver must not trigger 403.
   const warehouseZonesQuery = useQuery({
     queryKey: queryKeys.warehouse.zones(),
@@ -188,7 +194,7 @@ export function ProductionBoard() {
     {
       label: "Faol ishchilar",
       value: `${formatNumber(Number(summary.kpis.activeWorkers))} nafar`,
-      description: "Bugungi kiritilgan faollik",
+      description: "Bugun kiritilgan bajarilgan ish",
       accent: "neutral" as const,
     },
   ];
@@ -213,6 +219,7 @@ export function ProductionBoard() {
   const stageOptions = summary.stageTotals.map((stage) => ({
     id: stage.stageId,
     label: stage.stageName,
+    sortOrder: stage.sortOrder,
   }));
   const employeeOptions: EmployeeOption[] =
     employeesQuery.data?.data.map((employee) => ({
@@ -220,11 +227,12 @@ export function ProductionBoard() {
       label: employee.name,
       jobRole: employee.jobRole,
       stageIds: (employee.stages ?? []).map((stage) => stage.id),
+      workShift: employee.workShift,
     })) ?? [];
   const warehouseZoneOptions =
     warehouseZonesQuery.data?.data.map((zone) => ({
       id: zone.id,
-      label: `${zone.warehouse.name} · ${zone.name}`,
+      label: `${formatWarehouseZoneName(zone.warehouse.name)} · ${formatWarehouseZoneName(zone.name)}`,
     })) ?? [];
 
   const createBatch = async (values: CreateProductionBatchPayload) => {
@@ -232,7 +240,8 @@ export function ProductionBoard() {
   };
 
   const moveStage = async (values: CreateStageMovementPayload) => {
-    await moveStageMutation.mutateAsync(values);
+    const response = await moveStageMutation.mutateAsync(values);
+    return response.data;
   };
 
   const createWorkerActivity = async (values: CreateWorkerActivityPayload) => {
@@ -337,10 +346,10 @@ export function ProductionBoard() {
       ) : null}
 
       <PageSection
-        title="So‘nggi harakatlar"
+        title="Oxirgi bosqich o‘tkazishlari"
         description="Bosqichlar orasidagi oxirgi ma’lumot mahsulot o‘tishlari"
       >
-        <DataTable label="So‘nggi ishlab chiqarish harakatlari">
+        <DataTable label="Oxirgi bosqich o‘tkazishlari">
           <DataTableHead>
             <DataTableRow>
               <DataTableHeader>Qayerdan</DataTableHeader>
@@ -350,6 +359,7 @@ export function ProductionBoard() {
               <DataTableHeader>Qabul qilgan jamoa</DataTableHeader>
               <DataTableHeader>Kiritgan</DataTableHeader>
               <DataTableHeader>Vaqt</DataTableHeader>
+              {canRequestProductionCorrection ? <DataTableHeader>Amal</DataTableHeader> : null}
             </DataTableRow>
           </DataTableHead>
           <tbody>
@@ -368,19 +378,17 @@ export function ProductionBoard() {
                       ? `Mexanik: ${movement.productionBatch.mechanic.name} · Operator: ${movement.productionBatch.machineOperator.name}`
                       : "—"}
                   </DataTableCell>
+                  {canRequestProductionCorrection ? <DataTableCell><CorrectionRequestButton domain="PRODUCTION_MOVEMENT" sourceRecordId={movement.id} title={`${movement.sourceStage.name} → ${movement.destinationStage.name}`} details={[{ label: "Mahsulot", value: `${movement.productVariant.product.name} · ${movement.productVariant.color.name}` }, { label: "Miqdor", value: `${movement.quantity} dona` }]} /></DataTableCell> : null}
                   <DataTableCell>{movement.recordedBy.name}</DataTableCell>
                   <DataTableCell>
-                    {new Intl.DateTimeFormat("uz-UZ", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(new Date(movement.occurredAt))}
+                    {formatDateTimeForUser(new Date(movement.occurredAt))}
                   </DataTableCell>
                 </DataTableRow>
               ))
             ) : (
               <EmptyTableState
-                colSpan={7}
-                title="Harakatlar mavjud emas"
+                colSpan={canRequestProductionCorrection ? 8 : 7}
+                title="Bosqich o‘tkazishlari mavjud emas"
                 description="Bosqichlar orasidagi mahsulot o‘tishlari qayd etilgach, ular shu yerda ko‘rinadi."
               />
             )}
@@ -388,13 +396,19 @@ export function ProductionBoard() {
         </DataTable>
       </PageSection>
 
+      <PageSection title="Oxirgi ishchi faoliyati" description="Kiritilgan ish natijalari va xatoni bildirish amali">
+        <div className="space-y-2">{(activitiesQuery.data?.data ?? []).slice(0, 20).map((activity) => <article key={activity.id} className="flex flex-col justify-between gap-3 rounded-lg border p-3 sm:flex-row sm:items-center"><div><p className="font-medium">{activity.employee.name} · {activity.stage.name}</p><p className="text-sm text-muted-foreground">{activity.productVariant.product.name} · {activity.productVariant.color.name} · {activity.quantity} dona</p></div>{canRequestProductionCorrection ? <CorrectionRequestButton domain="WORKER_ACTIVITY" sourceRecordId={activity.id} title={`${activity.employee.name} · ${activity.stage.name}`} details={[{ label: "Mahsulot", value: `${activity.productVariant.product.name} · ${activity.productVariant.color.name}` }, { label: "Miqdor", value: `${activity.quantity} dona` }]} /> : null}</article>)}{!activitiesQuery.isLoading && !(activitiesQuery.data?.data.length) ? <p className="text-sm text-muted-foreground">Ishchi faoliyati yozuvlari yo‘q.</p> : null}</div>
+      </PageSection>
+
+      <CorrectionManagerQueue />
+
       <InfoCard
         title="Ishlab chiqarish amallari holati"
         description="Asosiy kiritish amallari tizim ma’lumotlariga ulangan"
       >
         <p className="text-sm text-muted-foreground">
-          Smena o‘tkazishda tanlangan ishchilarga kiritilgan dona bo‘yicha
-          faollik avtomatik yoziladi. Brak avtomatik jarima yoki qoldiq
+          Keyingi bosqichga o‘tkazishda tanlangan ishchilarga kiritilgan dona bo‘yicha
+          bajarilgan ish avtomatik yoziladi. Brak avtomatik jarima yoki qoldiq
           tuzatishi yaratmaydi.
           {canReceiveFinished
             ? " Omborga qabul qilish — Ombor bosqichidagi tayyor mahsulotni jismoniy ombor qoldig‘iga o‘tkazadi."
@@ -447,6 +461,8 @@ export function ProductionBoard() {
         onCreateFinishedProductReceipt={createFinishedProductReceipt}
         onSuccess={completeAction}
       />
+
+      <ShiftReconciliationPanel stages={summary.stageTotals.map((stage) => ({ id: stage.stageId, name: stage.stageName, sortOrder: stage.sortOrder }))} />
 
       {successMessage ? (
         <div

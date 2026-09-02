@@ -18,6 +18,8 @@
  * - Payroll: previous month CLOSED, current month CALCULATED + partial pay
  */
 import { createPrismaClient, Prisma } from '../src/prisma/client';
+import { DEFAULT_WAREHOUSE_NAME } from '../src/common/factory-defaults';
+import * as argon2 from 'argon2';
 
 const prisma = createPrismaClient();
 
@@ -95,7 +97,7 @@ async function main(): Promise<void> {
     where: { tenantId, name: 'Main Factory', deletedAt: null },
   });
   const warehouse = await prisma.warehouse.findFirstOrThrow({
-    where: { tenantId, factoryId: factory.id, name: 'Main Warehouse' },
+    where: { tenantId, factoryId: factory.id, name: DEFAULT_WAREHOUSE_NAME },
   });
   const finishedZone = await prisma.warehouseZone.findFirstOrThrow({
     where: { tenantId, warehouseId: warehouse.id, name: 'Finished Products' },
@@ -128,6 +130,12 @@ async function main(): Promise<void> {
     orderBy: { sortOrder: 'asc' },
   });
   const stageByName = new Map(stages.map((stage) => [stage.name, stage]));
+  await prisma.shiftReconciliation.deleteMany({ where: { tenantId, factoryId: factory.id } });
+  await prisma.correctionRequest.deleteMany({ where: { tenantId, factoryId: factory.id } });
+  await prisma.factory.update({
+    where: { id: factory.id },
+    data: { warehouseHandoffStageId: requireStage(stageByName, 'Ombor').id },
+  });
 
   const black = await findColor(tenantId, 'Qora');
   const white = await findColor(tenantId, 'Oq');
@@ -192,13 +200,21 @@ async function main(): Promise<void> {
   const nightShift = await prisma.workShift.findFirstOrThrow({
     where: { tenantId, factoryId: factory.id, code: 'NIGHT', deletedAt: null },
   });
+  // jobRole is a coarse legacy mirror of workProfile (see
+  // EmployeeService.toLegacyJobRole) — real employee creation always keeps
+  // both in sync. They line up 1:1 for these three profiles, so each
+  // definition sets workProfile to the same value as jobRole; leaving
+  // workProfile at its schema default (STAGE_WORKER) here previously made
+  // every demo employee show as "Bosqich ishchisi" regardless of their real
+  // job, and made Rustam/Odil fail the workProfile check the real API uses
+  // to gate mechanic/machine-operator assignment.
   const employeeDefinitions = [
-    { name: 'Ali Averlogchi', jobRole: 'STAGE_WORKER' },
-    { name: 'Vali Dazmolchi', jobRole: 'STAGE_WORKER' },
-    { name: 'Dilshod Sifat nazorati', jobRole: 'STAGE_WORKER' },
-    { name: 'Sardor Qadoqlovchi', jobRole: 'STAGE_WORKER' },
-    { name: 'Rustam Mexanik', jobRole: 'MECHANIC' },
-    { name: 'Odil Stanok operatori', jobRole: 'MACHINE_OPERATOR' },
+    { name: 'Ali Averlogchi', jobRole: 'STAGE_WORKER', workProfile: 'STAGE_WORKER' },
+    { name: 'Vali Dazmolchi', jobRole: 'STAGE_WORKER', workProfile: 'STAGE_WORKER' },
+    { name: 'Dilshod Sifat nazorati', jobRole: 'STAGE_WORKER', workProfile: 'STAGE_WORKER' },
+    { name: 'Sardor Qadoqlovchi', jobRole: 'STAGE_WORKER', workProfile: 'STAGE_WORKER' },
+    { name: 'Rustam Mexanik', jobRole: 'MECHANIC', workProfile: 'MECHANIC' },
+    { name: 'Odil Stanok operatori', jobRole: 'MACHINE_OPERATOR', workProfile: 'MACHINE_OPERATOR' },
   ] as const;
   const employees = [];
   for (const definition of employeeDefinitions) {
@@ -216,6 +232,7 @@ async function main(): Promise<void> {
           where: { id: existing.id },
           data: {
             jobRole: definition.jobRole,
+            workProfile: definition.workProfile,
             workShiftId: employees.length % 2 === 0 ? dayShift.id : nightShift.id,
           },
         }),
@@ -229,6 +246,7 @@ async function main(): Promise<void> {
           factoryId: factory.id,
           name: definition.name,
           jobRole: definition.jobRole,
+          workProfile: definition.workProfile,
           status: 'ACTIVE',
           workShiftId: employees.length % 2 === 0 ? dayShift.id : nightShift.id,
         },
@@ -236,6 +254,42 @@ async function main(): Promise<void> {
     );
   }
   const [ali, vali, dilshod, sardor, mechanic, machineOperator] = employees;
+
+  // MECHANIC is one of the workProfiles that requires a linked User login
+  // (EmployeeService.validateProfileRules) — the real app never lets you save
+  // a Mechanic without one. Give the demo's Rustam Mexanik that account so the
+  // seed actually demonstrates the "piece-rate worker who also has software
+  // access" case, instead of leaving Employee.account null (a state the real
+  // create/update API would reject).
+  const mechanicRole = await prisma.role.findFirstOrThrow({
+    where: { tenantId, name: 'Mechanic' },
+  });
+  const mechanicUser = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId, email: 'mechanic@paypoq.local' } },
+    create: {
+      tenantId,
+      employeeId: mechanic.id,
+      email: 'mechanic@paypoq.local',
+      name: mechanic.name,
+      status: 'ACTIVE',
+    },
+    update: { employeeId: mechanic.id, name: mechanic.name, status: 'ACTIVE', deletedAt: null },
+  });
+  await prisma.userCredential.upsert({
+    where: { userId_tenantId: { userId: mechanicUser.id, tenantId } },
+    create: { tenantId, userId: mechanicUser.id, passwordHash: await argon2.hash('ChangeMe123!') },
+    update: {},
+  });
+  await prisma.userRole.upsert({
+    where: { tenantId_userId_roleId: { tenantId, userId: mechanicUser.id, roleId: mechanicRole.id } },
+    create: { tenantId, userId: mechanicUser.id, roleId: mechanicRole.id },
+    update: {},
+  });
+  await prisma.userFactoryAccess.upsert({
+    where: { tenantId_userId_factoryId: { tenantId, userId: mechanicUser.id, factoryId: factory.id } },
+    create: { tenantId, userId: mechanicUser.id, factoryId: factory.id },
+    update: {},
+  });
 
   await prisma.attendanceRecord.deleteMany({
     where: { tenantId, factoryId: factory.id },
@@ -470,8 +524,8 @@ async function main(): Promise<void> {
   });
   await prisma.stockMovement.createMany({
     data: [
-      sm(tenantId, factory.id, warehouse, finishedZone.id, warehouseUser.id, 'PRODUCT', 'PRODUCTION_RECEIPT', classicBlack.id, null, '800', 'pcs', daysAgo(20)),
-      sm(tenantId, factory.id, warehouse, finishedZone.id, warehouseUser.id, 'PRODUCT', 'PRODUCTION_RECEIPT', sportWhite.id, null, '400', 'pcs', daysAgo(18)),
+      sm(tenantId, factory.id, warehouse, finishedZone.id, warehouseUser.id, 'PRODUCT', 'PRODUCTION_RECEIPT', classicBlack.id, null, '800', 'dona', daysAgo(20)),
+      sm(tenantId, factory.id, warehouse, finishedZone.id, warehouseUser.id, 'PRODUCT', 'PRODUCTION_RECEIPT', sportWhite.id, null, '400', 'dona', daysAgo(18)),
       sm(tenantId, factory.id, warehouse, rawZone.id, warehouseUser.id, 'MATERIAL', 'RECEIPT', null, cotton.id, '100.000', 'kg', daysAgo(25)),
       sm(tenantId, factory.id, warehouse, rawZone.id, warehouseUser.id, 'MATERIAL', 'RECEIPT', null, bamboo.id, '12.000', 'kg', daysAgo(25)),
     ],
@@ -610,6 +664,7 @@ async function main(): Promise<void> {
   });
 
   // --- Supplier ---
+  await prisma.supplierPaymentIdempotency.deleteMany({ where: { tenantId } });
   await prisma.supplierPaymentAllocation.deleteMany({
     where: { payment: { tenantId } },
   });
@@ -918,6 +973,10 @@ async function main(): Promise<void> {
       totalRemainingAmount: new Prisma.Decimal('0'),
       calculatedAt: latePrevMonth,
       closedAt: addMonths(previousMonth, 1),
+      calculationRevision: 1,
+      approvedRevision: 1,
+      approvedByUserId: manager.id,
+      approvedAt: latePrevMonth,
     },
   });
 
@@ -1013,10 +1072,17 @@ async function main(): Promise<void> {
       totalBonusAmount: new Prisma.Decimal('0'),
       totalPenaltyAmount: new Prisma.Decimal('15000'),
       totalAdvanceAmount: new Prisma.Decimal('40000'), // only PAID advance (sardor)
-      totalFinalAmount: new Prisma.Decimal('100200'),
+      // Payroll period totals are snapshots of the item sums. The per-employee
+      // floor at zero means these cannot be derived by subtracting the period's
+      // aggregate deductions from aggregate worked amount.
+      totalFinalAmount: new Prisma.Decimal('115200'),
       totalPaidAmount: new Prisma.Decimal('50000'),
-      totalRemainingAmount: new Prisma.Decimal('50200'),
+      totalRemainingAmount: new Prisma.Decimal('65200'),
       calculatedAt: daysAgo(1),
+      calculationRevision: 1,
+      approvedRevision: 1,
+      approvedByUserId: manager.id,
+      approvedAt: daysAgo(1),
     },
   });
 
@@ -1126,6 +1192,7 @@ async function main(): Promise<void> {
   console.log('  warehouse@paypoq.local   — ombor');
   console.log('  shift@paypoq.local       — ishlab chiqarish');
   console.log('  accountant@paypoq.local  — moliya / ish haqi');
+  console.log('  mechanic@paypoq.local    — ishbay mexanik (Rustam Mexanik xodim profiliga bog‘langan)');
   console.log('  platform@paypoq.local    — super admin');
   console.log('');
   console.log('Avans holatlari:');

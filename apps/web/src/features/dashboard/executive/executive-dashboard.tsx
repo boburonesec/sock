@@ -15,6 +15,7 @@ import { SalesOverview } from "./components/sales-overview";
 import { TopClients } from "./components/top-clients";
 import { TopProducts } from "./components/top-products";
 import { useExecutiveSummary } from "./use-executive-summary";
+import { formatCurrency } from "@/lib/utils";
 
 const quickLinks = [
   { label: "Operatsiyalar", href: "/dashboard/operations" },
@@ -68,25 +69,25 @@ export function ExecutiveDashboard() {
   const kpis = [
     {
       label: "Oylik sotuv",
-      value: `${summary.kpis.monthlySales} so‘m`,
+      value: formatCurrency(summary.kpis.monthlySales),
       description: "Joriy oy",
       accent: "primary" as const,
     },
     {
       label: "Oylik xarajat",
-      value: `${summary.kpis.monthlyExpenses} so‘m`,
+      value: formatCurrency(summary.kpis.monthlyExpenses),
       description: "To‘langan xarajatlar",
       accent: "neutral" as const,
     },
     {
       label: "Jami mijoz qarzi",
-      value: `${summary.kpis.totalClientDebt} so‘m`,
+      value: formatCurrency(summary.kpis.totalClientDebt),
       description: "Tizim qarz hisob-kitobi",
       accent: "warning" as const,
     },
     {
       label: "Jami yetkazib beruvchi qarzi",
-      value: `${summary.kpis.totalSupplierDebt} so‘m`,
+      value: formatCurrency(summary.kpis.totalSupplierDebt),
       description: "Tizim qarz hisob-kitobi",
       accent: "warning" as const,
     },

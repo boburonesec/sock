@@ -38,6 +38,7 @@ import {
 } from "@/lib/api/product";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { ProductVariantReference } from "@/lib/api/types";
+import { formatDateShort } from "@/lib/format";
 
 const productFormSchema = z.object({
   name: z
@@ -833,7 +834,5 @@ function getErrorMessage(error: unknown): string {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatDateShort(new Date(value));
 }

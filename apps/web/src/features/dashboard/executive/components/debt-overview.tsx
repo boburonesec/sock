@@ -2,18 +2,19 @@ import { InfoCard } from "@/components/cards/info-card";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import Link from "next/link";
 import type { ExecutiveSummary } from "@/lib/api/dashboard";
+import { formatCurrency } from "@/lib/utils";
 
 export function DebtOverview({ kpis }: { kpis: ExecutiveSummary["kpis"] }) {
   const cards = [
     {
       label: "Mijoz qarzi",
-      value: `${kpis.totalClientDebt} so‘m`,
+      value: formatCurrency(kpis.totalClientDebt),
       description: "Buyurtmalar minus to‘lovlar hisob-kitobi",
       href: "/sales/debts",
     },
     {
       label: "Yetkazib beruvchi qarzi",
-      value: `${kpis.totalSupplierDebt} so‘m`,
+      value: formatCurrency(kpis.totalSupplierDebt),
       description: "Xaridlar minus to‘lovlar hisob-kitobi",
       href: "/finance/suppliers",
     },

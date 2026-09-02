@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PayrollItem, PayPayrollPeriodPayload } from "@/lib/api/finance";
+import { useAuthStore } from "@/stores/auth-store";
+import { formatCurrency } from "@/lib/utils";
 
 const schema = z.object({
   payrollItemId: z.string().min(1, "Xodim ish haqi qatori tanlanishi shart."),
@@ -47,6 +49,12 @@ export function PayrollPaymentDrawer({
   onSubmit,
 }: PayrollPaymentDrawerProps) {
   const [pendingPayload, setPendingPayload] = useState<PayPayrollPeriodPayload | null>(null);
+  const submissionRef = useRef(false);
+  const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
+  const activeFactoryName =
+    accessibleFactories.find((factory) => factory.id === activeFactoryId)?.name ??
+    "Fabrika tanlanmagan";
   const payableItems = items.filter((item) => Number(item.remainingAmount) > 0);
   const {
     register,
@@ -54,6 +62,7 @@ export function PayrollPaymentDrawer({
     reset,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -67,6 +76,12 @@ export function PayrollPaymentDrawer({
   });
   const selectedItem = payableItems.find(
     (item) => item.id === watch("payrollItemId"),
+  );
+  const enteredAmount = Number(watch("amount"));
+  const exceedsRemaining = Boolean(
+    selectedItem &&
+      Number.isFinite(enteredAmount) &&
+      enteredAmount > Number(selectedItem.remainingAmount),
   );
 
   useEffect(() => {
@@ -100,15 +115,25 @@ export function PayrollPaymentDrawer({
     >
       <form
         className="space-y-4"
-        onSubmit={handleSubmit((values) =>
+        onSubmit={handleSubmit((values) => {
+          if (
+            selectedItem &&
+            Number(values.amount) > Number(selectedItem.remainingAmount)
+          ) {
+            setError("amount", {
+              type: "manual",
+              message: `To‘lov ${formatCurrency(selectedItem.remainingAmount)}lik qoldiqdan oshmasligi kerak.`,
+            });
+            return;
+          }
           setPendingPayload({
             payrollItemId: values.payrollItemId,
             amount: values.amount,
             method: values.method,
             paidAt: values.paidAt || null,
             note: normalizeOptional(values.note),
-          }),
-        )}
+          });
+        })}
       >
         <FormField
           htmlFor="payrollItem"
@@ -124,11 +149,25 @@ export function PayrollPaymentDrawer({
             <option value="">Xodim tanlang</option>
             {payableItems.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.employee.name} — qoldiq {item.remainingAmount} so‘m
+                {item.employee.name} — qoldiq {formatCurrency(item.remainingAmount)}
               </option>
             ))}
           </Select>
         </FormField>
+
+        {selectedItem ? (
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
+            <p className="font-semibold">To‘lovdan oldin tekshiring</p>
+            <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div><dt className="text-muted-foreground">Fabrika</dt><dd>{activeFactoryName}</dd></div>
+              <div><dt className="text-muted-foreground">Ish haqi davri</dt><dd>{periodLabel}</dd></div>
+              <div><dt className="text-muted-foreground">Xodim</dt><dd>{selectedItem.employee.name}</dd></div>
+              <div><dt className="text-muted-foreground">Hisoblangan</dt><dd>{formatCurrency(selectedItem.finalAmount)}</dd></div>
+              <div><dt className="text-muted-foreground">Oldin to‘langan</dt><dd>{formatCurrency(selectedItem.paidAmount)}</dd></div>
+              <div><dt className="text-muted-foreground">Qoldiq</dt><dd>{formatCurrency(selectedItem.remainingAmount)}</dd></div>
+            </dl>
+          </div>
+        ) : null}
 
         <FormField
           htmlFor="payrollPaymentAmount"
@@ -188,7 +227,7 @@ export function PayrollPaymentDrawer({
         <Button
           type="submit"
           className="w-full"
-          disabled={isSubmitting || payableItems.length === 0}
+          disabled={isSubmitting || payableItems.length === 0 || exceedsRemaining}
         >
           {isSubmitting ? "To‘lanmoqda..." : "To‘lovni tekshirish"}
         </Button>
@@ -198,14 +237,19 @@ export function PayrollPaymentDrawer({
       open={Boolean(pendingPayload)}
       onOpenChange={(nextOpen) => { if (!nextOpen && !isSubmitting) setPendingPayload(null); }}
       title="Ish haqi to‘lovini tasdiqlash"
-      description={pendingPayload && paymentEmployee ? `${periodLabel} · ${paymentEmployee.employee.name} · ${pendingPayload.amount} so‘m · ${paymentMethodLabel(pendingPayload.method)} · ${pendingPayload.paidAt ?? "bugun"}. Tasdiqlangandan keyin to‘lov yozuvi yaratiladi.` : "To‘lov ma’lumotlarini tekshiring."}
+      description={pendingPayload && paymentEmployee ? `${activeFactoryName} · ${periodLabel} · ${paymentEmployee.employee.name}. Hisoblangan: ${formatCurrency(paymentEmployee.finalAmount)} · oldin to‘langan: ${formatCurrency(paymentEmployee.paidAmount)} · qoldiq: ${formatCurrency(paymentEmployee.remainingAmount)} · hozirgi to‘lov: ${formatCurrency(pendingPayload.amount)} · ${paymentMethodLabel(pendingPayload.method)} · ${pendingPayload.paidAt ?? "bugun"}.` : "To‘lov ma’lumotlarini tekshiring."}
       confirmLabel="To‘lovni tasdiqlash"
       isPending={isSubmitting}
       errorMessage={errorMessage}
       onConfirm={async () => {
-        if (!pendingPayload) return;
-        await onSubmit(pendingPayload);
-        setPendingPayload(null);
+        if (!pendingPayload || submissionRef.current) return;
+        submissionRef.current = true;
+        try {
+          await onSubmit(pendingPayload);
+          setPendingPayload(null);
+        } finally {
+          submissionRef.current = false;
+        }
       }}
     />
     </>

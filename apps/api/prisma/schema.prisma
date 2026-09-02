@@ -233,6 +233,23 @@ enum PayrollItemStatus {
   CARRIED_FORWARD
 }
 
+enum ShiftReconciliationStatus {
+  OPEN
+  READY_FOR_HANDOVER
+  ACCEPTED
+}
+
+enum CorrectionRequestDomain {
+  PRODUCTION_MOVEMENT
+  WORKER_ACTIVITY
+  SUPPLIER_PAYMENT
+}
+
+enum CorrectionRequestStatus {
+  OPEN
+  RESOLVED
+}
+
 model Tenant {
   id                 String                   @id @default(cuid())
   name               String
@@ -322,6 +339,9 @@ model Tenant {
   qualityIssues              QualityIssue[]
   notifications              Notification[]
   notificationDeliveries     NotificationDelivery[]
+  shiftReconciliations       ShiftReconciliation[]
+  correctionRequests         CorrectionRequest[]
+  factoryTvCredentials       FactoryTvCredential[]
 
   @@index([status])
   @@index([subscriptionStatus])
@@ -337,6 +357,7 @@ model Factory {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+  warehouseHandoffStageId String?
 
   tenant                   Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   warehouses               Warehouse[]
@@ -374,10 +395,35 @@ model Factory {
   inspectionSlots          InspectionScheduleSlot[]
   inspectionRounds         InspectionRound[]
   qualityIssues            QualityIssue[]
+  warehouseHandoffStage   ProductionStage?       @relation("FactoryWarehouseHandoffStage", fields: [warehouseHandoffStageId, tenantId, id], references: [id, tenantId, factoryId], onDelete: Restrict)
+  shiftReconciliations     ShiftReconciliation[]
+  correctionRequests      CorrectionRequest[]
+  factoryTvCredentials     FactoryTvCredential[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, name])
   @@index([tenantId, deletedAt])
+}
+
+/// Per-factory Factory TV bearer credential. Replaces a single global
+/// FACTORY_TV_ACCESS_TOKEN so each tenant's floor display works
+/// independently — one shared secret cannot scope to more than one
+/// tenant/factory at a time (see FactoryTvContextService).
+model FactoryTvCredential {
+  id              String    @id @default(cuid())
+  tenantId        String
+  factoryId       String
+  tokenHash       String    @unique
+  label           String?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory Factory @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@index([tenantId, factoryId, revokedAt])
 }
 
 model Warehouse {
@@ -801,6 +847,7 @@ model ProductionStage {
   workerActivities     WorkerActivity[]
   employeeAssignments  EmployeeStageAssignment[]
   defects              Defect[]
+  handoffForFactories  Factory[]                 @relation("FactoryWarehouseHandoffStage")
 
   @@unique([id, tenantId])
   @@unique([id, tenantId, factoryId])
@@ -932,10 +979,62 @@ model WorkShift {
   machineAssignments MachineMechanicAssignment[]
   productionRuns     ProductionRun[]
   inspectionSlots    InspectionScheduleSlot[]
+  reconciliations    ShiftReconciliation[]
 
   @@unique([id, tenantId, factoryId])
   @@unique([tenantId, factoryId, code])
   @@index([tenantId, factoryId, deletedAt])
+}
+
+model ShiftReconciliation {
+  id                    String                    @id @default(cuid())
+  tenantId              String
+  factoryId             String
+  workShiftId           String
+  workDate              DateTime                  @db.Date
+  status                ShiftReconciliationStatus @default(OPEN)
+  submittedByUserId     String?
+  submittedAt           DateTime?
+  returnedByUserId      String?
+  returnedAt            DateTime?
+  returnReason          String?
+  acceptedByUserId      String?
+  acceptedAt            DateTime?
+  warningAcknowledgment String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory   Factory   @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  workShift WorkShift @relation(fields: [workShiftId, tenantId, factoryId], references: [id, tenantId, factoryId], onDelete: Restrict)
+
+  @@unique([id, tenantId, factoryId])
+  @@unique([tenantId, factoryId, workShiftId, workDate])
+  @@index([tenantId, factoryId, workDate, status])
+}
+
+model CorrectionRequest {
+  id               String                  @id @default(cuid())
+  tenantId         String
+  factoryId        String
+  domain           CorrectionRequestDomain
+  sourceRecordId   String
+  reason           String
+  status           CorrectionRequestStatus @default(OPEN)
+  requestedByUserId String
+  requestedAt      DateTime                @default(now())
+  resolvedByUserId String?
+  resolvedAt       DateTime?
+  resolutionNote   String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factory Factory @relation(fields: [factoryId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId, factoryId])
+  @@index([tenantId, factoryId, status, requestedAt])
+  @@index([tenantId, factoryId, domain, sourceRecordId])
 }
 
 /// Normalized daily attendance. A future Trunket adapter will create/update it.
@@ -2060,6 +2159,10 @@ model PayrollPeriod {
   totalRemainingAmount Decimal             @db.Decimal(14, 2)
   calculatedAt         DateTime?
   closedAt             DateTime?
+  calculationRevision  Int                 @default(0)
+  approvedRevision     Int?
+  approvedByUserId     String?
+  approvedAt           DateTime?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 

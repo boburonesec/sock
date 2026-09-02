@@ -2,16 +2,9 @@ import { DataTable, DataTableCell, DataTableHead, DataTableHeader, DataTableRow 
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import type { SettingsOverview } from "@/lib/api/settings";
+import { formatDateTimeForUser } from "@/lib/format";
 
 type SettingsChange = SettingsOverview["recentChanges"][number];
-
-const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 export function RecentSettingsChangesTable({
   changes,
@@ -42,7 +35,7 @@ export function RecentSettingsChangesTable({
               <DataTableCell className="font-semibold">{change.change}</DataTableCell>
               <DataTableCell>{change.module}</DataTableCell>
               <DataTableCell>{change.changedBy ?? "Tizim"}</DataTableCell>
-              <DataTableCell>{dateFormatter.format(new Date(change.date))}</DataTableCell>
+              <DataTableCell>{formatDateTimeForUser(change.date)}</DataTableCell>
               <DataTableCell>
                 <StatusBadge tone="info">
                   {change.status === "READY"

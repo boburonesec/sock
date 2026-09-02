@@ -8,6 +8,8 @@ import {
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { SalesOrder } from "@/lib/api/sales";
+import { formatCurrency } from "@/lib/utils";
+import { formatDateShort } from "@/lib/format";
 
 const orderStatus: Record<string, { label: string; tone: StatusTone }> = {
   DRAFT: { label: "Qoralama", tone: "neutral" },
@@ -28,9 +30,7 @@ const paymentStatus: Record<string, { label: string; tone: StatusTone }> = {
 function formatDate(value: string | null): string {
   if (!value) return "—";
 
-  return new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return formatDateShort(new Date(value),);
 }
 
 export function OrdersTable({
@@ -72,7 +72,7 @@ export function OrdersTable({
                 <DataTableCell>{order.client.name}</DataTableCell>
                 <DataTableCell>{order.createdBy?.name ?? "—"}</DataTableCell>
                 <DataTableCell className="font-semibold">
-                  {order.totalAmount} so‘m
+                  {formatCurrency(order.totalAmount)}
                 </DataTableCell>
                 <DataTableCell>
                   <StatusBadge tone={lifecycle?.tone ?? "neutral"}>

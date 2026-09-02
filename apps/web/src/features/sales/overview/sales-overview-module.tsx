@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RecentOrdersTable } from "./components/recent-orders-table";
 import { TopClientsTable } from "./components/top-clients-table";
 import { useSalesSummary } from "./use-sales-summary";
+import { formatCurrency } from "@/lib/utils";
 
 export function SalesOverviewModule() {
   const { data, error, isError, isPending, refetch } = useSalesSummary();
@@ -68,13 +69,13 @@ export function SalesOverviewModule() {
           />
           <KpiCard
             label="Oylik sotuv"
-            value={`${summary.kpis.monthlySales} so‘m`}
+            value={formatCurrency(summary.kpis.monthlySales)}
             description="Joriy oy, Asia/Tashkent"
             accent="primary"
           />
           <KpiCard
             label="Jami mijoz qarzi"
-            value={`${summary.kpis.totalClientDebt} so‘m`}
+            value={formatCurrency(summary.kpis.totalClientDebt)}
             description="Tizim qarz hisob-kitobi qiymati"
             accent="warning"
           />
