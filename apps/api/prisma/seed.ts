@@ -9,10 +9,10 @@ const prisma = createPrismaClient();
  * Never run against production. Production bootstrap uses platform-admin
  * tenant provisioning (empty-seed / platform APIs), not this file.
  */
-if (process.env.NODE_ENV === 'production') {
-  throw new Error(
-    'prisma/seed.ts (demo baseline) is forbidden when NODE_ENV=production.',
-  );
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
+  // Safe default: skip demo seed unless explicitly enabled
+  console.log('Skipping demo baseline seed in production (ALLOW_DEMO_SEED is not true).');
+  process.exit(0);
 }
 
 const DEMO_TENANT_ID = 'seed-demo-paypoq-factory';

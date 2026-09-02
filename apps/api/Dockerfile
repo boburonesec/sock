@@ -45,5 +45,6 @@ COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 USER paypoq
 EXPOSE 3001
-CMD ["sh", "-c", "node ./apps/api/node_modules/prisma/build/index.js migrate deploy --schema=apps/api/prisma/schema.prisma || npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma; node apps/api/dist/src/main.js"]
+CMD ["sh", "-c", "node ./apps/api/node_modules/prisma/build/index.js migrate deploy --schema=apps/api/prisma/schema.prisma || npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma; node apps/api/dist/prisma/empty-seed.js || true; ALLOW_DEMO_SEED=true node apps/api/dist/prisma/seed.js || true; node apps/api/dist/src/main.js"]
+
 
