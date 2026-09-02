@@ -51,8 +51,20 @@ async function bootstrap(): Promise<void> {
   );
 
   const port = configService.get<number>('app.port', 3001);
+
+  // Auto-run migrations on boot
+  try {
+    const { runAutoMigrations } = await import('./prisma/prisma-auto-migrate');
+    const { PrismaService } = await import('./prisma/prisma.service');
+    const prisma = app.get(PrismaService);
+    await runAutoMigrations(prisma);
+  } catch (err: unknown) {
+    console.error('Auto migration warning on startup:', err);
+  }
+
   await app.listen(port, '0.0.0.0');
 }
 
 void bootstrap();
+
 

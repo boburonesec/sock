@@ -20,6 +20,20 @@ export class HealthController {
     };
   }
 
+  @Get('migrate')
+  async getMigrate(): Promise<Record<string, unknown>> {
+    try {
+      const { runAutoMigrations } = await import('../prisma/prisma-auto-migrate');
+      const result = await runAutoMigrations(this.prisma);
+      return result;
+    } catch (err: unknown) {
+      return {
+        status: 'error',
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
   @Get('diagnostic')
   async getDiagnostic(): Promise<Record<string, unknown>> {
     try {
