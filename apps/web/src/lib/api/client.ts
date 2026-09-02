@@ -41,7 +41,19 @@ export function setApiAuthRefreshHandler(handler: (() => Promise<boolean>) | nul
 }
 
 function getApiBaseUrl(): string {
-  let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  if (typeof window !== "undefined") {
+    if (window.location.hostname.endsWith(".onrender.com")) {
+      return "https://paypoq-api.onrender.com";
+    }
+  }
+
+  let baseUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+      ? "https://paypoq-api.onrender.com"
+      : "http://localhost:3001");
 
   baseUrl = baseUrl.replace(/\/+$/, "").trim();
   if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
