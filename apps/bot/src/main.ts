@@ -28,16 +28,14 @@ async function bootstrap(): Promise<void> {
   const apiClient = new BotApiClient(config);
   const healthServer = startHealthServer();
 
-  if (config.mode === 'disabled') {
+  if (config.mode === 'disabled' || !config.telegramBotToken) {
     const shutdown = waitForShutdown();
-    console.log('Paypoq OS Telegram bot started with external polling disabled.');
+    console.log(
+      'Paypoq OS Telegram bot running in standby mode (no TELEGRAM_BOT_TOKEN). Health listener active.',
+    );
     await shutdown;
     healthServer.close();
     return;
-  }
-
-  if (!config.telegramBotToken) {
-    throw new Error('TELEGRAM_BOT_TOKEN is required in polling mode.');
   }
   const bot = createEmployeeBot({
     token: config.telegramBotToken,
