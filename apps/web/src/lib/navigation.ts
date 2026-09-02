@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Boxes, CalendarCheck, ClipboardList, Factory, History, LayoutDashboard, Package, Settings, Users, WalletCards, Wrench } from "lucide-react";
+import { BarChart3, BookOpen, Boxes, CalendarCheck, ClipboardList, Factory, History, LayoutDashboard, Package, Settings, Users, WalletCards, Wrench } from "lucide-react";
 
 export interface PageDefinition {
   title: string;
@@ -28,6 +28,7 @@ export const navigationItems: NavigationItem[] = [
   { href: "/employees", title: "Xodimlar", description: "Barcha xodimlar va ish profillari", icon: Users, section: "work", requiredPermissions: ["employees.view"] },
   { href: "/attendance", title: "Davomat", description: "Ishga kelib-ketish hisoboti", icon: CalendarCheck, section: "work", requiredPermissions: ["attendance.view"] },
   { href: "/settings", title: "Sozlamalar", description: "Tizim sozlamalari", icon: Settings, section: "system", requiredPermissions: ["settings.view"] },
+  { href: "/guide", title: "Qo‘llanma", description: "Tizim haqida va foydalanish qo‘llanmasi", icon: BookOpen, section: "system" },
 ];
 
 export const pageDefinitions: Record<string, PageDefinition> = {
@@ -84,6 +85,7 @@ export const pageDefinitions: Record<string, PageDefinition> = {
   "/settings/permissions": { title: "Ruxsatlar", description: "Sozlamalar" },
   "/notifications": { title: "Bildirishnomalar", description: "Tizim bildirishnomalari" },
   "/audit": { title: "Audit jurnali", description: "Tizim amallari tarixi" },
+  "/guide": { title: "Tizim qo‘llanmasi", description: "Paypoq OS imkoniyatlari, biznes jarayonlari va amaliy qo‘llanma" },
 };
 
 export function getPageDefinition(pathname: string): PageDefinition {

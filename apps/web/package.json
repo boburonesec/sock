@@ -8,7 +8,8 @@
     "start": "node .next/standalone/apps/web/server.js",
     "lint": "eslint .",
     "test:stage-movement-quantity": "node --no-warnings --experimental-strip-types scripts/stage-movement-quantity-test.mjs",
-    "test:pilot-scope": "node --no-warnings --experimental-strip-types scripts/pilot-scope-test.mjs"
+    "test:pilot-scope": "node --no-warnings --experimental-strip-types scripts/pilot-scope-test.mjs",
+    "test:guide-role": "node --no-warnings --experimental-strip-types scripts/guide-role-acceptance-test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

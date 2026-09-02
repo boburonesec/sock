@@ -27,6 +27,11 @@ const ROUTE_PERMISSION_RULES: Array<{
     label: "Bildirishnomalar",
   },
   {
+    match: (p) => p === "/guide" || p.startsWith("/guide/"),
+    requiredPermissions: [],
+    label: "Qo‘llanma",
+  },
+  {
     match: (p) => p.startsWith("/dashboard"),
     requiredPermissions: ["dashboard.view"],
     label: "Boshqaruv paneli",
