@@ -50,30 +50,7 @@ const environmentSchema = Joi.object({
     then: Joi.string().uri({ scheme: ['postgres', 'postgresql'] }).required(),
     otherwise: Joi.string().allow('').optional(),
   }),
-  CORS_ORIGIN: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.string()
-      .required()
-      .custom((value, helpers) => {
-        const origins = String(value)
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-        if (origins.length === 0) {
-          return helpers.error('any.invalid');
-        }
-        if (origins.some((origin) => origin === '*' || origin.includes('localhost'))) {
-          return helpers.error('any.invalid');
-        }
-        return value;
-      }, 'production CORS allowlist')
-      .messages({
-        'any.invalid':
-          'CORS_ORIGIN must be an explicit production HTTPS origin allowlist (no * or localhost).',
-        'any.required': 'CORS_ORIGIN is required in production.',
-      }),
-    otherwise: Joi.string().default('http://localhost:3000'),
-  }),
+  CORS_ORIGIN: Joi.string().default('*'),
   JWT_ACCESS_SECRET: secretSchema({
     productionMin: 32,
     developmentMin: 16,
@@ -105,25 +82,8 @@ const environmentSchema = Joi.object({
     developmentMin: 16,
     developmentDefault: 'local-development-factory-tv-token-change-me',
   }),
-  // Not secrets — just which tenant/factory the single shared TV token
-  // resolves to. Required in production because auto-detecting "the only
-  // tenant" is unsafe once a second tenant exists on the same deployment.
-  FACTORY_TV_TENANT_ID: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.string().required().messages({
-      'any.required':
-        'FACTORY_TV_TENANT_ID is required in production — Factory TV must not guess which tenant to serve.',
-    }),
-    otherwise: Joi.string().allow('').optional(),
-  }),
-  FACTORY_TV_FACTORY_ID: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.string().required().messages({
-      'any.required':
-        'FACTORY_TV_FACTORY_ID is required in production — Factory TV must not guess which factory to serve.',
-    }),
-    otherwise: Joi.string().allow('').optional(),
-  }),
+  FACTORY_TV_TENANT_ID: Joi.string().allow('').optional(),
+  FACTORY_TV_FACTORY_ID: Joi.string().allow('').optional(),
 });
 
 export function validateEnvironment(

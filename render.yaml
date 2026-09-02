@@ -12,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3001
+        value: "3001"
       - key: DATABASE_URL
         fromDatabase:
           name: paypoq-db
@@ -50,7 +50,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
+        value: "3000"
+      - key: HOSTNAME
+        value: "0.0.0.0"
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web
@@ -80,7 +82,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 8080
+        value: "8080"
       - key: BOT_MODE
         value: polling
       - key: TELEGRAM_BOT_TOKEN

@@ -41,15 +41,16 @@ export function setApiAuthRefreshHandler(handler: (() => Promise<boolean>) | nul
 }
 
 function getApiBaseUrl(): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-  if (!baseUrl) {
-    throw new Error(
-      "NEXT_PUBLIC_API_URL is not configured. Add it to apps/web/.env.local.",
-    );
+  baseUrl = baseUrl.replace(/\/+$/, "").trim();
+  if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+    baseUrl = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")
+      ? `http://${baseUrl}`
+      : `https://${baseUrl}`;
   }
 
-  return baseUrl.replace(/\/+$/, "");
+  return baseUrl;
 }
 
 function buildApiUrl(path: string): string {

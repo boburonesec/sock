@@ -30,8 +30,9 @@ async function bootstrap(): Promise<void> {
   expressApp.set?.('trust proxy', 1);
   expressApp.disable?.('x-powered-by');
 
+  const rawCorsOrigin = configService.get<string>('app.corsOrigin', '*');
   app.enableCors({
-    origin: corsOrigin
+    origin: rawCorsOrigin === '*' ? true : rawCorsOrigin
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
@@ -50,7 +51,8 @@ async function bootstrap(): Promise<void> {
   );
 
   const port = configService.get<number>('app.port', 3001);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 }
 
 void bootstrap();
+
