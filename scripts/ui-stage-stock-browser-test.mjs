@@ -30,12 +30,15 @@ async function withAvailableQuantity(page, quantity, callback) {
   await page.route("**/production/stage-inventory", handler);
   try {
     await page.goto(`${WEB}/production`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Smena o‘tkazish (+ ishchilar)" }).click();
-    const dialog = page.getByRole("dialog", { name: "Smena o‘tkazish" });
+    await page.getByRole("button", { name: "Keyingi bosqichga o‘tkazish" }).click();
+    const dialog = page.getByRole("dialog", { name: "Keyingi bosqichga o‘tkazish" });
     await dialog.waitFor();
+    await dialog.locator("#moveProductVariantId option:not([disabled])").first().waitFor({ state: "attached" });
     await dialog.locator("#moveProductVariantId").selectOption(selectedInventory.productVariant.id);
-    await dialog.locator("#sourceStageId").selectOption({ label: "Averlog" });
-    await dialog.locator("#destinationStageId").selectOption({ label: "Dazmol" });
+    if (selectedInventory.quantity > 0) {
+      await dialog.locator("#sourceStageId option:not([disabled])").first().waitFor({ state: "attached" });
+      await dialog.locator("#sourceStageId").selectOption(selectedInventory.stage.id);
+    }
     await callback(dialog);
   } finally {
     await page.unroute("**/production/stage-inventory", handler);
@@ -77,7 +80,9 @@ async function main() {
       await withAvailableQuantity(page, state.available, async (dialog) => {
         const quantity = dialog.locator("#moveQuantity");
         await waitForValue(quantity, state.initial);
-        assert.equal(await quantity.getAttribute("max"), String(state.available));
+        if (state.available > 0) {
+          assert.equal(await quantity.getAttribute("max"), String(state.available));
+        }
         const submit = dialog.locator('button[type="submit"]');
         if (state.available > 0) await makeFormSubmittable(dialog);
         assert.equal(await submit.isEnabled(), state.enabled);

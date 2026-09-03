@@ -112,8 +112,8 @@ async function verifyCriticalControls(page, label) {
   await page.goto(`${BASE}/production`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(700);
   for (const actionName of [
-    "Smena o‘tkazish (+ ishchilar)",
-    "Qo‘shimcha faollik kiritish",
+    "Keyingi bosqichga o‘tkazish",
+    "Qo‘shimcha bajarilgan ishni kiritish",
     "Brak qayd qilish",
     "Omborga qabul qilish",
   ]) {
@@ -126,7 +126,7 @@ async function verifyCriticalControls(page, label) {
       else fail(`${label} ${actionName} reachable`, "drawer did not open");
       await page.goto(`${BASE}/production`, { waitUntil: "domcontentloaded" });
       await page
-        .getByRole("button", { name: "Smena o‘tkazish (+ ishchilar)" })
+        .getByRole("button", { name: "Keyingi bosqichga o‘tkazish" })
         .waitFor({ state: "visible", timeout: 10_000 });
     } else {
       fail(`${label} ${actionName} reachable`, `control missing at ${page.url()}`);
@@ -281,12 +281,12 @@ async function main() {
 
     // open action drawer
     const movementBtn = page.getByRole("button", {
-      name: "Smena o‘tkazish (+ ishchilar)",
+      name: "Keyingi bosqichga o‘tkazish",
     });
     if ((await movementBtn.count()) === 1) {
       await movementBtn.click();
       await page.waitForTimeout(500);
-      const dialog = page.getByRole("dialog", { name: "Smena o‘tkazish" });
+      const dialog = page.getByRole("dialog", { name: "Keyingi bosqichga o‘tkazish" });
       const workerGuidance = dialog.getByText("Kim ishladi? (shu bosqich ishchilari)");
       if ((await dialog.count()) === 1 && (await workerGuidance.count()) === 1) {
         ok("Mobile workforce-aware production drawer opens");

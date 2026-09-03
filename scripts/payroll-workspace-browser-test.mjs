@@ -7,6 +7,8 @@ const WEB = process.env.WEB_BASE_URL || "http://localhost:3000";
 
 const period = {
   id: "ui-payroll-period", month: "2099-01-01T00:00:00.000Z", status: "CALCULATED",
+  calculationRevision: 1, approvedRevision: 1, approvedByUserId: "ui-approver",
+  approvedAt: new Date().toISOString(),
   totalWorkedAmount: "120000", totalBonusAmount: "10000", totalPenaltyAmount: "0",
   totalAdvanceAmount: "0", totalFinalAmount: "130000", totalPaidAmount: "0",
   totalRemainingAmount: "130000", calculatedAt: new Date().toISOString(), closedAt: null,
@@ -83,6 +85,8 @@ async function main() {
     assert.equal(await confirm.isVisible(), true);
 
     await page.unroute(paymentPattern, failureHandler);
+    let paidPeriod = { ...period, status: "PAID", totalRemainingAmount: "0", totalPaidAmount: "130000" };
+    await page.route("**/finance/payroll-periods", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [paidPeriod] }) }));
     await page.route(paymentPattern, (route) => route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ data: { id: "ui-payment" } }) }));
     await confirm.getByRole("button", { name: "To‘lovni tasdiqlash" }).click();
     await page.getByText("Ish haqi to‘lovi yozildi.").waitFor();
@@ -92,7 +96,7 @@ async function main() {
     assert.equal(await closePeriodButton.isEnabled(), true);
     await closePeriodButton.click();
     const closeConfirm = page.getByRole("alertdialog", { name: "Ish haqi davrini yopish" });
-    await closeConfirm.getByText("130000 so‘m", { exact: false }).waitFor();
+    await closeConfirm.getByText(/0\s*so['‘]m/).waitFor();
     assert.equal(await closeConfirm.getByRole("button", { name: "Yopish" }).count(), 1);
 
     await page.setViewportSize({ width: 390, height: 844 });

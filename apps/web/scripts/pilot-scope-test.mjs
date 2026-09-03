@@ -64,7 +64,7 @@ for (const role of Object.keys(expectedPaths)) {
 
 assert.equal(isPilotPathVisible("/profile", ["Seller"]), true);
 assert.equal(isPilotPathVisible("/notifications", ["Accountant"]), true);
-assert.equal(getPilotHomePath(["Mechanic"]), "/profile");
+assert.equal(getPilotHomePath(["Mechanic"]), "/mechanic");
 
 console.log("Pilot navigation matrix: 6/6 personas passed.");
 console.log("Pilot-hidden modules: 5/5 paths passed for every persona.");

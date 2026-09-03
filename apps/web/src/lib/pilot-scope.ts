@@ -26,6 +26,7 @@ const PILOT_ROLE_PATHS: Record<string, readonly string[]> = {
   "Warehouse Operator": ["/warehouse"],
   Seller: ["/sales"],
   Accountant: ["/finance"],
+  Mechanic: ["/mechanic"],
 };
 
 const ALWAYS_VISIBLE_PATHS = ["/profile", "/notifications"] as const;

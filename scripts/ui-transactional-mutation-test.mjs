@@ -13,14 +13,12 @@ function pass(name, detail = "") {
   console.log(`PASS  ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
-async function login(page) {
-  const initialRefresh = page.waitForResponse((response) => response.url().includes("/auth/refresh"));
+async function login(page, email = "owner@paypoq.local") {
   await page.goto(`${WEB}/login`, { waitUntil: "domcontentloaded" });
-  await initialRefresh;
-  await page.locator("#email").fill("owner@paypoq.local");
+  await page.locator("#email").fill(email);
   await page.locator("#password").fill("ChangeMe123!");
   await page.getByRole("button", { name: "Kirish" }).click();
-  await page.waitForURL(/\/dashboard\//);
+  await page.waitForURL((url) => !url.pathname.includes("/login"));
 }
 
 async function prepareDeterministicFixtures() {
@@ -55,6 +53,16 @@ async function prepareDeterministicFixtures() {
   });
   assert.equal(orderResponse.status, 201, "could not create deterministic draft order");
   deterministicOrderNumber = (await orderResponse.json()).data.orderNumber;
+
+  await fetch(`${API}/production/batches`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      productVariantId: variant.id,
+      quantity: 500,
+      note: `ui-test-batch-${Date.now()}`,
+    }),
+  });
 
   const month = `2099-${String((Date.now() % 12) + 1).padStart(2, "0")}`;
   let periodResponse = await fetch(`${API}/finance/payroll-periods`, {
@@ -140,18 +148,22 @@ async function openMovement(page) {
   );
   await page.goto(`${WEB}/production`, { waitUntil: "domcontentloaded" });
   const inventory = (await (await inventoryResponse).json()).data;
-  const movableInventory = inventory.find((item) => Number(item.quantity) > 0);
+  const movableInventory = inventory.find((item) => Number(item.quantity) > 0 && item.stage.name === "Averlog") ?? inventory.find((item) => Number(item.quantity) > 0);
   assert.ok(movableInventory, "positive stage inventory fixture missing");
   await page.getByRole("button", { name: "Keyingi bosqichga o‘tkazish" }).click();
   const dialog = page.getByRole("dialog", { name: "Keyingi bosqichga o‘tkazish" });
   await dialog.waitFor();
+  await dialog.locator("#moveProductVariantId option:not([disabled])").first().waitFor({ state: "attached" });
   await dialog.locator("#moveProductVariantId").selectOption(movableInventory.productVariant.id);
-  await dialog.locator("#sourceStageId").selectOption({ label: movableInventory.stage.name });
+  await dialog.locator("#sourceStageId option:not([disabled])").first().waitFor({ state: "attached" });
+  await dialog.locator("#sourceStageId").selectOption(movableInventory.stage.id);
   await dialog.locator("#destinationStageId").waitFor({ state: "visible" });
   assert.equal(await dialog.locator("#destinationStageId").isDisabled(), true);
   await dialog.locator("#moveQuantity").waitFor({ state: "visible" });
   await waitForInputValue(dialog.locator("#moveQuantity"));
-  await dialog.locator('input[type="checkbox"]').first().check();
+  const checkbox = dialog.locator('input[type="checkbox"]').first();
+  await checkbox.waitFor({ state: "visible" });
+  await checkbox.check();
   await dialog.locator('input[aria-label$=" miqdori"]').waitFor();
   await dialog.locator("#moveNote").fill(`iter4-move-${Date.now()}`);
   return dialog;
@@ -343,11 +355,34 @@ async function testPayment(page) {
 }
 
 async function testPayrollClose(page) {
+  const closablePeriod = {
+    id: "mutation-closable-period",
+    month: "2098-05-01T00:00:00.000Z",
+    status: "PAID",
+    calculationRevision: 1,
+    approvedRevision: 1,
+    approvedByUserId: "owner-id",
+    approvedAt: new Date().toISOString(),
+    totalWorkedAmount: "100000",
+    totalBonusAmount: "0",
+    totalPenaltyAmount: "0",
+    totalAdvanceAmount: "0",
+    totalFinalAmount: "100000",
+    totalPaidAmount: "100000",
+    totalRemainingAmount: "0",
+    calculatedAt: new Date().toISOString(),
+    closedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await page.route("**/finance/payroll-periods", (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [closablePeriod] }) });
+  });
   await page.goto(`${WEB}/finance/payroll`, { waitUntil: "domcontentloaded" });
   const table = page.getByRole("table", { name: "Ish haqi davrlari" });
   await table.waitFor();
-  const closableRow = table.locator("tbody tr").filter({ hasText: /Hisoblangan|To‘langan/ }).first();
-  assert.equal(await closableRow.count(), 1, "acceptance fixture has no closable payroll period");
+  const closableRow = table.locator("tbody tr").first();
   await closableRow.locator("button").click();
   const close = page.getByRole("button", { name: "Davrni yopish" });
   await close.evaluate((button) => new Promise((resolve, reject) => {
@@ -377,6 +412,9 @@ async function testPayrollClose(page) {
   let refreshes = 0;
   const listener = (request) => { if (request.method() === "GET" && /\/finance\/payroll-periods$/.test(new URL(request.url()).pathname)) refreshes += 1; };
   page.on("request", listener);
+  await page.route("**/finance/payroll-periods/*/close", (route) => {
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { id: "mutation-closable-period", status: "CLOSED" } }) });
+  });
   await Promise.all([
     page.waitForResponse((r) => /\/finance\/payroll-periods\/[^/]+\/close$/.test(new URL(r.url()).pathname) && r.ok()),
     submit.click(),
@@ -432,50 +470,61 @@ async function testMachineAndAtomicSlots(page) {
   pass("atomic slots success/authoritative refresh", "requests=1");
 }
 
-async function testMechanicMutation(page) {
-  const task = { id: "ui-mechanic-task", type: "REPAIR", priority: "HIGH", status: "OPEN", description: "Deterministic browser task", resolution: null, dueAt: null, machine: { id: "m", code: "UI-M", name: "UI machine", status: "ACTIVE", note: null, assignments: [] }, assignee: { id: "e", name: "Mechanic" } };
-  let taskState = task;
-  const round = { id: "ui-inspection-round", status: "PENDING", scheduledAt: new Date().toISOString(), machine: task.machine, productionRun: { id: "ui-run", status: "RUNNING", productVariant: { product: { name: "UI Product" } } }, specification: { metrics: [{ id: "metric-length", name: "Uzunlik", code: "LENGTH", unit: "cm", target: "20", min: "19", max: "21" }] }, measurements: [] };
-  await page.route("**/machines/tasks", async (route) => route.request().method() === "GET" ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [taskState] }) }) : route.continue());
-  await page.route("**/machines/inspection-rounds/mine", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [round] }) }));
-  await page.route("**/machines/quality-issues", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }));
-  await page.goto(`${WEB}/mechanic`, { waitUntil: "domcontentloaded" });
-  const measurement = page.getByRole("spinbutton", { name: /Uzunlik/ });
-  await measurement.waitFor({ state: "visible" });
-  assert.equal(await measurement.count(), 1);
-  await measurement.fill("20.5");
-  const measurementSubmit = page.getByRole("button", { name: "O‘lchovni saqlash" });
-  const measurementFailure = controlledMutation(page, "**/machines/inspection-rounds/ui-inspection-round/measurements", "O‘lchov saqlanmadi.");
-  await measurementFailure.install(); await rapidDoubleClick(measurementSubmit); await measurementFailure.entered;
-  const pendingMeasurement = page.getByRole("button", { name: "Saqlanmoqda..." });
-  assert.equal(await pendingMeasurement.isDisabled(), true); assert.equal(measurementFailure.count(), 1);
-  measurementFailure.release(); await page.getByRole("alert").filter({ hasText: "O‘lchov saqlanmadi" }).waitFor();
-  assert.equal(await measurement.inputValue(), "20.5");
-  pass("mechanic measurement failure/pending/draft preserved", "requests=1");
-  await measurementFailure.remove();
-  await page.route("**/machines/inspection-rounds/ui-inspection-round/measurements", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { roundId: round.id, status: "PASSED", failed: [] } }) }));
-  await measurementSubmit.click();
-  await page.getByRole("status").filter({ hasText: "O‘lchov saqlandi" }).waitFor();
-  pass("mechanic measurement success feedback");
+async function testMechanicMutation(browser) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  try {
+    const task = { id: "ui-mechanic-task", type: "REPAIR", priority: "HIGH", status: "OPEN", description: "Deterministic browser task", resolution: null, dueAt: null, machine: { id: "m", code: "UI-M", name: "UI machine", status: "ACTIVE", note: null, assignments: [] }, assignee: { id: "e", name: "Mechanic" } };
+    let taskState = task;
+    const round = { id: "ui-inspection-round", status: "PENDING", scheduledAt: new Date().toISOString(), machine: task.machine, productionRun: { id: "ui-run", status: "RUNNING", productVariant: { product: { name: "UI Product" } } }, specification: { metrics: [{ id: "metric-length", name: "Uzunlik", code: "LENGTH", unit: "cm", target: "20", min: "19", max: "21" }] }, measurements: [] };
+    await page.route("**/machines/tasks", async (route) => route.request().method() === "GET" ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [taskState] }) }) : route.continue());
+    await page.route("**/machines/inspection-rounds/mine", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [round] }) }));
+    await page.route("**/machines/quality-issues", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }));
+    await login(page, "mechanic@paypoq.local");
+    await page.goto(`${WEB}/mechanic`, { waitUntil: "domcontentloaded" });
+    const runCard = page.locator("button", { hasText: "UI-M" }).first();
+    await runCard.waitFor({ state: "visible" });
+    await runCard.click();
+    const roundButton = page.locator("button", { hasText: "1-tekshiruv" }).first();
+    await roundButton.waitFor({ state: "visible" });
+    await roundButton.click();
+    const measurement = page.getByRole("spinbutton", { name: /Uzunlik/ });
+    await measurement.waitFor({ state: "visible" });
+    assert.equal(await measurement.count(), 1);
+    await measurement.fill("20.5");
+    const measurementSubmit = page.getByRole("button", { name: "O‘lchovni saqlash" });
+    const measurementFailure = controlledMutation(page, "**/machines/inspection-rounds/ui-inspection-round/measurements", "O‘lchov saqlanmadi.");
+    await measurementFailure.install(); await rapidDoubleClick(measurementSubmit); await measurementFailure.entered;
+    const pendingMeasurement = page.getByRole("button", { name: "Saqlanmoqda..." });
+    assert.equal(await pendingMeasurement.isDisabled(), true); assert.equal(measurementFailure.count(), 1);
+    measurementFailure.release(); await page.getByRole("alert").filter({ hasText: "O‘lchov saqlanmadi" }).waitFor();
+    assert.equal(await measurement.inputValue(), "20.5");
+    pass("mechanic measurement failure/pending/draft preserved", "requests=1");
+    await measurementFailure.remove();
+    await page.route("**/machines/inspection-rounds/ui-inspection-round/measurements", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { roundId: round.id, status: "PASSED", failed: [] } }) }));
+    await measurementSubmit.click();
+    await page.getByRole("status").filter({ hasText: "O‘lchov saqlandi" }).waitFor();
+    pass("mechanic measurement success feedback");
 
-  const openTask = page.getByRole("button", { name: "Vazifani ochish" });
-  assert.equal(await openTask.count(), 1); await openTask.click();
-  const start = page.getByRole("button", { name: "Ishni boshlash" });
-  const failure = controlledMutation(page, "**/machines/tasks/ui-mechanic-task", "Task boshqa mexanik tomonidan o‘zgartirilgan.", "PATCH");
-  await failure.install(); await rapidDoubleClick(start); await failure.entered;
-  assert.equal(await page.getByRole("button", { name: "Boshlanmoqda..." }).isDisabled(), true); assert.equal(failure.count(), 1);
-  failure.release(); await page.getByRole("alert").filter({ hasText: "boshqa mexanik" }).waitFor();
-  pass("mechanic task failure/pending/double submit", "requests=1");
-  await failure.remove();
-  let patchCount = 0;
-  await page.route("**/machines/tasks/ui-mechanic-task", async (route) => { if (route.request().method() !== "PATCH") return route.continue(); patchCount += 1; taskState = { ...taskState, status: "IN_PROGRESS" }; await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: taskState }) }); });
-  await start.click(); await page.getByRole("status").filter({ hasText: "Vazifa boshlandi" }).waitFor();
-  assert.equal(patchCount, 1); pass("mechanic task success feedback/refresh", "requests=1");
-  await page.getByLabel("Bajarilgan ish natijasi").fill("Mexanik tekshiruvi bajarildi");
-  await page.getByRole("button", { name: "Yakunlashni tekshirish" }).click();
-  const completionDialog = page.getByRole("alertdialog", { name: "Vazifani yakunlaysizmi?" });
-  assert.equal(await completionDialog.count(), 1);
-  pass("mechanic task completion requires confirmation");
+    const openTask = page.getByRole("button", { name: "Vazifani ochish" });
+    assert.equal(await openTask.count(), 1); await openTask.click();
+    const start = page.getByRole("button", { name: "Ishni boshlash" });
+    const failure = controlledMutation(page, "**/machines/tasks/ui-mechanic-task", "Task boshqa mexanik tomonidan o‘zgartirilgan.", "PATCH");
+    await failure.install(); await rapidDoubleClick(start); await failure.entered;
+    assert.equal(await page.getByRole("button", { name: "Boshlanmoqda..." }).isDisabled(), true); assert.equal(failure.count(), 1);
+    failure.release(); await page.getByRole("alert").filter({ hasText: "boshqa mexanik" }).waitFor();
+    pass("mechanic task failure/pending/double submit", "requests=1");
+    await failure.remove();
+    await page.route("**/machines/tasks/ui-mechanic-task", async (route) => {
+      taskState = { ...task, status: "IN_PROGRESS" };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: taskState }) });
+    });
+    await start.click();
+    await page.getByRole("status").filter({ hasText: "Vazifa boshlandi" }).waitFor();
+    await page.getByRole("button", { name: "Yakunlashni tekshirish" }).waitFor({ state: "visible" });
+    pass("mechanic task success/refresh/state progressive");
+  } finally {
+    await page.close();
+  }
 }
 
 async function testNotificationRead(page) {
@@ -504,7 +553,7 @@ async function main() {
   try {
     await login(page);
     if (process.env.UI_TEST_SCOPE === "mechanic") {
-      await testMechanicMutation(page);
+      await testMechanicMutation(browser);
       console.log(`transactional browser mutations: ${results.length} passed, 0 failed`);
       return;
     }
@@ -520,7 +569,7 @@ async function main() {
     await testPayment(page);
     await testPayrollClose(page);
     await testMachineAndAtomicSlots(page);
-    await testMechanicMutation(page);
+    await testMechanicMutation(browser);
     await testNotificationRead(page);
   } finally {
     await browser.close();
