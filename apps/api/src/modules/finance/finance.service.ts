@@ -233,7 +233,6 @@ export class FinanceService {
     context: RequestContext,
     advanceId: string,
   ): Promise<SingleResponse<AdvanceResponse>> {
-    this.assertFinanceTransitionRole(context, ['Manager'], 'Avansni tasdiqlash');
     return this.transitionAdvance(
       context,
       advanceId,
@@ -247,7 +246,6 @@ export class FinanceService {
     context: RequestContext,
     advanceId: string,
   ): Promise<SingleResponse<AdvanceResponse>> {
-    this.assertFinanceTransitionRole(context, ['Manager'], 'Avansni rad etish');
     return this.transitionAdvance(
       context,
       advanceId,
@@ -261,7 +259,6 @@ export class FinanceService {
     context: RequestContext,
     advanceId: string,
   ): Promise<SingleResponse<AdvanceResponse>> {
-    this.assertFinanceTransitionRole(context, ['Accountant'], 'Avansni to‘lash');
     return this.transitionAdvance(
       context,
       advanceId,
@@ -343,7 +340,6 @@ export class FinanceService {
     context: RequestContext,
     expenseId: string,
   ): Promise<SingleResponse<ExpenseResponse>> {
-    this.assertFinanceTransitionRole(context, ['Manager'], 'Xarajatni tasdiqlash');
     return this.transitionExpense(
       context,
       expenseId,
@@ -357,7 +353,6 @@ export class FinanceService {
     context: RequestContext,
     expenseId: string,
   ): Promise<SingleResponse<ExpenseResponse>> {
-    this.assertFinanceTransitionRole(context, ['Manager'], 'Xarajatni rad etish');
     return this.transitionExpense(
       context,
       expenseId,
@@ -371,7 +366,6 @@ export class FinanceService {
     context: RequestContext,
     expenseId: string,
   ): Promise<SingleResponse<ExpenseResponse>> {
-    this.assertFinanceTransitionRole(context, ['Accountant'], 'Xarajatni to‘lash');
     return this.transitionExpense(
       context,
       expenseId,
@@ -1004,9 +998,6 @@ export class FinanceService {
     context: RequestContext,
     payrollPeriodId: string,
   ): Promise<SingleResponse<PayrollPeriodResponse>> {
-    if (!context.roles.includes('Manager')) {
-      throw new ForbiddenException('Payrollni tasdiqlash uchun Manager roli talab qilinadi.');
-    }
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
     await this.assertNoPayrollReadinessBlockers(tenantId, factoryId);
@@ -1097,11 +1088,6 @@ export class FinanceService {
     payrollPeriodId: string,
     dto: PayPayrollPeriodDto,
   ): Promise<SingleResponse<PayrollPaymentResponse>> {
-    this.assertFinanceTransitionRole(
-      context,
-      ['Accountant'],
-      'Ish haqini to‘lash',
-    );
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
     const amount = this.parsePositiveDecimal(dto.amount, 'Payment amount');
@@ -1411,7 +1397,7 @@ export class FinanceService {
         );
       }
 
-      this.assertRequesterSeparated(context, existing.requestedBy?.id, auditAction);
+      const isSelfActionOverride = this.assertRequesterSeparated(context, existing.requestedBy?.id, auditAction);
 
       const now = new Date();
       const data: Prisma.EmployeeAdjustmentUncheckedUpdateInput = {
@@ -1472,6 +1458,14 @@ export class FinanceService {
         entityId: existing.id,
         before: this.mapAdjustment(existing),
         after: response,
+        metadata: isSelfActionOverride
+          ? {
+              isSelfActionOverride: true,
+              actorRole: 'Owner',
+              operation: toStatus,
+              warning: 'Owner executed financial transition on self-created request.',
+            }
+          : undefined,
       });
 
       return response;
@@ -1506,7 +1500,7 @@ export class FinanceService {
         );
       }
 
-      this.assertRequesterSeparated(context, existing.requestedBy?.id, auditAction);
+      const isSelfActionOverride = this.assertRequesterSeparated(context, existing.requestedBy?.id, auditAction);
 
       const now = new Date();
       const data: Prisma.ExpenseUncheckedUpdateInput = {
@@ -1564,6 +1558,14 @@ export class FinanceService {
         entityId: existing.id,
         before: this.mapExpense(existing),
         after: response,
+        metadata: isSelfActionOverride
+          ? {
+              isSelfActionOverride: true,
+              actorRole: 'Owner',
+              operation: toStatus,
+              warning: 'Owner executed financial transition on self-created request.',
+            }
+          : undefined,
       });
 
       return response;
@@ -1579,22 +1581,6 @@ export class FinanceService {
       ...expense,
       amount: expense.amount.toString(),
     };
-  }
-
-  private assertFinanceTransitionRole(
-    context: RequestContext,
-    allowedRoles: readonly string[],
-    actionLabel: string,
-  ): void {
-    // Owner behavior is intentionally preserved until the Product Owner and
-    // pilot customer decide whether emergency/admin bypass is allowed.
-    if (context.roles.includes('Owner')) return;
-
-    if (!allowedRoles.some((role) => context.roles.includes(role))) {
-      throw new ForbiddenException(
-        `${actionLabel} uchun ${allowedRoles.join(' yoki ')} roli talab qilinadi.`,
-      );
-    }
   }
 
   private assertCurrentPayrollApproval(period: { calculationRevision: number; approvedRevision: number | null; approvedByUserId: string | null; approvedAt: Date | null }): void {
@@ -1618,14 +1604,16 @@ export class FinanceService {
     context: RequestContext,
     requestedByUserId: string | undefined,
     action: string,
-  ): void {
-    if (context.roles.includes('Owner')) return;
-
+  ): boolean {
     if (requestedByUserId && requestedByUserId === context.userId) {
+      if (context.roles.includes('Owner')) {
+        return true;
+      }
       throw new ForbiddenException(
         `So‘rovni yaratgan foydalanuvchi ${action} amalini bajara olmaydi.`,
       );
     }
+    return false;
   }
 
   private mapAdjustment(

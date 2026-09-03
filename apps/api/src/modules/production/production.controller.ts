@@ -169,7 +169,7 @@ export class ProductionController {
   }
 
   @Post('shift-reconciliations/accept')
-  @RequirePermissions('production.write')
+  @RequirePermissions('production.approve')
   acceptShiftReconciliation(@CurrentContext() context: RequestContext, @Body() dto: ShiftReconciliationReasonDto) {
     return this.productionService.acceptShiftReconciliation(context, dto);
   }
@@ -180,7 +180,7 @@ export class ProductionController {
   }
 
   @Patch('warehouse-handoff-stage')
-  @RequirePermissions('settings.write')
+  @RequirePermissions('production.approve')
   configureWarehouseHandoffStage(@CurrentContext() context: RequestContext, @Body() dto: ConfigureWarehouseHandoffStageDto) {
     return this.productionService.configureWarehouseHandoffStage(context, dto);
   }

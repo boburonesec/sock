@@ -52,63 +52,10 @@ const demoUsers = [
   },
 ] as const;
 
-const permissionDefinitions = [
-  'dashboard.view',
-  'production.view',
-  'production.write',
-  'warehouse.view',
-  'warehouse.write',
-  'sales.view',
-  'sales.write',
-  'finance.view',
-  'finance.write',
-  'employees.view',
-  'employees.write',
-  'attendance.view',
-  'machines.view',
-  'machines.write',
-  'maintenance.view',
-  'maintenance.write',
-  'quality.view',
-  'quality.write',
-  'reports.view',
-  'settings.view',
-  'settings.write',
-  'audit.view',
-] as const;
-
-const rolePermissions: Record<string, readonly string[]> = {
-  Owner: permissionDefinitions,
-  Manager: [
-    'dashboard.view',
-    'production.view',
-    'production.write',
-    'warehouse.view',
-    'warehouse.write',
-    'sales.view',
-    'sales.write',
-    'finance.view',
-    'finance.write',
-    'employees.view',
-    'employees.write',
-    'attendance.view',
-    'reports.view',
-    'settings.view',
-    'settings.write',
-  ],
-  Accountant: [
-    'finance.view',
-    'finance.write',
-    'sales.view',
-    'reports.view',
-    'warehouse.view',
-  ],
-  Seller: ['sales.view', 'sales.write', 'warehouse.view'],
-  'Warehouse Operator': ['warehouse.view', 'warehouse.write'],
-  'Shift Receiver': ['production.view', 'production.write', 'machines.view'],
-  Mechanic: ['production.view', 'machines.view', 'maintenance.view', 'maintenance.write', 'quality.view', 'quality.write'],
-  'Mechanic Master': ['production.view', 'production.write', 'machines.view', 'machines.write', 'maintenance.view', 'maintenance.write', 'quality.view', 'quality.write', 'employees.view'],
-};
+import {
+  PERMISSION_DEFINITIONS as permissionDefinitions,
+  ROLE_PERMISSIONS as rolePermissions,
+} from '../src/common/role-permissions';
 
 const warehouseZoneNames = [
   'Finished Products',

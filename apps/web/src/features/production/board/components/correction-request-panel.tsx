@@ -13,10 +13,13 @@ export function CorrectionRequestButton({ domain, sourceRecordId, title, details
 }
 
 export function CorrectionManagerQueue() {
-  const roles = useAuthStore((s) => s.roles); const [notes, setNotes] = useState<Record<string,string>>({}); const client = useQueryClient();
-  const query = useQuery({ queryKey: ["recovery", "correction-requests"], queryFn: recoveryApi.getCorrectionRequests, enabled: roles.includes("Manager") });
+  const permissions = useAuthStore((s) => s.permissions);
+  const canApprove = permissions.includes("production.approve") || permissions.includes("expense.approve");
+  const [notes, setNotes] = useState<Record<string,string>>({});
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ["recovery", "correction-requests"], queryFn: recoveryApi.getCorrectionRequests, enabled: canApprove });
   const resolve = useMutation({ mutationFn: ({ id, note }: { id: string; note: string }) => recoveryApi.resolveCorrectionRequest(id, note), onSuccess: () => client.invalidateQueries({ queryKey: ["recovery", "correction-requests"] }) });
-  if (!roles.includes("Manager")) return null;
+  if (!canApprove) return null;
   const domain = { PRODUCTION_MOVEMENT: "Bosqich o‘tkazishi", WORKER_ACTIVITY: "Ishchi faoliyati", SUPPLIER_PAYMENT: "Yetkazib beruvchi to‘lovi" };
   return <div className="space-y-3 rounded-xl border p-4"><div><h3 className="font-semibold">Tuzatish so‘rovlari</h3><p className="text-sm text-muted-foreground">Asl yozuvlar o‘zgarmaydi; tekshiruv natijasini izoh bilan yoping.</p></div>{(query.data?.data ?? []).map((item) => <article key={item.id} className="rounded-lg border p-3"><div className="flex flex-wrap justify-between gap-2"><div><p className="font-medium">{domain[item.domain]} · {item.source.title}</p><p className="text-sm text-muted-foreground">So‘ragan: {item.requester?.name ?? "Noma’lum"} · {formatDateTimeForUser(new Date(item.requestedAt))}</p></div><strong>{item.status === "OPEN" ? "Ko‘rib chiqilmoqda" : "Yopilgan"}</strong></div><p className="mt-2 text-sm">Sabab: {item.reason}</p>{item.status === "OPEN" ? <div className="mt-3 flex gap-2"><input className="h-10 flex-1 rounded-md border bg-background px-3" placeholder="Tekshiruv natijasi" value={notes[item.id] ?? ""} onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })}/><Button disabled={(notes[item.id]?.trim().length ?? 0) < 3 || resolve.isPending} onClick={() => resolve.mutate({ id: item.id, note: notes[item.id] })}>So‘rovni yopish</Button></div> : <p className="mt-2 text-sm">Natija: {item.resolutionNote}</p>}</article>)}{!query.isLoading && !(query.data?.data.length) ? <p className="text-sm text-muted-foreground">So‘rovlar yo‘q.</p> : null}</div>;
 }

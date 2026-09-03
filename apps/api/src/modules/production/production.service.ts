@@ -1248,7 +1248,6 @@ export class ProductionService {
   }
 
   async configureWarehouseHandoffStage(context: RequestContext, dto: ConfigureWarehouseHandoffStageDto) {
-    this.assertManager(context, 'Omborga topshirish bosqichini sozlash');
     const tenantId = context.tenantId;
     const factoryId = requireActiveFactoryId(context);
     const stage = await this.prisma.productionStage.findFirst({
@@ -1322,10 +1321,9 @@ export class ProductionService {
   }
 
   async acceptShiftReconciliation(context: RequestContext, dto: ShiftReconciliationReasonDto) {
-    this.assertManager(context, 'Smenani qabul qilish');
     const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context); const workDate = this.parseWorkDate(dto.workDate);
     const readiness = await this.evaluateShiftReadiness(tenantId, factoryId, dto.workShiftId, workDate);
-    if (readiness.blockers.length) throw new ConflictException('Smena qabul qilishga tayyor emas. To\u2018xtatadigan muammolarni bartaraf qiling.');
+    if (readiness.blockers.length) throw new ConflictException('Smena qabul qilishga tayyor emas. To‘xtatadigan muammolarni bartaraf qiling.');
     const existing = await this.prisma.shiftReconciliation.findUnique({ where: { tenantId_factoryId_workShiftId_workDate: { tenantId, factoryId, workShiftId: dto.workShiftId, workDate } } });
     if (!existing || existing.status !== 'READY_FOR_HANDOVER') throw new ConflictException('Smena avval topshirishga tayyor holatiga o‘tkazilishi kerak.');
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -1360,11 +1358,21 @@ export class ProductionService {
   }
 
   async resolveCorrectionRequest(context: RequestContext, id: string, dto: ResolveCorrectionRequestDto) {
-    this.assertManager(context, 'Tuzatish so‘rovini yopish');
     const tenantId = context.tenantId; const factoryId = requireActiveFactoryId(context);
     const existing = await this.prisma.correctionRequest.findFirst({ where: { id, tenantId, factoryId } });
     if (!existing) throw new NotFoundException('Tuzatish so‘rovi topilmadi.');
     if (existing.status === 'RESOLVED') throw new ConflictException('Tuzatish so‘rovi allaqachon yopilgan.');
+
+    if (existing.domain === CorrectionRequestDomain.SUPPLIER_PAYMENT) {
+      if (!context.permissions.includes('expense.approve')) {
+        throw new ForbiddenException('Yetkazib beruvchi to‘lovi tuzatish so‘rovini yopish uchun expense.approve ruxsati talab qilinadi.');
+      }
+    } else {
+      if (!context.permissions.includes('production.approve')) {
+        throw new ForbiddenException('Ishlab chiqarish tuzatish so‘rovini yopish uchun production.approve ruxsati talab qilinadi.');
+      }
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.correctionRequest.updateMany({ where: { id, tenantId, factoryId, status: 'OPEN' }, data: { status: 'RESOLVED', resolvedByUserId: context.userId, resolvedAt: new Date(), resolutionNote: dto.resolutionNote } });
       if (changed.count !== 1) throw new ConflictException('Tuzatish so‘rovi boshqa foydalanuvchi tomonidan yopilgan.');
@@ -1454,10 +1462,6 @@ export class ProductionService {
     const date = new Date(`${value}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) throw new BadRequestException('Sana noto‘g‘ri.');
     return date;
-  }
-
-  private assertManager(context: RequestContext, action: string) {
-    if (!context.roles.includes('Manager')) throw new ForbiddenException(`${action} uchun Manager roli talab qilinadi.`);
   }
 
   private assertCorrectionPermission(context: RequestContext, domain: CorrectionRequestDomain) {

@@ -8,10 +8,9 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageReference[] }) {
-  const roles = useAuthStore((state) => state.roles);
   const permissions = useAuthStore((state) => state.permissions);
-  const isManager = roles.includes("Manager");
-  const canConfigure = isManager && permissions.includes("settings.write");
+  const canApproveShift = permissions.includes("production.approve");
+  const canConfigure = permissions.includes("production.approve");
   const queryClient = useQueryClient();
   const recordsQuery = useQuery({ queryKey: queryKeys.production.shiftReconciliations(), queryFn: productionApi.getShiftReconciliations });
   const handoffQuery = useQuery({ queryKey: queryKeys.production.warehouseHandoffStage(), queryFn: productionApi.getWarehouseHandoffStage });
@@ -43,8 +42,8 @@ export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageRe
     {workShiftId ? <div className="grid gap-3 md:grid-cols-3">
       {(["BLOCKER", "WARNING", "READY"] as const).map((status) => <div key={status} className="rounded-lg border p-3"><h4 className="mb-2 font-medium">{{ BLOCKER: "To‘xtatadigan muammolar", WARNING: "Ogohlantirishlar", READY: "Tayyor" }[status]}</h4><div className="space-y-2">{(readinessQuery.data?.data.checks ?? []).filter((item) => item.status === status).map((item) => <div key={item.code} className="text-sm"><p className="font-medium">{item.label}</p><p className="text-muted-foreground">{item.detail}</p>{status !== "READY" ? <p className="mt-1">Keyingi qadam: {item.action}</p> : null}</div>)}{!readinessQuery.isLoading && !(readinessQuery.data?.data.checks ?? []).some((item) => item.status === status) ? <p className="text-sm text-muted-foreground">Yo‘q</p> : null}</div></div>)}
     </div> : null}
-    {isManager ? <textarea className="min-h-20 w-full rounded-md border bg-background p-3" placeholder="Ogohlantirishni qabul qilish yoki qaytarish sababi" value={reason} onChange={(event) => setReason(event.target.value)} /> : null}
-    <div className="flex flex-wrap gap-2"><Button disabled={action.isPending || selected?.status === "ACCEPTED" || Boolean(readinessQuery.data?.data.blockers.length)} onClick={() => action.mutate("submit")}>Topshirishga tayyor</Button>{isManager ? <><Button disabled={action.isPending || selected?.status !== "READY_FOR_HANDOVER" || Boolean(readinessQuery.data?.data.blockers.length)} onClick={() => action.mutate("accept")}>Qabul qilish</Button><Button variant="outline" disabled={action.isPending || selected?.status !== "READY_FOR_HANDOVER"} onClick={() => action.mutate("return")}>Tuzatishga qaytarish</Button></> : null}</div>
+    {canApproveShift ? <textarea className="min-h-20 w-full rounded-md border bg-background p-3" placeholder="Ogohlantirishni qabul qilish yoki qaytarish sababi" value={reason} onChange={(event) => setReason(event.target.value)} /> : null}
+    <div className="flex flex-wrap gap-2"><Button disabled={action.isPending || selected?.status === "ACCEPTED" || Boolean(readinessQuery.data?.data.blockers.length)} onClick={() => action.mutate("submit")}>Topshirishga tayyor</Button>{canApproveShift ? <><Button disabled={action.isPending || selected?.status !== "READY_FOR_HANDOVER" || Boolean(readinessQuery.data?.data.blockers.length)} onClick={() => action.mutate("accept")}>Qabul qilish</Button><Button variant="outline" disabled={action.isPending || selected?.status !== "READY_FOR_HANDOVER"} onClick={() => action.mutate("return")}>Tuzatishga qaytarish</Button></> : null}</div>
     <div className="text-sm">Omborga topshirish bosqichi: <strong>{handoffQuery.data?.data?.name ?? "Sozlanmagan"}</strong></div>
     {canConfigure ? <div className="flex gap-2"><select className="h-10 flex-1 rounded-md border bg-background px-3" value={stageId} onChange={(event) => setStageId(event.target.value)}><option value="">Bosqichni tanlang</option>{stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select><Button variant="outline" disabled={!stageId || configure.isPending} onClick={() => configure.mutate()}>Saqlash</Button></div> : null}
     {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}

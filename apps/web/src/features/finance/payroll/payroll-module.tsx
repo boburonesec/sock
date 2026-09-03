@@ -26,10 +26,9 @@ import { formatCurrency } from "@/lib/utils";
 import { formatDateShort } from "@/lib/format";
 
 export function PayrollModule() {
-  const roles = useAuthStore((state) => state.roles);
-  const canRecordPayrollPayment =
-    roles.includes("Owner") || roles.includes("Accountant");
-  const canApprovePayroll = roles.includes("Manager");
+  const permissions = useAuthStore((state) => state.permissions);
+  const canRecordPayrollPayment = permissions.includes("expense.pay");
+  const canApprovePayroll = permissions.includes("payroll.approve");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
   const [adjustmentKind, setAdjustmentKind] =

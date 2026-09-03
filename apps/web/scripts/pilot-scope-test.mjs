@@ -19,6 +19,7 @@ const expectedPaths = {
   Manager: [
     "/dashboard/executive",
     "/production",
+    "/machines",
     "/warehouse",
     "/sales",
     "/finance",

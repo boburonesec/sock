@@ -15,6 +15,7 @@ const PILOT_ROLE_PATHS: Record<string, readonly string[]> = {
   Manager: [
     "/dashboard/executive",
     "/production",
+    "/machines",
     "/warehouse",
     "/sales",
     "/finance",

@@ -20,11 +20,11 @@ import { useExpenses } from "./use-expenses";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function ExpensesModule() {
-  const roles = useAuthStore((state) => state.roles);
+  const permissions = useAuthStore((state) => state.permissions);
+  const isOwner = useAuthStore((state) => state.roles.includes("Owner"));
   const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null);
-  const isOwner = roles.includes("Owner");
-  const canApprove = isOwner || roles.includes("Manager");
-  const canPay = isOwner || roles.includes("Accountant");
+  const canApprove = permissions.includes("expense.approve");
+  const canPay = permissions.includes("expense.pay");
   const queryClient = useQueryClient();
   const { data, error, isError, isPending, refetch } = useExpenses();
   const categoriesQuery = useQuery({

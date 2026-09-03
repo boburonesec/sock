@@ -46,7 +46,7 @@ export class FinanceController {
   }
 
   @Post('expenses/:id/approve')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.approve')
   approveExpense(
     @CurrentContext() context: RequestContext,
     @Param('id') expenseId: string,
@@ -55,7 +55,7 @@ export class FinanceController {
   }
 
   @Post('expenses/:id/reject')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.approve')
   rejectExpense(
     @CurrentContext() context: RequestContext,
     @Param('id') expenseId: string,
@@ -64,7 +64,7 @@ export class FinanceController {
   }
 
   @Post('expenses/:id/pay')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.pay')
   payExpense(
     @CurrentContext() context: RequestContext,
     @Param('id') expenseId: string,
@@ -101,7 +101,7 @@ export class FinanceController {
   }
 
   @Post('advances/:id/approve')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.approve')
   approveAdvance(
     @CurrentContext() context: RequestContext,
     @Param('id') advanceId: string,
@@ -110,7 +110,7 @@ export class FinanceController {
   }
 
   @Post('advances/:id/reject')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.approve')
   rejectAdvance(
     @CurrentContext() context: RequestContext,
     @Param('id') advanceId: string,
@@ -119,7 +119,7 @@ export class FinanceController {
   }
 
   @Post('advances/:id/pay')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.pay')
   payAdvance(
     @CurrentContext() context: RequestContext,
     @Param('id') advanceId: string,
@@ -196,7 +196,7 @@ export class FinanceController {
   }
 
   @Post('payroll-periods/:id/approve')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('payroll.approve')
   approvePayrollPeriod(
     @CurrentContext() context: RequestContext,
     @Param('id') payrollPeriodId: string,
@@ -205,7 +205,7 @@ export class FinanceController {
   }
 
   @Post('payroll-periods/:id/pay')
-  @RequirePermissions('finance.write')
+  @RequirePermissions('expense.pay')
   payPayrollPeriod(
     @CurrentContext() context: RequestContext,
     @Param('id') payrollPeriodId: string,
