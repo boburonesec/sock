@@ -94,7 +94,7 @@ export function ExpensesTable({
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-8 px-2 text-xs"
+                          className="min-h-9 px-3 text-xs"
                           disabled={busy}
                           onClick={() => onApprove?.(expense)}
                         >
@@ -103,7 +103,7 @@ export function ExpensesTable({
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-8 px-2 text-xs"
+                          className="min-h-9 px-3 text-xs"
                           disabled={busy}
                           onClick={() => onReject?.(expense)}
                         >
@@ -115,7 +115,7 @@ export function ExpensesTable({
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-8 px-2 text-xs"
+                        className="min-h-9 px-3 text-xs"
                         disabled={busy}
                         onClick={() => onCancel?.(expense)}
                       >
@@ -125,7 +125,7 @@ export function ExpensesTable({
                     {expense.status === "APPROVED" && canPay && !isRequester ? (
                         <Button
                           type="button"
-                          className="h-8 px-2 text-xs"
+                          className="min-h-9 px-3 text-xs"
                           disabled={busy}
                           onClick={() => onPay?.(expense)}
                         >
@@ -136,7 +136,7 @@ export function ExpensesTable({
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-8 px-2 text-xs"
+                          className="min-h-9 px-3 text-xs"
                           disabled={busy}
                           onClick={() => onCancel?.(expense)}
                         >

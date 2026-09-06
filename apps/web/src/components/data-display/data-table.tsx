@@ -13,8 +13,11 @@ export function DataTable({
   label = "Ma’lumotlar jadvali",
 }: DataTableProps) {
   return (
-    <div className={cn("table-scroll min-w-0 w-full max-w-full", className)}>
-      <div className="panel w-full max-w-full overflow-x-auto">
+    <div className={cn("w-full min-w-0 max-w-full", className)}>
+      <div className="mb-1 flex items-center justify-end gap-1 text-[11px] text-muted-foreground sm:hidden">
+        <span>Jadvalni surish mumkin →</span>
+      </div>
+      <div className="panel w-full max-w-full overflow-x-auto overscroll-x-contain">
         <table
           aria-label={label}
           className="w-full min-w-[560px] text-left text-sm"

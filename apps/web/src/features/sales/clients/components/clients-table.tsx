@@ -40,10 +40,26 @@ export function ClientsTable({
       <tbody>
         {clients.length > 0 ? (
           clients.map((client) => (
-            <DataTableRow key={client.id} className="hover:bg-muted/40">
+            <DataTableRow
+              key={client.id}
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover:bg-muted/40 active:bg-muted/60 focus:outline-none focus:ring-1 focus:ring-primary"
+              onClick={() => onSelect(client)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(client);
+                }
+              }}
+            >
               <DataTableCell>
                 <button
-                  onClick={() => onSelect(client)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(client);
+                  }}
                   className="text-left font-semibold hover:text-primary"
                 >
                   {client.name}

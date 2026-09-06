@@ -54,11 +54,27 @@ export function MovementsTable({
       <tbody>
         {movements.length > 0 ? (
           movements.map((movement) => (
-            <DataTableRow key={movement.id} className="hover:bg-muted/40">
+            <DataTableRow
+              key={movement.id}
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover:bg-muted/40 active:bg-muted/60 focus:outline-none focus:ring-1 focus:ring-primary"
+              onClick={() => onSelect(movement)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(movement);
+                }
+              }}
+            >
               <DataTableCell>{formatDate(movement.occurredAt)}</DataTableCell>
               <DataTableCell>
                 <button
-                  onClick={() => onSelect(movement)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(movement);
+                  }}
                   className="text-left font-semibold hover:text-primary"
                 >
                   {labelStatus(stockMovementTypeLabel, movement.movementType)}

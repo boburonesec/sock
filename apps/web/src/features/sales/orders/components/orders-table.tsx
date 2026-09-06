@@ -60,10 +60,26 @@ export function OrdersTable({
             const payment = paymentStatus[order.paymentStatus];
 
             return (
-              <DataTableRow key={order.id} className="hover:bg-muted/40">
+              <DataTableRow
+                key={order.id}
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer hover:bg-muted/40 active:bg-muted/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                onClick={() => onSelect(order)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelect(order);
+                  }
+                }}
+              >
                 <DataTableCell>
                   <button
-                    onClick={() => onSelect(order)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(order);
+                    }}
                     className="font-semibold hover:text-primary"
                   >
                     {order.orderNumber}

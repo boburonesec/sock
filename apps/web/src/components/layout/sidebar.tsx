@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { getDefaultHomePath } from "@/lib/access-control";
 import { navigationItems } from "@/lib/navigation";
 import { isPilotPathVisible } from "@/lib/pilot-scope";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth-store";
 
 const sectionLabels: Record<(typeof navigationItems)[number]["section"], string> = {
@@ -17,8 +18,12 @@ const sectionLabels: Record<(typeof navigationItems)[number]["section"], string>
 
 export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const roles = useAuthStore((state) => state.roles);
   const permissions = useAuthStore((state) => state.permissions);
+  const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
+  const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
+  const setActiveFactory = useAuthStore((state) => state.setActiveFactory);
   const homePath = getDefaultHomePath(permissions, roles);
   const visibleNavigationItems = navigationItems.filter((item) => {
     if (!isPilotPathVisible(item.href, roles)) {
@@ -109,9 +114,40 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
           ))}
         </nav>
 
-        <div className="mt-4 rounded-xl bg-muted p-3 text-xs text-muted-foreground">
-          <div className="mb-1 font-semibold text-foreground">Paypoq OS</div>
-          <div>Mobil brauzerda ham ishlaydi</div>
+        <div className="mt-4 space-y-2 rounded-xl bg-muted/70 p-3 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between font-semibold text-foreground">
+            <span>Paypoq OS</span>
+            {accessibleFactories.length > 0 && (
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                {accessibleFactories.find((f) => f.id === activeFactoryId)?.name ?? "Asosiy"}
+              </span>
+            )}
+          </div>
+          {accessibleFactories.length > 1 ? (
+            <div className="pt-1">
+              <label htmlFor="mobile-factory-select" className="mb-1 block text-[11px] text-muted-foreground">
+                Filialni almashtirish
+              </label>
+              <select
+                id="mobile-factory-select"
+                aria-label="Filial tanlash"
+                className="h-10 w-full rounded-lg border bg-background px-2 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary"
+                value={activeFactoryId ?? ""}
+                onChange={async (event) => {
+                  setActiveFactory(event.target.value);
+                  await queryClient.invalidateQueries();
+                }}
+              >
+                {accessibleFactories.map((factory) => (
+                  <option key={factory.id} value={factory.id}>
+                    {factory.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>Mobil brauzerda to‘liq moslashtirilgan</div>
+          )}
         </div>
       </aside>
     </>

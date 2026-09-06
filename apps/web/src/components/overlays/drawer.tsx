@@ -99,11 +99,11 @@ export function Drawer({
             <X size={18} />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-8 sm:p-5 sm:pb-6">
           {children}
         </div>
         {footer ? (
-          <div className="shrink-0 border-t bg-card p-4 sm:p-5">{footer}</div>
+          <div className="shrink-0 border-t bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5">{footer}</div>
         ) : null}
       </section>
     </div>,
