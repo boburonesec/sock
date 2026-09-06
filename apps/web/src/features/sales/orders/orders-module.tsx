@@ -129,7 +129,7 @@ export function OrdersModule() {
       setFeedback({
         tone: "success",
         message:
-          "Yetkazuv qaytarildi. Stock qaytdi, mijoz to‘lovi o‘zgarmadi.",
+          "Yetkazuv qaytarildi. Mahsulot omborga qaytdi, mijoz to‘lovi o‘zgarmadi.",
       });
       await invalidateOrderQueries(queryClient);
     },
@@ -139,7 +139,7 @@ export function OrdersModule() {
         message:
           error instanceof Error
             ? error.message
-            : "Delivery return qilishda xatolik yuz berdi.",
+            : "Yetkazuvni qaytarishda xatolik yuz berdi.",
       });
     },
   });

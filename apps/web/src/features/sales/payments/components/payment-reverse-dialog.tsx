@@ -46,8 +46,8 @@ export function PaymentReverseDialog({
           To‘lovni bekor qilish
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Bu to‘lov reversal qilinadi. Client qarzi va buyurtma to‘lov holati
-          tizim tomonidan qayta hisoblanadi. Yetkazilgan/yopilgan
+          Bu to‘lov bekor qilinadi. Mijoz qarzi va buyurtma to‘lov holati
+          tizim tomonidan qayta hisoblanadi. Yetkazilgan yoki yopilgan
           buyurtmalarga bog‘langan to‘lovlar bloklanadi.
         </p>
 
@@ -59,7 +59,7 @@ export function PaymentReverseDialog({
           className="mt-2"
           value={reason}
           disabled={isSubmitting}
-          placeholder="Masalan: to‘lov noto‘g‘ri buyurtmaga allocation qilingan"
+          placeholder="Masalan: to‘lov noto‘g‘ri buyurtmaga taqsimlangan"
           onChange={(event) => setReason(event.target.value)}
         />
 

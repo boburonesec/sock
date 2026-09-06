@@ -467,7 +467,7 @@ function ProductFormDrawer({
       name: formState?.mode === "edit" ? formState.product.name : "",
       code: formState?.mode === "edit" ? formState.product.code ?? "" : "",
     });
-  }, [formState, reset]);
+  }, [formState, open, reset]);
 
   return (
     <Drawer
@@ -616,7 +616,7 @@ function VariantFormDrawer({
       materialId: formState?.mode === "edit" ? formState.variant.material.id : "",
       seasonId: formState?.mode === "edit" ? formState.variant.season.id : "",
     });
-  }, [formState, reset]);
+  }, [formState, open, reset]);
 
   return (
     <Drawer

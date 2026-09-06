@@ -68,10 +68,11 @@ async function login(page) {
   page.on("requestfailed", onRequestFailed);
   page.on("console", onConsole);
   page.on("pageerror", onPageError);
-  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#email", { timeout: 15000 });
-  // Let session bootstrap (refresh 401) settle
-  await page.waitForTimeout(1200);
+  await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("#email");
+    return el && !el.disabled;
+  }, { timeout: 45000 });
   await page.fill("#email", "owner@paypoq.local");
   await page.fill("#password", "ChangeMe123!");
   await page.click('button[type="submit"]');
@@ -322,7 +323,8 @@ async function main() {
 
     // admin login page
     await page.goto(`${BASE}/admin/login`, { waitUntil: "domcontentloaded" });
-    if (await page.locator("#email").count()) ok("Mobile admin login page");
+    const hasAdminEmail = await page.locator("#email").waitFor({ timeout: 15000 }).then(() => true, () => false);
+    if (hasAdminEmail) ok("Mobile admin login page");
     else fail("Mobile admin login page");
 
     await context.close();

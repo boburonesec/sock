@@ -12,11 +12,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { platformAdminApi } from "@/lib/api/platform-admin";
+import { isValidUzPhone, normalizeUzPhone } from "@/lib/phone";
 
 const tenantsKey = ["platform-admin", "tenants"] as const;
-const phonePattern = /^\+?[0-9\s()-]{7,24}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function formatTenantStatus(status: string): string {
@@ -31,8 +32,18 @@ function formatTenantStatus(status: string): string {
 }
 
 function formatBranchMode(mode: string): string {
-  return mode === "MULTI" ? "Filialli korxona" : "Oddiy korxona";
+  return mode === "MULTI" ? "Filialli korxona" : "Mustaqil korxona";
 }
+
+const initialForm = {
+  name: "",
+  contactName: "",
+  contactPhone: "",
+  contactEmail: "",
+  planCode: "",
+  branchMode: "SINGLE" as "SINGLE" | "MULTI",
+  notes: "",
+};
 
 export default function PlatformTenantsPage() {
   const queryClient = useQueryClient();
@@ -41,15 +52,12 @@ export default function PlatformTenantsPage() {
     contactPhone?: string;
     contactEmail?: string;
   }>({});
-  const [form, setForm] = useState({
-    name: "",
-    contactName: "",
-    contactPhone: "",
-    contactEmail: "",
-    planCode: "",
-    branchMode: "SINGLE" as "SINGLE" | "MULTI",
-    notes: "",
-  });
+  const [form, setForm] = useState(initialForm);
+
+  function resetForm() {
+    setForm(initialForm);
+    setFormErrors({});
+  }
 
   const tenantsQuery = useQuery({
     queryKey: tenantsKey,
@@ -59,26 +67,18 @@ export default function PlatformTenantsPage() {
   const createTenant = useMutation({
     mutationFn: () =>
       platformAdminApi.createTenant({
-        name: form.name,
-        contactName: form.contactName || undefined,
-        contactPhone: form.contactPhone || undefined,
-        contactEmail: form.contactEmail || undefined,
-        planCode: form.planCode || undefined,
+        name: form.name.trim(),
+        contactName: form.contactName.trim() || undefined,
+        contactPhone: normalizeUzPhone(form.contactPhone) || undefined,
+        contactEmail: form.contactEmail.trim() || undefined,
+        planCode: form.planCode.trim() || undefined,
         branchMode: form.branchMode,
-        notes: form.notes || undefined,
+        notes: form.notes.trim() || undefined,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: tenantsKey });
       setDrawerOpen(false);
-      setForm({
-        name: "",
-        contactName: "",
-        contactPhone: "",
-        contactEmail: "",
-        planCode: "",
-        branchMode: "SINGLE",
-        notes: "",
-      });
+      resetForm();
     },
   });
 
@@ -88,8 +88,8 @@ export default function PlatformTenantsPage() {
     const phone = form.contactPhone.trim();
     const email = form.contactEmail.trim();
 
-    if (phone && !phonePattern.test(phone)) {
-      nextErrors.contactPhone = "Telefon raqam formati noto‘g‘ri.";
+    if (phone && !isValidUzPhone(phone)) {
+      nextErrors.contactPhone = "Telefon raqam formati noto‘g‘ri (+998 XX XXX XX XX).";
     }
 
     if (email && !emailPattern.test(email)) {
@@ -163,7 +163,10 @@ export default function PlatformTenantsPage() {
 
         <Drawer
           open={drawerOpen}
-          onOpenChange={setDrawerOpen}
+          onOpenChange={(open) => {
+            setDrawerOpen(open);
+            if (!open) resetForm();
+          }}
           title="Korxona yaratish"
           description="Yangi mijoz korxonasini ro‘yxatga olish"
         >
@@ -175,10 +178,8 @@ export default function PlatformTenantsPage() {
               <Input id="contact-name" value={form.contactName} onChange={(event) => setForm({ ...form, contactName: event.target.value })} />
             </FormField>
             <FormField htmlFor="contact-phone" label="Telefon" error={formErrors.contactPhone}>
-              <Input
+              <PhoneInput
                 id="contact-phone"
-                inputMode="tel"
-                placeholder="+998 90 123 45 67"
                 value={form.contactPhone}
                 onChange={(event) => {
                   setForm({ ...form, contactPhone: event.target.value });
@@ -210,7 +211,7 @@ export default function PlatformTenantsPage() {
                   setForm({ ...form, branchMode: event.target.value as "SINGLE" | "MULTI" })
                 }
               >
-                <option value="SINGLE">Oddiy korxona</option>
+                <option value="SINGLE">Mustaqil korxona</option>
                 <option value="MULTI">Filialli korxona</option>
               </select>
             </FormField>

@@ -8,15 +8,30 @@ import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Client, ClientPayload } from "@/lib/api/sales";
+import {
+  extractDigits,
+  formatUzPhone,
+  isValidUzPhone,
+  normalizeUzPhone,
+} from "@/lib/phone";
 
 const clientFormSchema = z.object({
   name: z
     .string()
     .transform((value) => value.trim())
     .pipe(z.string().min(1, "Mijoz nomi kiritilishi shart.")),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const digits = extractDigits(val);
+      if (digits.length === 0 || digits === "998") return true;
+      return isValidUzPhone(val);
+    }, "Telefon raqam to‘liq kiritilishi shart (+998 XX XXX XX XX)."),
   address: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -58,9 +73,10 @@ export function ClientFormDrawer({
   });
 
   useEffect(() => {
+    if (!open) return;
     reset({
       name: mode === "edit" ? client?.name ?? "" : "",
-      phone: mode === "edit" ? client?.phone ?? "" : "",
+      phone: mode === "edit" ? (client?.phone ? formatUzPhone(client.phone) : "") : "",
       address: mode === "edit" ? client?.address ?? "" : "",
       notes: mode === "edit" ? client?.notes ?? "" : "",
     });
@@ -99,12 +115,11 @@ export function ClientFormDrawer({
           />
         </FormField>
 
-        <FormField htmlFor="clientPhone" label="Telefon">
-          <Input
+        <FormField htmlFor="clientPhone" label="Telefon" error={errors.phone?.message}>
+          <PhoneInput
             id="clientPhone"
-            autoComplete="off"
-            placeholder="+998..."
             disabled={isSubmitting}
+            aria-invalid={Boolean(errors.phone)}
             {...register("phone")}
           />
         </FormField>
@@ -151,8 +166,8 @@ export function ClientFormDrawer({
 
 function buildPayload(values: ClientFormValues): ClientPayload {
   return {
-    name: values.name,
-    phone: normalizeOptional(values.phone),
+    name: values.name.trim(),
+    phone: normalizeUzPhone(values.phone),
     address: normalizeOptional(values.address),
     notes: normalizeOptional(values.notes),
   };

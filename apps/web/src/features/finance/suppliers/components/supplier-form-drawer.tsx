@@ -8,15 +8,30 @@ import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Supplier, SupplierPayload } from "@/lib/api/supplier";
+import {
+  extractDigits,
+  formatUzPhone,
+  isValidUzPhone,
+  normalizeUzPhone,
+} from "@/lib/phone";
 
 const supplierFormSchema = z.object({
   name: z
     .string()
     .transform((value) => value.trim())
     .pipe(z.string().min(1, "Yetkazib beruvchi nomi kiritilishi shart.")),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const digits = extractDigits(val);
+      if (digits.length === 0 || digits === "998") return true;
+      return isValidUzPhone(val);
+    }, "Telefon raqam to‘liq kiritilishi shart (+998 XX XXX XX XX)."),
   notes: z.string().optional(),
 });
 
@@ -52,9 +67,10 @@ export function SupplierFormDrawer({
   });
 
   useEffect(() => {
+    if (!open) return;
     reset({
       name: mode === "edit" ? supplier?.name ?? "" : "",
-      phone: mode === "edit" ? supplier?.phone ?? "" : "",
+      phone: mode === "edit" ? (supplier?.phone ? formatUzPhone(supplier.phone) : "") : "",
       notes: mode === "edit" ? supplier?.notes ?? "" : "",
     });
   }, [mode, open, reset, supplier]);
@@ -90,12 +106,11 @@ export function SupplierFormDrawer({
           />
         </FormField>
 
-        <FormField htmlFor="supplierPhone" label="Telefon">
-          <Input
+        <FormField htmlFor="supplierPhone" label="Telefon" error={errors.phone?.message}>
+          <PhoneInput
             id="supplierPhone"
-            autoComplete="off"
-            placeholder="+998..."
             disabled={isSubmitting}
+            aria-invalid={Boolean(errors.phone)}
             {...register("phone")}
           />
         </FormField>
@@ -132,8 +147,8 @@ export function SupplierFormDrawer({
 
 function buildPayload(values: SupplierFormValues): SupplierPayload {
   return {
-    name: values.name,
-    phone: normalizeOptional(values.phone),
+    name: values.name.trim(),
+    phone: normalizeUzPhone(values.phone),
     notes: normalizeOptional(values.notes),
   };
 }

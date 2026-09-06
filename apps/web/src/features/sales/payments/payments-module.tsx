@@ -63,7 +63,7 @@ export function PaymentsModule() {
       setIsReverseDialogOpen(false);
       setFeedback({
         tone: "success",
-        message: "To‘lov reversal qilindi. Qarz va order holati qayta hisoblandi.",
+        message: "To‘lov bekor qilindi. Qarz va buyurtma holati qayta hisoblandi.",
       });
     },
     onError: (mutationError) => {
@@ -72,7 +72,7 @@ export function PaymentsModule() {
         message:
           mutationError instanceof Error
             ? mutationError.message
-            : "To‘lovni reversal qilishda xatolik yuz berdi.",
+            : "To‘lovni bekor qilishda xatolik yuz berdi.",
       });
     },
   });

@@ -352,14 +352,17 @@ function MasterDataFormDrawer({
 
   useEffect(() => {
     reset({
-      name: record?.name ?? "",
-      code: variant === "catalog" ? (record as MasterDataItem | null)?.code ?? "" : "",
+      name: mode === "edit" ? record?.name ?? "" : "",
+      code:
+        mode === "edit" && variant === "catalog"
+          ? (record as MasterDataItem | null)?.code ?? ""
+          : "",
       sortOrder:
-        variant === "stages" && record
+        mode === "edit" && variant === "stages" && record
           ? String((record as ProductionStage).sortOrder)
           : "",
     });
-  }, [record, reset, variant]);
+  }, [mode, open, record, reset, variant]);
 
   return (
     <Drawer

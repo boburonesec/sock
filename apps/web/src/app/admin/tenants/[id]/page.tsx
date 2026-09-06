@@ -39,7 +39,7 @@ function formatSubscriptionStatus(status: string): string {
 }
 
 function formatBranchMode(mode: string): string {
-  return mode === "MULTI" ? "Filialli korxona" : "Oddiy korxona";
+  return mode === "MULTI" ? "Filialli korxona" : "Mustaqil korxona";
 }
 
 function formatHealthMetricLabel(key: string): string {
@@ -245,7 +245,7 @@ export default function PlatformTenantDetailPage() {
                 <div>
                   <h2 className="font-semibold">Ishlash modeli</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Oddiy korxonada filial sozlamalari ownerga ko‘rinmaydi. Filialli modelda filiallar va ularga ruxsatlar ochiladi.
+                    Mustaqil korxonada filial sozlamalari ownerga ko‘rinmaydi. Filialli modelda filiallar va ularga ruxsatlar ochiladi.
                   </p>
                 </div>
                 <form
@@ -262,7 +262,7 @@ export default function PlatformTenantDetailPage() {
                       value={branchModeForm}
                       onChange={(event) => setBranchModeForm(event.target.value as "SINGLE" | "MULTI")}
                     >
-                      <option value="SINGLE">Oddiy korxona</option>
+                      <option value="SINGLE">Mustaqil korxona</option>
                       <option value="MULTI">Filialli korxona</option>
                     </select>
                   </FormField>
@@ -276,7 +276,7 @@ export default function PlatformTenantDetailPage() {
               </div>
               {updateBranchMode.isError ? (
                 <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                  Model o‘zgarmadi. Filialli korxonani oddiy korxonaga qaytarish uchun bitta faol filial qolishi kerak.
+                  Model o‘zgarmadi. Filialli korxonani mustaqil korxonaga qaytarish uchun bitta faol filial qolishi kerak.
                 </p>
               ) : null}
             </section>
@@ -350,7 +350,16 @@ export default function PlatformTenantDetailPage() {
           </div>
         )}
 
-        <Drawer open={ownerDrawerOpen} onOpenChange={setOwnerDrawerOpen} title="Korxona egasini ochish">
+        <Drawer
+          open={ownerDrawerOpen}
+          onOpenChange={(open) => {
+            setOwnerDrawerOpen(open);
+            if (!open) {
+              setOwnerForm({ name: "", email: "", password: "ChangeMe123!" });
+            }
+          }}
+          title="Korxona egasini ochish"
+        >
           <form className="space-y-4" onSubmit={submitOwner}>
             <FormField htmlFor="owner-name" label="Ism" required>
               <Input id="owner-name" value={ownerForm.name} onChange={(event) => setOwnerForm({ ...ownerForm, name: event.target.value })} />

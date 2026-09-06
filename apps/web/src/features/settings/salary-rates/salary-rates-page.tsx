@@ -288,7 +288,6 @@ function SalaryRateFormDrawer({
         >
           <Select
             id="salaryRateStageId"
-            defaultValue=""
             disabled={isSubmitting || stages.length === 0}
             aria-invalid={Boolean(errors.stageId)}
             {...register("stageId")}
