@@ -44,6 +44,7 @@
     "test:auth-lifecycle": "node scripts/auth-session-lifecycle-test.mjs",
     "test:form-ux": "node scripts/form-ux-lifecycle-test.mjs",
     "test:mobile": "node scripts/mobile-e2e-suite.mjs",
+    "test:mobile-acceptance": "node scripts/mobile-business-acceptance.mjs",
     "capture:user-guide": "node scripts/capture-user-guide-screenshots.mjs",
     "verify:acceptance-fixture": "pnpm acceptance:seed",
     "verify:acceptance": "node scripts/full-manual-case-test.mjs && node scripts/business-rules-deep-test.mjs",
