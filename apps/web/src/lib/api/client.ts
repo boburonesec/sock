@@ -32,6 +32,10 @@ export function setApiAccessToken(token: string | null): void {
   accessToken = token;
 }
 
+export function getApiAccessToken(): string | null {
+  return accessToken;
+}
+
 export function setApiActiveFactoryId(factoryId: string | null): void {
   activeFactoryId = factoryId;
 }
@@ -154,6 +158,7 @@ export async function apiClient<T>(
   const { skipAuth, skipAuthRefresh, silentForbidden, headers, ...requestOptions } =
     options;
   const method = (requestOptions.method ?? "GET").toUpperCase();
+  const tokenAtRequestTime = accessToken;
   const response = await fetch(buildApiUrl(path), {
     ...requestOptions,
     credentials: "include",
@@ -161,6 +166,22 @@ export async function apiClient<T>(
   });
 
   if (response.status === 401 && !skipAuthRefresh && refreshSessionHandler) {
+    // If another concurrent request already refreshed the access token while this request
+    // was in flight, do NOT trigger a second refresh call. Retry immediately with the new token.
+    if (accessToken && accessToken !== tokenAtRequestTime) {
+      const retryResponse = await fetch(buildApiUrl(path), {
+        ...requestOptions,
+        credentials: "include",
+        headers: buildHeaders(headers, skipAuth),
+      });
+
+      return parseApiResponse<T>(retryResponse, {
+        path,
+        method,
+        silentForbidden,
+      });
+    }
+
     const didRefresh = await refreshSessionHandler();
 
     if (didRefresh) {

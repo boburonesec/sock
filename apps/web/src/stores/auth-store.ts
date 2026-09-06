@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { authApi, type AuthContext, type AuthFactory, type AuthUser } from "@/lib/api/auth";
 import {
+  ApiError,
   setApiAccessToken,
   setApiActiveFactoryId,
   setApiAuthRefreshHandler,
@@ -20,6 +21,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoadingSession: boolean;
   hasLoadedSession: boolean;
+  sessionError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
@@ -52,6 +54,7 @@ function applySession(
     isAuthenticated: true,
     isLoadingSession: false,
     hasLoadedSession: true,
+    sessionError: null,
   });
 }
 
@@ -72,8 +75,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoadingSession: false,
   hasLoadedSession: false,
+  sessionError: null,
   login: async (email, password) => {
-    set({ isLoadingSession: true });
+    set({ isLoadingSession: true, sessionError: null });
     try {
       const response = await authApi.login({ email, password });
       applySession(set, response.data, response.data.accessToken);
@@ -94,15 +98,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return refreshPromise;
     }
 
-    set({ isLoadingSession: true });
+    set({ isLoadingSession: true, sessionError: null });
     refreshPromise = authApi
       .refresh()
       .then((response) => {
         applySession(set, response.data, response.data.accessToken);
         return true;
       })
-      .catch(() => {
-        get().clearSession();
+      .catch((error: unknown) => {
+        const isAuthRejection =
+          error instanceof ApiError &&
+          (error.status === 401 || error.status === 403);
+
+        if (isAuthRejection) {
+          get().clearSession();
+        } else {
+          // Network failure, cold start, 502/503/504, or timeout:
+          // Do NOT wipe out valid session data; preserve status and record error.
+          const errorMessage =
+            error instanceof Error ? error.message : "Serverga ulanishda xatolik yuz berdi.";
+          set({
+            isLoadingSession: false,
+            hasLoadedSession: true,
+            sessionError: errorMessage,
+          });
+        }
         return false;
       })
       .finally(() => {
@@ -124,13 +144,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return get().refreshSession();
     }
 
-    set({ isLoadingSession: true });
+    set({ isLoadingSession: true, sessionError: null });
     try {
       const response = await authApi.me();
       applySession(set, response.data);
       return true;
-    } catch {
-      get().clearSession();
+    } catch (error: unknown) {
+      const isAuthRejection =
+        error instanceof ApiError &&
+        (error.status === 401 || error.status === 403);
+
+      if (isAuthRejection) {
+        get().clearSession();
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : "Serverga ulanishda xatolik yuz berdi.";
+        set({
+          isLoadingSession: false,
+          hasLoadedSession: true,
+          sessionError: errorMessage,
+        });
+      }
       return false;
     }
   },
@@ -148,6 +182,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: false,
       isLoadingSession: false,
       hasLoadedSession: true,
+      sessionError: null,
     });
   },
 }));

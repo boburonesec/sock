@@ -1,4 +1,5 @@
 import { ApiError } from "./client";
+export { ApiError };
 
 interface PlatformApiClientOptions extends RequestInit {
   skipAuth?: boolean;
@@ -10,6 +11,10 @@ let platformRefreshSessionHandler: (() => Promise<boolean>) | null = null;
 
 export function setPlatformApiAccessToken(token: string | null): void {
   platformAccessToken = token;
+}
+
+export function getPlatformApiAccessToken(): string | null {
+  return platformAccessToken;
 }
 
 export function setPlatformApiAuthRefreshHandler(
@@ -66,6 +71,7 @@ export async function platformApiClient<T>(
   options: PlatformApiClientOptions = {},
 ): Promise<T> {
   const { skipAuth, skipAuthRefresh, headers, ...requestOptions } = options;
+  const tokenAtRequestTime = platformAccessToken;
   const response = await fetch(buildApiUrl(path), {
     ...requestOptions,
     credentials: "include",
@@ -73,6 +79,16 @@ export async function platformApiClient<T>(
   });
 
   if (response.status === 401 && !skipAuthRefresh && platformRefreshSessionHandler) {
+    if (platformAccessToken && platformAccessToken !== tokenAtRequestTime) {
+      const retryResponse = await fetch(buildApiUrl(path), {
+        ...requestOptions,
+        credentials: "include",
+        headers: buildHeaders(headers, skipAuth),
+      });
+
+      return parseApiResponse<T>(retryResponse);
+    }
+
     const didRefresh = await platformRefreshSessionHandler();
 
     if (didRefresh) {

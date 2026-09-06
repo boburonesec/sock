@@ -13,12 +13,14 @@ export default () => ({
     jwtAccessTtlSeconds: Number(process.env.JWT_ACCESS_TTL_SECONDS ?? 900),
     refreshTokenTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30),
     cookieName: process.env.AUTH_COOKIE_NAME ?? 'paypoq_refresh_token',
+    cookieSameSite: process.env.AUTH_COOKIE_SAMESITE,
   },
   platformAuth: {
     jwtAccessSecret:
       process.env.PLATFORM_JWT_ACCESS_SECRET ??
       'local-development-platform-jwt-secret-change-me',
     cookieName: process.env.PLATFORM_AUTH_COOKIE_NAME ?? 'paypoq_platform_refresh_token',
+    cookieSameSite: process.env.PLATFORM_AUTH_COOKIE_SAMESITE ?? process.env.AUTH_COOKIE_SAMESITE,
   },
   telegram: {
     linkTokenSecret:

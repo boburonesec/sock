@@ -2,13 +2,14 @@
 
 import { create } from "zustand";
 import {
-  platformAuthApi,
-  type PlatformAdminUser,
-} from "@/lib/api/platform-auth";
-import {
+  ApiError,
   setPlatformApiAccessToken,
   setPlatformApiAuthRefreshHandler,
 } from "@/lib/api/platform-client";
+import {
+  platformAuthApi,
+  type PlatformAdminUser,
+} from "@/lib/api/platform-auth";
 
 interface PlatformAuthState {
   accessToken: string | null;
@@ -16,6 +17,7 @@ interface PlatformAuthState {
   isAuthenticated: boolean;
   isLoadingSession: boolean;
   hasLoadedSession: boolean;
+  sessionError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
@@ -40,6 +42,7 @@ function applySession(
     isAuthenticated: true,
     isLoadingSession: false,
     hasLoadedSession: true,
+    sessionError: null,
   });
 }
 
@@ -49,8 +52,9 @@ export const usePlatformAuthStore = create<PlatformAuthState>((set, get) => ({
   isAuthenticated: false,
   isLoadingSession: false,
   hasLoadedSession: false,
+  sessionError: null,
   login: async (email, password) => {
-    set({ isLoadingSession: true });
+    set({ isLoadingSession: true, sessionError: null });
     try {
       const response = await platformAuthApi.login({ email, password });
       applySession(set, response.data.platformAdmin, response.data.accessToken);
@@ -71,15 +75,29 @@ export const usePlatformAuthStore = create<PlatformAuthState>((set, get) => ({
       return refreshPromise;
     }
 
-    set({ isLoadingSession: true });
+    set({ isLoadingSession: true, sessionError: null });
     refreshPromise = platformAuthApi
       .refresh()
       .then((response) => {
         applySession(set, response.data.platformAdmin, response.data.accessToken);
         return true;
       })
-      .catch(() => {
-        get().clearSession();
+      .catch((error: unknown) => {
+        const isAuthRejection =
+          error instanceof ApiError &&
+          (error.status === 401 || error.status === 403);
+
+        if (isAuthRejection) {
+          get().clearSession();
+        } else {
+          const errorMessage =
+            error instanceof Error ? error.message : "Serverga ulanishda xatolik yuz berdi.";
+          set({
+            isLoadingSession: false,
+            hasLoadedSession: true,
+            sessionError: errorMessage,
+          });
+        }
         return false;
       })
       .finally(() => {
@@ -93,13 +111,27 @@ export const usePlatformAuthStore = create<PlatformAuthState>((set, get) => ({
       return get().refreshSession();
     }
 
-    set({ isLoadingSession: true });
+    set({ isLoadingSession: true, sessionError: null });
     try {
       const response = await platformAuthApi.me();
       applySession(set, response.data.platformAdmin);
       return true;
-    } catch {
-      get().clearSession();
+    } catch (error: unknown) {
+      const isAuthRejection =
+        error instanceof ApiError &&
+        (error.status === 401 || error.status === 403);
+
+      if (isAuthRejection) {
+        get().clearSession();
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : "Serverga ulanishda xatolik yuz berdi.";
+        set({
+          isLoadingSession: false,
+          hasLoadedSession: true,
+          sessionError: errorMessage,
+        });
+      }
       return false;
     }
   },
@@ -111,6 +143,7 @@ export const usePlatformAuthStore = create<PlatformAuthState>((set, get) => ({
       isAuthenticated: false,
       isLoadingSession: false,
       hasLoadedSession: true,
+      sessionError: null,
     });
   },
 }));

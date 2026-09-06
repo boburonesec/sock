@@ -106,21 +106,48 @@ export class AuthController {
     };
   }
 
+  private getSameSite(): 'lax' | 'strict' | 'none' {
+    const configured = this.configService.get<string>('auth.cookieSameSite');
+    if (configured === 'strict' || configured === 'lax' || configured === 'none') {
+      return configured;
+    }
+
+    // In production, when web and API reside on separate cross-site origins (e.g. Render subdomains),
+    // SameSite=None is required so the refresh cookie is sent on cross-site fetch.
+    // In development (http://), SameSite=None is rejected by browsers without Secure=true,
+    // so default to 'lax' for local development.
+    return this.isProduction() ? 'none' : 'lax';
+  }
+
+  private isPartitioned(): boolean {
+    return this.isProduction() || this.getSameSite() === 'none';
+  }
+
   private setRefreshCookie(response: Response, refreshToken: string): void {
+    const isProd = this.isProduction();
+    const sameSite = this.getSameSite();
+    const secure = isProd || sameSite === 'none';
+
     response.cookie(this.authService.getCookieName(), refreshToken, {
       httpOnly: true,
-      secure: this.isProduction(),
-      sameSite: this.isProduction() ? 'strict' : 'lax',
+      secure,
+      sameSite,
+      partitioned: this.isPartitioned(),
       path: '/auth',
       maxAge: this.getRefreshCookieMaxAgeMs(),
     });
   }
 
   private clearRefreshCookie(response: Response): void {
+    const isProd = this.isProduction();
+    const sameSite = this.getSameSite();
+    const secure = isProd || sameSite === 'none';
+
     response.clearCookie(this.authService.getCookieName(), {
       httpOnly: true,
-      secure: this.isProduction(),
-      sameSite: this.isProduction() ? 'strict' : 'lax',
+      secure,
+      sameSite,
+      partitioned: this.isPartitioned(),
       path: '/auth',
     });
   }

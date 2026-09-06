@@ -75,7 +75,8 @@ async function main() {
       .join("; ");
     assert.match(rawSetCookie, /HttpOnly/i);
     assert.match(rawSetCookie, /Secure/i);
-    assert.match(rawSetCookie, /SameSite=Strict/i);
+    const expectedSameSite = process.env.AUTH_COOKIE_SAMESITE || "None";
+    assert.match(rawSetCookie, new RegExp(`SameSite=${expectedSameSite}`, "i"));
     assert.match(rawSetCookie, /Path=\/auth/i);
     assert.doesNotMatch(rawSetCookie, /Domain=/i);
 
@@ -83,12 +84,12 @@ async function main() {
     assert.ok(initialCookie);
     assert.equal(initialCookie.httpOnly, true);
     assert.equal(initialCookie.secure, true);
-    assert.equal(initialCookie.sameSite, "Strict");
+    assert.equal(initialCookie.sameSite.toLowerCase(), expectedSameSite.toLowerCase());
     assert.equal(initialCookie.path, "/auth");
     assert.equal(initialCookie.domain, apiHost);
     const inaccessible = await page.evaluate((name) => document.cookie.includes(`${name}=`), cookieName);
     assert.equal(inaccessible, false);
-    console.log("PASS  login cookie Secure HttpOnly SameSite=Strict Path=/auth Domain=host-only");
+    console.log(`PASS  login cookie Secure HttpOnly SameSite=${expectedSameSite} Path=/auth Domain=host-only`);
 
     const visible = await page.getByText("Boshqaruv paneli", { exact: false }).count();
     assert.ok(visible, "authenticated dashboard did not render");
