@@ -467,7 +467,7 @@ export function ProductionBoard() {
       {successMessage ? (
         <div
           role="status"
-          className="fixed bottom-5 right-5 z-[60] max-w-sm rounded-xl border border-emerald-500/30 bg-card px-4 py-3 text-sm font-medium text-emerald-500 shadow-xl"
+          className="fixed bottom-5 left-5 right-5 z-[60] sm:left-auto sm:max-w-sm rounded-xl border border-emerald-500/30 bg-card px-4 py-3 text-sm font-medium text-emerald-500 shadow-xl"
         >
           {successMessage}
         </div>

@@ -72,14 +72,14 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
             className="flex min-w-0 items-center gap-3"
             onClick={onClose}
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground">
               P
             </span>
             <span className="truncate text-lg font-bold">Paypoq OS</span>
           </Link>
           <button
             type="button"
-            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted lg:hidden"
+            className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted lg:hidden"
             aria-label="Menyuni yopish"
             onClick={onClose}
           >
