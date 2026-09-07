@@ -5,7 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -176,8 +176,7 @@ export function PaymentCreateDrawer({
       description="To‘lov summasi to‘liq buyurtmalarga taqsimlanadi."
       className="max-w-4xl"
     >
-      <form
-        className="space-y-5"
+      <form className="space-y-5 flex flex-col h-full min-h-[min-content]"
         onSubmit={submitPayment}
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -368,7 +367,7 @@ export function PaymentCreateDrawer({
           </p>
         ) : null}
 
-        <Button
+        <DrawerFooter><Button
           type="submit"
           className="w-full"
           disabled={
@@ -379,7 +378,7 @@ export function PaymentCreateDrawer({
           }
         >
           {isSubmitting ? "To‘lov saqlanmoqda..." : "To‘lov qayd qilish"}
-        </Button>
+        </Button></DrawerFooter>
       </form>
     </Drawer>
   );

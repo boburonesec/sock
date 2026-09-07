@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -145,8 +145,7 @@ export function StockCorrectionDrawer({
       title="Qoldiqni tuzatish"
       description="Joriy qoldiqni tuzatadi va ombor harakatlari tarixiga yozadi."
     >
-      <form
-        className="space-y-4"
+      <form className="space-y-4 flex flex-col h-full min-h-[min-content]"
         onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
       >
         <FormField
@@ -283,7 +282,7 @@ export function StockCorrectionDrawer({
           </p>
         ) : null}
 
-        <Button
+        <DrawerFooter><Button
           type="submit"
           className="w-full"
           disabled={
@@ -294,7 +293,7 @@ export function StockCorrectionDrawer({
           }
         >
           {isSubmitting ? "Tuzatilmoqda..." : "Qoldiqni tuzatish"}
-        </Button>
+        </Button></DrawerFooter>
       </form>
     </Drawer>
   );

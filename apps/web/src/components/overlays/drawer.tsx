@@ -99,7 +99,7 @@ export function Drawer({
             <X size={18} />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-8 sm:p-5 sm:pb-6">
+        <div className="min-h-0 flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 pb-0 sm:p-5 sm:pb-0 relative">
           {children}
         </div>
         {footer ? (
@@ -108,5 +108,18 @@ export function Drawer({
       </section>
     </div>,
     document.body,
+  );
+}
+
+export function DrawerFooter({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "sticky bottom-0 z-20 mt-auto -mx-4 border-t bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:-mx-5 sm:p-5",
+        className
+      )}
+    >
+      {children}
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -149,7 +149,7 @@ export function EmployeeFormDrawer({
       title={title}
       description={description}
     >
-      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+      <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handleSubmit(onSubmit)}>
         <FormField
           htmlFor="employeeName"
           label="Ism"
@@ -290,13 +290,13 @@ export function EmployeeFormDrawer({
           </p>
         )}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <DrawerFooter><Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting
             ? "Saqlanmoqda..."
             : mode === "create"
               ? "Xodim yaratish"
               : "O‘zgarishni saqlash"}
-        </Button>
+        </Button></DrawerFooter>
       </form>
     </Drawer>
   );

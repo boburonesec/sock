@@ -1,4 +1,5 @@
 "use client";
+import { DrawerFooter } from "@/components/overlays/drawer";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef } from "react";
@@ -231,7 +232,7 @@ function CreateBatchForm({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(submit)}>
+    <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handleSubmit(submit)}>
       <FormField
         label="Mahsulot varianti"
         htmlFor="productVariantId"
@@ -301,7 +302,7 @@ function CreateBatchForm({
         </p>
       ) : null}
 
-      <Button
+      <DrawerFooter><Button
         type="submit"
         className="w-full"
         disabled={
@@ -312,7 +313,7 @@ function CreateBatchForm({
         {isCreateBatchPending
           ? "Yuborilmoqda..."
           : "Qo‘lda qabul qilish (eski usul)"}
-      </Button>
+      </Button></DrawerFooter>
     </form>
   );
 }
@@ -560,7 +561,7 @@ function MoveStageForm({
   );
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(submit)}>
+    <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handleSubmit(submit)}>
       <FormField
         label="Mahsulot"
         htmlFor="moveProductVariantId"
@@ -827,7 +828,7 @@ function MoveStageForm({
         </p>
       ) : null}
 
-      <Button
+      <DrawerFooter><Button
         type="submit"
         className="w-full"
         disabled={
@@ -840,7 +841,7 @@ function MoveStageForm({
         }
       >
         {isMoveStagePending ? "Yuborilmoqda..." : "Smenani saqlash"}
-      </Button>
+      </Button></DrawerFooter>
     </form>
   );
 }
@@ -916,7 +917,7 @@ function WorkerActivityForm({
     productVariantOptions.length > 0;
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(submit)}>
+    <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handleSubmit(submit)}>
       <FormField
         label="Ishchi"
         htmlFor="activityEmployeeId"
@@ -1073,13 +1074,13 @@ function WorkerActivityForm({
         </p>
       ) : null}
 
-      <Button
+      <DrawerFooter><Button
         type="submit"
         className="w-full"
         disabled={isWorkerActivityPending || !hasRequiredOptions}
       >
         {isWorkerActivityPending ? "Yuborilmoqda..." : "Bajarilgan ishni qo‘shish"}
-      </Button>
+      </Button></DrawerFooter>
     </form>
   );
 }
@@ -1138,7 +1139,7 @@ function DefectForm({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(submit)}>
+    <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handleSubmit(submit)}>
       <FormField label="Ishchi" htmlFor="defectEmployeeId">
         <Select
           id="defectEmployeeId"
@@ -1231,9 +1232,9 @@ function DefectForm({
         </p>
       ) : null}
 
-      <Button type="submit" className="w-full" disabled={isDefectPending}>
+      <DrawerFooter><Button type="submit" className="w-full" disabled={isDefectPending}>
         {isDefectPending ? "Yuborilmoqda..." : "Brak qayd qilish"}
-      </Button>
+      </Button></DrawerFooter>
     </form>
   );
 }
@@ -1295,7 +1296,7 @@ function FinishedProductReceiptForm({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(submit)}>
+    <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handleSubmit(submit)}>
       <FormField
         label="Ombor bosqichidagi mahsulot"
         htmlFor="receiptProductVariantId"
@@ -1378,7 +1379,7 @@ function FinishedProductReceiptForm({
         </p>
       ) : null}
 
-      <Button
+      <DrawerFooter><Button
         type="submit"
         className="w-full"
         disabled={
@@ -1387,7 +1388,7 @@ function FinishedProductReceiptForm({
         }
       >
         {isFinishedProductReceiptPending ? "Yuborilmoqda..." : "Omborga qabul qilish"}
-      </Button>
+      </Button></DrawerFooter>
     </form>
   );
 }

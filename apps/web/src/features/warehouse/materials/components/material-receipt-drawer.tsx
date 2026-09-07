@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -105,8 +105,7 @@ export function MaterialReceiptDrawer({
       title="Material qabul qilish"
       description="Xomashyo kirimi ombor qoldig‘ini oshiradi va harakatlar tarixiga yoziladi."
     >
-      <form
-        className="space-y-4"
+      <form className="space-y-4 flex flex-col h-full min-h-[min-content]"
         onSubmit={handleSubmit(async (values) => {
           if (submissionRef.current) return;
           submissionRef.current = true;
@@ -233,13 +232,13 @@ export function MaterialReceiptDrawer({
           </p>
         ) : null}
 
-        <Button
+        <DrawerFooter><Button
           type="submit"
           className="w-full"
           disabled={isSubmitting || materials.length === 0 || !selectedZone}
         >
           {isSubmitting ? "Qabul qilinmoqda..." : "Materialni qabul qilish"}
-        </Button>
+        </Button></DrawerFooter>
       </form>
     </Drawer>
   );

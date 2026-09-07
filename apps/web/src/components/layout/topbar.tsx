@@ -5,7 +5,7 @@ import { Bell, LogOut, Menu, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -229,7 +229,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                 </Button>
               </div>
 
-              <form className="space-y-4" onSubmit={handlePasswordSubmit}>
+              <form className="space-y-4 flex flex-col h-full min-h-[min-content]" onSubmit={handlePasswordSubmit}>
                 <FormField htmlFor="current-password" label="Hozirgi parol" required>
                   <Input
                     id="current-password"
@@ -265,7 +265,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                     Parol yangilanmadi. Hozirgi parolni tekshiring.
                   </p>
                 ) : null}
-                <Button
+                <DrawerFooter><Button
                   className="w-full"
                   type="submit"
                   disabled={
@@ -275,7 +275,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                   }
                 >
                   {passwordStatus === "saving" ? "Yangilanmoqda..." : "Parolni yangilash"}
-                </Button>
+                </Button></DrawerFooter>
               </form>
 
               <Button

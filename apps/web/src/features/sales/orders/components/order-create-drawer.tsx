@@ -5,7 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -159,8 +159,7 @@ export function OrderCreateDrawer({
       }
       className="max-w-4xl"
     >
-      <form
-        className="space-y-5"
+      <form className="space-y-5 flex flex-col h-full min-h-[min-content]"
         onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -338,7 +337,7 @@ export function OrderCreateDrawer({
           </p>
         ) : null}
 
-        <Button
+        <DrawerFooter><Button
           type="submit"
           className="w-full"
           disabled={formDisabled || clients.length === 0 || variants.length === 0}
@@ -350,7 +349,7 @@ export function OrderCreateDrawer({
             : isEdit
               ? "O‘zgarishlarni saqlash"
               : "Buyurtma yaratish"}
-        </Button>
+        </Button></DrawerFooter>
       </form>
     </Drawer>
   );

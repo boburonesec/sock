@@ -5,7 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer } from "@/components/overlays/drawer";
+import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
 import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -120,8 +120,7 @@ export function SupplierPurchaseDrawer({
       description="Xarid summasi tizim tomonidan hisoblanadi. Bu amal material ombor qoldig‘ini oshirmaydi."
       className="max-w-4xl"
     >
-      <form
-        className="space-y-5"
+      <form className="space-y-5 flex flex-col h-full min-h-[min-content]"
         onSubmit={handleSubmit((values) => setPendingPayload(buildPayload(values)))}
       >
         {initialSupplierId && selectedSupplier ? <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2"><p className="text-xs text-muted-foreground">Tanlangan yetkazib beruvchi</p><p className="font-semibold">{selectedSupplier.name}</p></div> : null}
@@ -289,13 +288,13 @@ export function SupplierPurchaseDrawer({
           </p>
         ) : null}
 
-        <Button
+        <DrawerFooter><Button
           type="submit"
           className="w-full"
           disabled={formDisabled || suppliers.length === 0 || materials.length === 0}
         >
           {isSubmitting ? "Xarid saqlanmoqda..." : "Xaridni tekshirish"}
-        </Button>
+        </Button></DrawerFooter>
       </form>
     </Drawer>
     <ConfirmDialog
