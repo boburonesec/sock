@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveInternalApiUrl } from "@/lib/api/auth-proxy";
 
 /**
  * Server-side Factory TV proxy.
@@ -13,17 +14,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 function resolveApiBaseUrl(): string {
-  const base =
-    process.env.API_INTERNAL_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim();
-
-  if (!base) {
-    throw new Error(
-      "API_INTERNAL_URL or NEXT_PUBLIC_API_URL must be configured for Factory TV.",
-    );
-  }
-
-  return base.replace(/\/+$/, "");
+  return resolveInternalApiUrl();
 }
 
 function resolveFactoryTvToken(requestToken: string | null): string {

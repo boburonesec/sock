@@ -14,6 +14,21 @@ export function resolveInternalApiUrl(): string {
       : "http://localhost:3001");
 
   url = url.replace(/\/+$/, "").trim();
+
+  // On Render free tier, 'fromService' env vars contain bare service names (e.g. 'paypoq-api')
+  // which lack private DNS resolution without paid instance networking. Map to public domain.
+  if (url === "paypoq-api") {
+    return "https://paypoq-api.onrender.com";
+  }
+
+  if (
+    !url.includes(".") &&
+    !url.includes("localhost") &&
+    !url.includes("127.0.0.1")
+  ) {
+    return `https://${url}.onrender.com`;
+  }
+
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = url.includes("localhost") || url.includes("127.0.0.1")
       ? `http://${url}`
