@@ -23,8 +23,11 @@ function getShiftDuration(start: string, end: string) {
 
   let min1 = h1 * 60 + m1;
   let min2 = h2 * 60 + m2;
+  
+  if (min1 === min2) return null;
+
   let crossesMidnight = false;
-  if (min2 <= min1) {
+  if (min2 < min1) {
     min2 += 24 * 60;
     crossesMidnight = true;
   }
@@ -80,7 +83,7 @@ function ShiftForm({ code, shift }: {
   const defaultName = shift?.name ?? (code === "DAY" ? "Kunduzgi smena" : "Kechki smena");
   const defaultStart = shift?.startTime ?? (code === "DAY" ? "08:00" : "20:00");
   const defaultEnd = shift?.endTime ?? (code === "DAY" ? "20:00" : "08:00");
-  const defaultPremium = shift?.premiumPerPiece ?? (code === "NIGHT" ? "10" : "0");
+  const defaultPremium = shift?.premiumPerPiece?.toString() ?? (code === "NIGHT" ? "10" : "0");
 
   const [name, setName] = useState(defaultName);
   const [startTime, setStartTime] = useState(defaultStart);
@@ -119,12 +122,16 @@ function ShiftForm({ code, shift }: {
     endTime !== defaultEnd || 
     premiumPerPiece !== defaultPremium;
 
-  const invalid = !name.trim() || !startTime || !endTime || startTime === endTime || Number(premiumPerPiece) < 0 || (code === "DAY" && Number(premiumPerPiece) !== 0);
+  const premiumNum = Number(premiumPerPiece);
+  const invalid = !name.trim() || !startTime || !endTime || startTime === endTime 
+    || premiumPerPiece.trim() === "" || isNaN(premiumNum) || !isFinite(premiumNum) || premiumNum < 0 
+    || (code === "DAY" && premiumNum !== 0);
   
   const durationInfo = getShiftDuration(startTime, endTime);
   const durationText = durationInfo 
     ? `${durationInfo.hours} soat${durationInfo.mins > 0 ? ` ${durationInfo.mins} daqiqa` : ""}`
     : null;
+  const isSameTime = startTime === endTime && startTime !== "";
 
   return (
     <form
@@ -133,13 +140,15 @@ function ShiftForm({ code, shift }: {
         event.preventDefault();
         if (invalid || !isDirty) return;
         setSuccessMsg(null);
-        void mutation.mutateAsync({ code, name: name.trim(), startTime, endTime, premiumPerPiece });
+        mutation.mutate({ code, name: name.trim(), startTime, endTime, premiumPerPiece: premiumPerPiece.trim() });
       }}
     >
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{code === "DAY" ? "Kunduzgi smena" : "Kechki smena"}</p>
         <h2 className="mt-1 text-lg font-semibold">{name || "Nomsiz smena"}</h2>
-        {durationInfo ? (
+        {isSameTime ? (
+          <p className="mt-1 text-sm text-rose-500 font-medium">Boshlanish va tugash vaqti bir xil bo&apos;la olmaydi</p>
+        ) : durationInfo ? (
           <p className="mt-1 text-sm text-muted-foreground">
             {durationText} {durationInfo.crossesMidnight ? <span className="text-amber-500 font-medium">(Keyingi kunga o&apos;tadi)</span> : null}
           </p>
