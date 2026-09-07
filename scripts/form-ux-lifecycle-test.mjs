@@ -307,6 +307,31 @@ assert(
   "SupplierFormDrawer normalizes phone to canonical format",
 );
 
+console.log("\n--- [TEST SUITE 5] SHIFT FORM ISOLATION ---");
+const shiftsPage = readFileSync(
+  path.join(
+    process.cwd(),
+    "apps/web/src/features/settings/work-shifts/work-shifts-page.tsx",
+  ),
+  "utf8",
+);
+assert(
+  shiftsPage.includes("const mutation = useMutation("),
+  "ShiftForm defines its own useMutation for isolation",
+);
+assert(
+  shiftsPage.includes("if (shift?.updatedAt !== lastUpdatedAt)"),
+  "ShiftForm resets state conditionally based on updatedAt to preserve unsaved changes",
+);
+assert(
+  !shiftsPage.includes("isSaving={mutation.isPending}"),
+  "WorkShiftsPage does not pass down shared mutation state to forms",
+);
+assert(
+  shiftsPage.includes("getShiftDuration"),
+  "ShiftForm calculates and displays shift duration and overnight status",
+);
+
 console.log("\n=================================");
 console.log(`TOTAL PASS: ${passCount}`);
 console.log(`TOTAL FAIL: ${failCount}`);
