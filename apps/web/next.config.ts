@@ -21,7 +21,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https: http://localhost:3001 http://127.0.0.1:3001",
+      "connect-src 'self' https: http: ws:;",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -44,18 +44,35 @@ export function setApiAuthRefreshHandler(handler: (() => Promise<boolean>) | nul
   refreshSessionHandler = handler;
 }
 
+function isPrivateHost(hostname: string): boolean {
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".local")
+  ) {
+    return true;
+  }
+  return (
+    /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+    /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+  );
+}
+
 function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     if (window.location.hostname.endsWith(".onrender.com")) {
       return "https://paypoq-api.onrender.com";
     }
+
+    if (isPrivateHost(window.location.hostname)) {
+      return `http://${window.location.hostname}:3001`;
+    }
   }
 
   let baseUrl =
     process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" &&
-    window.location.hostname !== "localhost" &&
-    window.location.hostname !== "127.0.0.1"
+    (typeof window !== "undefined" && !isPrivateHost(window.location.hostname)
       ? "https://paypoq-api.onrender.com"
       : "http://localhost:3001");
 
