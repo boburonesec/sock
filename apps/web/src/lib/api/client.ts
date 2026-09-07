@@ -70,7 +70,18 @@ function getApiBaseUrl(): string {
 }
 
 function buildApiUrl(path: string): string {
-  return `${getApiBaseUrl()}/${path.replace(/^\/+/, "")}`;
+  const cleanPath = path.replace(/^\/+/, "");
+
+  // In the browser, route all auth requests through the same-origin Next.js BFF proxy
+  // (/api/auth/*) to guarantee first-party cookies (immune to Safari ITP).
+  if (
+    typeof window !== "undefined" &&
+    (cleanPath === "auth" || cleanPath.startsWith("auth/"))
+  ) {
+    return `/api/${cleanPath}`;
+  }
+
+  return `${getApiBaseUrl()}/${cleanPath}`;
 }
 
 async function readResponseBody(response: Response): Promise<unknown> {

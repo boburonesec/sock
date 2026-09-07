@@ -49,7 +49,18 @@ function getApiBaseUrl(): string {
 }
 
 function buildApiUrl(path: string): string {
-  return `${getApiBaseUrl()}/${path.replace(/^\/+/, "")}`;
+  const cleanPath = path.replace(/^\/+/, "");
+
+  // In the browser, route all platform-auth requests through the same-origin Next.js BFF proxy
+  // (/api/platform-auth/*) to guarantee first-party cookies (immune to Safari ITP).
+  if (
+    typeof window !== "undefined" &&
+    (cleanPath === "platform-auth" || cleanPath.startsWith("platform-auth/"))
+  ) {
+    return `/api/${cleanPath}`;
+  }
+
+  return `${getApiBaseUrl()}/${cleanPath}`;
 }
 
 async function readResponseBody(response: Response): Promise<unknown> {
