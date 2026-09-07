@@ -61,8 +61,12 @@ function LoginForm() {
       const defaultHome = getDefaultHomePath(nextPermissions, nextRoles);
       const destination = getSafeReturnUrl(returnUrlParam, defaultHome);
       router.replace(destination);
-    } catch {
-      setError("Email/parol noto‘g‘ri yoki tenant vaqtincha bloklangan.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Email/parol noto‘g‘ri yoki tenant vaqtincha bloklangan.";
+      setError(message);
     }
   }
 

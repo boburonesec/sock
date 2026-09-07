@@ -54,8 +54,12 @@ function PlatformAdminLoginForm() {
       await login(email, password);
       const destination = getSafeReturnUrl(returnUrlParam, "/admin/tenants");
       router.replace(destination);
-    } catch {
-      setError("Email yoki parol noto‘g‘ri.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Email yoki parol noto‘g‘ri.";
+      setError(message);
     }
   }
 
