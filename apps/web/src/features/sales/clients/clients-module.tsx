@@ -147,6 +147,7 @@ export function ClientsModule() {
           if (!open) setFormState(null);
         }}
         onSubmit={async (payload) => {
+          if (createClient.isPending || updateClient.isPending) return;
           setFeedback(null);
 
           if (formState?.mode === "edit") {

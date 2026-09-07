@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer } from "@/components/overlays/drawer";
@@ -57,11 +57,12 @@ export function ClientFormDrawer({
   onOpenChange,
   onSubmit,
 }: ClientFormDrawerProps) {
+  const [inFlight, setInFlight] = useState(false);
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting: isFormSubmitting },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
@@ -71,6 +72,8 @@ export function ClientFormDrawer({
       notes: "",
     },
   });
+
+  const effectiveSubmitting = isSubmitting || isFormSubmitting || inFlight;
 
   useEffect(() => {
     if (!open) return;
@@ -97,7 +100,15 @@ export function ClientFormDrawer({
     >
       <form
         className="space-y-4"
-        onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
+        onSubmit={handleSubmit(async (values) => {
+          if (effectiveSubmitting) return;
+          setInFlight(true);
+          try {
+            await onSubmit(buildPayload(values));
+          } finally {
+            setInFlight(false);
+          }
+        })}
       >
         <FormField
           htmlFor="clientName"
@@ -109,7 +120,7 @@ export function ClientFormDrawer({
             id="clientName"
             autoComplete="off"
             placeholder="Masalan: Samarqand Optom"
-            disabled={isSubmitting}
+            disabled={effectiveSubmitting}
             aria-invalid={Boolean(errors.name)}
             {...register("name")}
           />
@@ -118,7 +129,7 @@ export function ClientFormDrawer({
         <FormField htmlFor="clientPhone" label="Telefon" error={errors.phone?.message}>
           <PhoneInput
             id="clientPhone"
-            disabled={isSubmitting}
+            disabled={effectiveSubmitting}
             aria-invalid={Boolean(errors.phone)}
             {...register("phone")}
           />
@@ -129,7 +140,7 @@ export function ClientFormDrawer({
             id="clientAddress"
             autoComplete="off"
             placeholder="Ixtiyoriy"
-            disabled={isSubmitting}
+            disabled={effectiveSubmitting}
             {...register("address")}
           />
         </FormField>
@@ -138,7 +149,7 @@ export function ClientFormDrawer({
           <Textarea
             id="clientNotes"
             placeholder="Ixtiyoriy izoh"
-            disabled={isSubmitting}
+            disabled={effectiveSubmitting}
             {...register("notes")}
           />
         </FormField>
@@ -152,8 +163,8 @@ export function ClientFormDrawer({
           </p>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting
+        <Button type="submit" className="w-full" disabled={effectiveSubmitting}>
+          {effectiveSubmitting
             ? "Saqlanmoqda..."
             : mode === "create"
               ? "Mijoz yaratish"
