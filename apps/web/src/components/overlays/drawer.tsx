@@ -54,7 +54,7 @@ export function Drawer({
       <button
         type="button"
         aria-label="Dialog yopish"
-        className="absolute inset-0 z-0 bg-black/75 backdrop-blur-sm"
+        className="absolute inset-0 z-0 bg-black/75 backdrop-blur-sm touch-none"
         onClick={() => onOpenChange(false)}
       />
       <section
