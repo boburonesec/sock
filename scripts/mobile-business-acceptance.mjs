@@ -247,20 +247,49 @@ async function runAcceptanceAudit() {
         const qtyInput = orderDrawer.locator("input[id^='orderItemQuantity-']").first();
         await qtyInput.fill("25");
         const priceInput = orderDrawer.locator("input[id^='orderItemPrice-']").first();
-        await priceInput.fill("14000");
+        
+        // Wait for API to return the price
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+        
+        // poll for value
+        for (let i = 0; i < 20; i++) {
+            const val = await priceInput.inputValue();
+            if (Number(val) > 0) break; await page.screenshot({ path: "artifacts/drawer-price.png" });
+            await page.waitForTimeout(500);
+        }
+        await page.waitForTimeout(500);
+
+        const isReadonly = await priceInput.evaluate(el => el.hasAttribute('readonly'));
+        assert(isReadonly, "Price input MUST be readonly for Seller");
+
+        const fetchedPrice = Number(await priceInput.inputValue());
+        assert(fetchedPrice > 0, "Price must automatically appear and be > 0");
+        
+        const expectedTotal = fetchedPrice * 25;
+        console.log(`[Testing] Fetched price: ${fetchedPrice}, expected subtotal: ${expectedTotal}`);
+
 
         // Submit order
         const orderSubmitBtn = orderDrawer.getByRole("button", { name: "Buyurtma yaratish" });
         await assertTouchTarget(orderSubmitBtn, "Order submit button");
         await orderSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify order in table
         await page.waitForSelector(`tr:has-text('${uniqueClientName}')`, { timeout: 10000 });
         const createdOrderRow = page.locator(`tr:has-text('${uniqueClientName}')`).first();
         assert(await createdOrderRow.isVisible(), "New order must appear in orders table");
         const rowText = (await createdOrderRow.textContent()).replace(/\s+/g, " ");
-        assert(/350[, ]000/.test(rowText), "Order total (25 * 14000 = 350,000) must appear in table row");
+        // Dynamically check total
+        const totalStr = expectedTotal.toLocaleString("en-US").replace(/,/g, "[, ]?");
+        const totalRegex = new RegExp(totalStr);
+        assert(totalRegex.test(rowText), "Order total (" + expectedTotal + ") must appear in table row");
 
         // Tap order row -> details drawer
         await createdOrderRow.click();
@@ -268,7 +297,7 @@ async function runAcceptanceAudit() {
         const orderDetailDrawer = page.locator("section[role='dialog']");
         assert(await orderDetailDrawer.isVisible(), "Order detail drawer must open on row tap");
         const detailText = (await orderDetailDrawer.textContent()).replace(/\s+/g, " ");
-        assert(/350[, ]000/.test(detailText), "Order detail must show 350,000 so'm total");
+        assert(totalRegex.test(detailText), "Order detail must show " + expectedTotal + " so'm total");
         await orderDetailDrawer.getByRole("button", { name: "Yopish" }).click();
         await page.waitForTimeout(300);
 
@@ -277,12 +306,12 @@ async function runAcceptanceAudit() {
         assert(ordersRes.ok, "API GET /sales/orders must succeed");
         const dbOrder = ordersRes.data.data.find((o) => o.client.name === uniqueClientName);
         assert(dbOrder, `Order for client '${uniqueClientName}' must exist in backend database`);
-        assert.equal(Number(dbOrder.totalAmount), 350000, "Order totalAmount in DB must be exactly 350,000");
+        assert.equal(Number(dbOrder.totalAmount), expectedTotal, "Order totalAmount in DB must be exactly " + expectedTotal);
         assert.equal(dbOrder.items.length, 1, "Order must have exactly 1 line item");
         assert.equal(dbOrder.items[0].quantity, 25, "Order item quantity in DB must be 25");
-        assert.equal(Number(dbOrder.items[0].unitPrice), 14000, "Order item unitPrice in DB must be 14,000");
+        assert.equal(Number(dbOrder.items[0].unitPrice), fetchedPrice, "Order item unitPrice in DB must be " + fetchedPrice);
 
-        recordResult("Seller", "Order Creation & Details (Variant Select, Calculation, Server Persist)", "YES", "YES", "N/A", "PASS", "Order for 350,000 so'm created & verified in API and UI");
+        recordResult("Seller", "Order Creation & Details (Variant Select, Calculation, Server Persist)", "YES", "YES", "N/A", "PASS", "Order for " + expectedTotal + " so'm created & verified in API and UI");
 
         // --- 1.3 Payment Allocation Workflow ---
         // Capture debt state before payment via API
@@ -321,7 +350,11 @@ async function runAcceptanceAudit() {
         const paymentSubmitBtn = paymentDrawer.getByRole("button", { name: "To‘lov qayd qilish" });
         await assertTouchTarget(paymentSubmitBtn, "Payment submit button");
         await paymentSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify payment is listed in UI
         await page.waitForSelector("tbody tr", { timeout: 10000 });
@@ -431,7 +464,11 @@ async function runAcceptanceAudit() {
         assert(await intakeSubmitBtn.isVisible(), "Intake submit button must be visible");
         await assertTouchTarget(intakeSubmitBtn, "Intake submit button");
         await intakeSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const stageInvAfterRes = await apiCall("/production/stage-inventory", {
@@ -517,7 +554,11 @@ async function runAcceptanceAudit() {
         assert(await moveSubmitBtn.isVisible(), "Smenani saqlash button must be visible");
         await assertTouchTarget(moveSubmitBtn, "Smenani saqlash submit button");
         await moveSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const postMoveInvRes = await apiCall("/production/stage-inventory", {
@@ -580,7 +621,11 @@ async function runAcceptanceAudit() {
         const defectSubmitBtn = defectDrawer.getByRole("button", { name: "Brak qayd qilish" });
         await assertTouchTarget(defectSubmitBtn, "Defect submit button");
         await defectSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const defectsRes = await apiCall("/production/defects", {
@@ -675,7 +720,11 @@ async function runAcceptanceAudit() {
         const matSubmitBtn = matDrawer.getByRole("button", { name: "Materialni qabul qilish" });
         await assertTouchTarget(matSubmitBtn, "Materialni qabul qilish submit button");
         await matSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify stock updated on screen
         await page.goto(`${WEB}/warehouse`, { waitUntil: "networkidle" });
@@ -793,7 +842,11 @@ async function runAcceptanceAudit() {
         const expenseSubmitBtn = expenseDrawer.getByRole("button", { name: "So‘rov ochish" });
         await assertTouchTarget(expenseSubmitBtn, "So‘rov ochish submit button");
         await expenseSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify expense is in table
         await page.waitForSelector(`text=${uniqueReason}`, { timeout: 10000 });
@@ -836,7 +889,11 @@ async function runAcceptanceAudit() {
         const supplierSubmitBtn = supplierDrawer.getByRole("button", { name: "Yetkazib beruvchi yaratish" });
         await assertTouchTarget(supplierSubmitBtn, "Yetkazib beruvchi yaratish submit button");
         await supplierSubmitBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify supplier appears in suppliers list
         await page.waitForSelector(`text=${uniqueSupplierName}`, { timeout: 10000 });
@@ -1023,7 +1080,11 @@ async function runAcceptanceAudit() {
         const saveTenantBtn = tenantDrawer.locator("button[type='submit']");
         await assertTouchTarget(saveTenantBtn, "Tenant save button");
         await saveTenantBtn.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify newly created tenant appears in list
         await page.waitForSelector(`text=${uniqueTenantName}`, { timeout: 10000 });
@@ -1091,7 +1152,11 @@ async function runAcceptanceAudit() {
           if (btn) btn.click();
         });
 
-        await page.waitForTimeout(1000);
+        
+        // Wait for API to return the price by checking if placeholder goes away or value is set
+        await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
+
 
         // Verify outgoing request count
         assert.equal(

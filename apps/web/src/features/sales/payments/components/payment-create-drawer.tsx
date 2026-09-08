@@ -262,7 +262,7 @@ export function PaymentCreateDrawer({
                 <div className="flex items-end max-md:justify-end">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
                     disabled={formDisabled || fields.length === 1}
                     onClick={() => remove(index)}

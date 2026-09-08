@@ -362,6 +362,28 @@ export class ProductService {
     return { data: variant };
   }
 
+  
+  async getActiveVariantPrice(
+    context: RequestContext,
+    variantId: string,
+  ): Promise<SingleResponse<ProductPriceResponse | null>> {
+    await this.assertReadableActiveVariant(context.tenantId, variantId);
+
+    const now = new Date();
+    const activePrice = await this.prisma.productPrice.findFirst({
+      where: {
+        tenantId: context.tenantId,
+        productVariantId: variantId,
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }],
+      },
+      orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
+      select: productPriceSelect,
+    });
+
+    return { data: activePrice ? mapProductPrice(activePrice) : null };
+  }
+
   async getVariantPrices(
     context: RequestContext,
     variantId: string,

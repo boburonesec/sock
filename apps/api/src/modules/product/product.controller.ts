@@ -238,6 +238,16 @@ export class ProductController {
     return this.productService.archiveVariant(context, id);
   }
 
+
+  @Get('variants/:variantId/active-price')
+  @RequireAnyPermissions('sales.view', 'sales.write')
+  getActiveVariantPrice(
+    @CurrentContext() context: RequestContext,
+    @Param('variantId') variantId: string,
+  ): Promise<SingleResponse<ProductPriceResponse | null>> {
+    return this.productService.getActiveVariantPrice(context, variantId);
+  }
+
   @Get('variants/:variantId/prices')
   @RequirePermissions('settings.view')
   getVariantPrices(

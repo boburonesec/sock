@@ -169,6 +169,10 @@ export const productApi = {
     apiClient<ApiCollection<ProductPrice>>(
       `/product/variants/${variantId}/prices`,
     ),
+  getActiveVariantPrice: (variantId: string) =>
+    apiClient<{ data: ProductPrice | null }>(
+      `/product/variants/${variantId}/active-price`,
+    ),
   createVariantPrice: (variantId: string, payload: ProductPricePayload) =>
     apiClient<{ data: ProductPrice }>(`/product/variants/${variantId}/prices`, {
       method: "POST",

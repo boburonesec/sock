@@ -87,9 +87,9 @@ function OrderItemRow({
   setValue: UseFormSetValue<OrderFormValues>;
   isEdit: boolean;
 }) {
-  const { data: pricesData, isFetching } = useQuery({
-    queryKey: ["variantPrices", variantId],
-    queryFn: () => productApi.getVariantPrices(variantId).then((res) => res.data.data),
+  const { data: activePriceData, isFetching } = useQuery({
+    queryKey: ["activeVariantPrice", variantId],
+    queryFn: () => productApi.getActiveVariantPrice(variantId).then((res) => res.data),
     enabled: Boolean(variantId),
     staleTime: 5 * 60 * 1000,
   });
@@ -98,8 +98,8 @@ function OrderItemRow({
   const [userChangedVariant, setUserChangedVariant] = useState(false);
 
   useEffect(() => {
-    if (pricesData && variantId) {
-      const activePrice = getActivePriceAmount(pricesData);
+    if (activePriceData && variantId) {
+      const activePrice = activePriceData?.amount || null;
       // If there is an active price, set it. 
       // ONLY overwrite if it's a NEW row (userChangedVariant) OR we're not in edit mode
       // Wait, if we're in edit mode, but the user selects a DIFFERENT variant, we DO want to overwrite.
@@ -114,9 +114,9 @@ function OrderItemRow({
         }
       }
     }
-  }, [pricesData, variantId, index, setValue, isEdit, userChangedVariant]);
+  }, [activePriceData, variantId, index, setValue, isEdit, userChangedVariant]);
 
-  const activePriceMissing = variantId && pricesData && !getActivePriceAmount(pricesData);
+  const activePriceMissing = variantId && activePriceData !== undefined && !activePriceData?.amount;
 
   return (
     <div className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm md:grid-cols-[1fr_auto]">
@@ -191,8 +191,8 @@ function OrderItemRow({
       <div className="flex items-end max-md:justify-end">
         <Button
           type="button"
-          variant="ghost"
-          className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+          variant="outline"
+          className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-0 bg-transparent"
           disabled={formDisabled || !canRemove}
           onClick={() => remove(index)}
           aria-label="Mahsulotni o‘chirish"
@@ -249,7 +249,7 @@ export function OrderCreateDrawer({
         deadline: order.deadline
           ? new Date(order.deadline).toISOString().slice(0, 10)
           : "",
-        note: order.note ?? "",
+        note: (order as any).notes ?? "",
         items: order.items.map((item) => ({
           productVariantId: item.productVariant.id,
           quantity: item.quantity,
