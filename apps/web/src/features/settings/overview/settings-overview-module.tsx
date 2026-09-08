@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, ChevronRight, KeyRound, Layers, MonitorPlay, Palette, Package, Shirt, Tags, Users, WalletCards, Warehouse } from "lucide-react";
+import { Building2, ChevronRight, Clock, KeyRound, Layers, MonitorPlay, Palette, Package, Shirt, Tags, Users, WalletCards, Warehouse } from "lucide-react";
 import Link from "next/link";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -70,6 +70,14 @@ const settingsHubItems = [
     title: "Ombor zonalari",
     description: "Ombor zonalari va joylashuvlar",
     icon: Warehouse,
+  },
+
+  {
+    href: "/settings/shifts",
+    title: "Ish smenalari",
+    description: "Smena vaqtlari va ustamalar",
+    icon: Clock,
+    ownerOnly: true,
   },
   {
     href: "/settings/thresholds",
