@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { ModuleNavigation } from "@/components/navigation/module-navigation";
+import { FinanceNav } from "@/features/finance/components/finance-nav";
 import { FinanceOverviewModule } from "@/features/finance/overview/finance-overview-module";
 
 export default function FinancePage() {
@@ -7,16 +7,9 @@ export default function FinancePage() {
     <>
       <PageHeader
         title="Moliya"
-        description="Xarajatlar, avanslar va ish haqi qoldiqlari bo‘yicha umumiy ko‘rinish"
+        description="Umumiy moliyaviy holat, xarajatlar va ish haqi bo‘yicha hisobot"
       />
-      <ModuleNavigation
-        items={[
-          { href: "/finance/expenses", label: "Xarajatlar" },
-          { href: "/finance/advances", label: "Avanslar" },
-          { href: "/finance/payroll", label: "Ish haqi hisob-kitobi" },
-          { href: "/finance/suppliers", label: "Yetkazib beruvchilar" },
-        ]}
-      />
+      <FinanceNav />
       <FinanceOverviewModule />
     </>
   );

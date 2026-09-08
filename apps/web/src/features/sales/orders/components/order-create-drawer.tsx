@@ -2,21 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { useFieldArray, useForm, UseFormRegister, FieldErrors, Control, UseFormSetValue } from "react-hook-form";
 import { z } from "zod";
-import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
+import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProductVariantReference } from "@/lib/api/types";
-import type {
-  Client,
-  CreateSalesOrderPayload,
-  SalesOrder,
-} from "@/lib/api/sales";
+import type { Client, CreateSalesOrderPayload, SalesOrder } from "@/lib/api/sales";
+import { useQuery } from "@tanstack/react-query";
+import { productApi } from "@/lib/api/product";
 
 const orderItemSchema = z.object({
   productVariantId: z.string().min(1, "Mahsulot varianti tanlanishi shart."),
@@ -49,10 +47,161 @@ interface OrderCreateDrawerProps {
   isSubmitting: boolean;
   isOptionsLoading: boolean;
   errorMessage?: string | null;
-  /** When set, form runs in edit mode for a pre-delivery order. */
   order?: SalesOrder | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: CreateSalesOrderPayload) => Promise<void>;
+}
+
+function getActivePriceAmount(prices: any[]): string | null {
+  if (!prices || prices.length === 0) return null;
+  const now = new Date();
+  const valid = prices.filter(p => new Date(p.effectiveFrom) <= now && (!p.effectiveTo || new Date(p.effectiveTo) > now));
+  valid.sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
+  return valid[0]?.amount || null;
+}
+
+function OrderItemRow({
+  index,
+  fieldId,
+  control,
+  register,
+  errors,
+  formDisabled,
+  variantOptions,
+  remove,
+  canRemove,
+  variantId,
+  setValue,
+  isEdit,
+}: {
+  index: number;
+  fieldId: string;
+  control: Control<OrderFormValues>;
+  register: UseFormRegister<OrderFormValues>;
+  errors: FieldErrors<OrderFormValues>;
+  formDisabled: boolean;
+  variantOptions: { id: string; label: string }[];
+  remove: (index: number) => void;
+  canRemove: boolean;
+  variantId: string;
+  setValue: UseFormSetValue<OrderFormValues>;
+  isEdit: boolean;
+}) {
+  const { data: pricesData, isFetching } = useQuery({
+    queryKey: ["variantPrices", variantId],
+    queryFn: () => productApi.getVariantPrices(variantId).then((res) => res.data.data),
+    enabled: Boolean(variantId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Track if this row was just changed by the user in this session
+  const [userChangedVariant, setUserChangedVariant] = useState(false);
+
+  useEffect(() => {
+    if (pricesData && variantId) {
+      const activePrice = getActivePriceAmount(pricesData);
+      // If there is an active price, set it. 
+      // ONLY overwrite if it's a NEW row (userChangedVariant) OR we're not in edit mode
+      // Wait, if we're in edit mode, but the user selects a DIFFERENT variant, we DO want to overwrite.
+      // So if `userChangedVariant` is true, we always overwrite.
+      // If `isEdit` is false, we always overwrite (it's create mode).
+      // If `isEdit` is true and `!userChangedVariant`, we keep the persisted price (do nothing).
+      if (!isEdit || userChangedVariant) {
+        if (activePrice) {
+          setValue(`items.${index}.unitPrice`, activePrice, { shouldValidate: true });
+        } else {
+          setValue(`items.${index}.unitPrice`, "", { shouldValidate: true });
+        }
+      }
+    }
+  }, [pricesData, variantId, index, setValue, isEdit, userChangedVariant]);
+
+  const activePriceMissing = variantId && pricesData && !getActivePriceAmount(pricesData);
+
+  return (
+    <div className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm md:grid-cols-[1fr_auto]">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-[1fr_120px_160px]">
+        <FormField
+          htmlFor={`orderItemVariant-${fieldId}`}
+          label="Mahsulot"
+          error={errors.items?.[index]?.productVariantId?.message}
+          required
+        >
+          <Select
+            id={`orderItemVariant-${fieldId}`}
+            disabled={formDisabled}
+            aria-invalid={Boolean(errors.items?.[index]?.productVariantId)}
+            {...register(`items.${index}.productVariantId`, {
+              onChange: () => setUserChangedVariant(true)
+            })}
+          >
+            <option value="">Mahsulotni tanlang</option>
+            {variantOptions.map((variant) => (
+              <option key={variant.id} value={variant.id}>
+                {variant.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField
+          htmlFor={`orderItemQuantity-${fieldId}`}
+          label="Miqdor"
+          error={errors.items?.[index]?.quantity?.message}
+          required
+        >
+          <Input
+            id={`orderItemQuantity-${fieldId}`}
+            type="number"
+            min={1}
+            step={1}
+            disabled={formDisabled}
+            aria-invalid={Boolean(errors.items?.[index]?.quantity)}
+            {...register(`items.${index}.quantity`)}
+          />
+        </FormField>
+
+        <FormField
+          htmlFor={`orderItemPrice-${fieldId}`}
+          label="Birlik narx"
+          error={
+            activePriceMissing 
+              ? "Aktiv narx topilmadi!" 
+              : errors.items?.[index]?.unitPrice?.message
+          }
+        >
+          <div className="relative">
+            <Input
+              id={`orderItemPrice-${fieldId}`}
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder={isFetching ? "Yuklanmoqda..." : "Narx"}
+              disabled={formDisabled || true} // Readonly for Seller normal flow
+              readOnly
+              aria-invalid={Boolean(errors.items?.[index]?.unitPrice) || Boolean(activePriceMissing)}
+              className="bg-muted text-muted-foreground pr-10"
+              {...register(`items.${index}.unitPrice`)}
+            />
+            <span className="absolute right-3 top-2.5 text-xs text-muted-foreground font-medium">so‘m</span>
+          </div>
+        </FormField>
+      </div>
+
+      <div className="flex items-end max-md:justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+          disabled={formDisabled || !canRemove}
+          onClick={() => remove(index)}
+          aria-label="Mahsulotni o‘chirish"
+        >
+          <Trash2 className="h-5 w-5" />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function OrderCreateDrawer({
@@ -73,6 +222,7 @@ export function OrderCreateDrawer({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
@@ -99,7 +249,7 @@ export function OrderCreateDrawer({
         deadline: order.deadline
           ? new Date(order.deadline).toISOString().slice(0, 10)
           : "",
-        note: "",
+        note: order.note ?? "",
         items: order.items.map((item) => ({
           productVariantId: item.productVariant.id,
           quantity: item.quantity,
@@ -134,18 +284,13 @@ export function OrderCreateDrawer({
   const estimatedTotal = watchedItems.reduce((total, item) => {
     const quantity = Number(item.quantity);
     const unitPrice = Number(item.unitPrice);
-
-    if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice) || unitPrice <= 0) {
-      return total;
-    }
-
+    if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice) || unitPrice <= 0) return total;
     return total + quantity * unitPrice;
   }, 0);
 
-  const hasProvidedPrices = watchedItems.some(
-    (item) => Number(item.unitPrice) > 0,
-  );
+  const missingPrice = watchedItems.some((item) => item.productVariantId && !Number(item.unitPrice));
   const formDisabled = isSubmitting || isOptionsLoading;
+  const disableSubmit = formDisabled || clients.length === 0 || variants.length === 0 || missingPrice;
 
   return (
     <Drawer
@@ -154,202 +299,119 @@ export function OrderCreateDrawer({
       title={isEdit ? `Buyurtmani tahrirlash · ${order?.orderNumber ?? ""}` : "Buyurtma yaratish"}
       description={
         isEdit
-          ? "Faqat yetkazilmagan buyurtma o‘zgartiriladi. Yaratilgan buyurtma hali mijozga chiqmagan yozuv."
-          : "Buyurtma yozuvi yaratiladi — bu mijozga yetkazilgan degani emas. Jami summa tizim tomonidan saqlanadi."
+          ? "Faqat yetkazilmagan buyurtma o‘zgartiriladi. Narxlar o‘zgartirilmasa oldingi holaticha saqlanadi."
+          : "Buyurtma yaratiladi — bu mijozga yetkazilgan degani emas. Birlik narx tizim tomonidan olinadi."
       }
       className="max-w-4xl"
+      footer={
+        <Button
+          form="order-create-form"
+          type="submit"
+          className="w-full"
+          disabled={disableSubmit}
+        >
+          {isSubmitting
+            ? (isEdit ? "Saqlanmoqda..." : "Buyurtma yaratilmoqda...")
+            : (isEdit ? "O‘zgarishlarni saqlash" : "Buyurtma yaratish")}
+        </Button>
+      }
     >
-      <form className="space-y-5 flex flex-col h-full min-h-[min-content]"
-        onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))}
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            htmlFor="orderClient"
-            label="Mijoz"
-            error={errors.clientId?.message}
-            required
-          >
-            <Select
-              id="orderClient"
-              disabled={formDisabled}
-              aria-invalid={Boolean(errors.clientId)}
-              {...register("clientId")}
-            >
+      <form id="order-create-form" onSubmit={handleSubmit((values) => onSubmit(buildPayload(values)))} className="space-y-6">
+        <div className="grid gap-5 md:grid-cols-2">
+          <FormField htmlFor="orderClient" label="Mijoz" error={errors.clientId?.message} required>
+            <Select id="orderClient" disabled={formDisabled} aria-invalid={Boolean(errors.clientId)} {...register("clientId")}>
               <option value="">Mijoz tanlang</option>
               {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
+                <option key={client.id} value={client.id}>{client.name}</option>
               ))}
             </Select>
           </FormField>
 
           <FormField htmlFor="orderDeadline" label="Muddat">
-            <Input
-              id="orderDeadline"
-              type="date"
-              disabled={formDisabled}
-              {...register("deadline")}
-            />
+            <Input id="orderDeadline" type="date" disabled={formDisabled} {...register("deadline")} />
           </FormField>
         </div>
 
-        <section className="space-y-3 rounded-xl border bg-muted/10 p-4">
-          <div className="flex items-center justify-between gap-3">
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <p className="font-semibold">Mahsulotlar</p>
-              <p className="text-xs text-muted-foreground">
-                Narx kiritilmasa, tizimdagi faol narx olinadi.
-              </p>
+              <p className="font-semibold text-lg">Mahsulotlar</p>
             </div>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={formDisabled}
-              onClick={() =>
-                append({ productVariantId: "", quantity: 1, unitPrice: "" })
-              }
+              onClick={() => append({ productVariantId: "", quantity: 1, unitPrice: "" })}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Qator qo‘shish
+              Mahsulot qo‘shish
             </Button>
           </div>
 
           <div className="space-y-4">
             {fields.map((field, index) => (
-              <div
+              <OrderItemRow
                 key={field.id}
-                className="grid gap-3 rounded-lg border bg-card/60 p-3 md:grid-cols-[1fr_120px_160px_auto]"
-              >
-                <FormField
-                  htmlFor={`orderItemVariant-${field.id}`}
-                  label="Mahsulot varianti"
-                  error={errors.items?.[index]?.productVariantId?.message}
-                  required
-                >
-                  <Select
-                    id={`orderItemVariant-${field.id}`}
-                    disabled={formDisabled}
-                    aria-invalid={Boolean(errors.items?.[index]?.productVariantId)}
-                    {...register(`items.${index}.productVariantId`)}
-                  >
-                    <option value="">Variant tanlang</option>
-                    {variantOptions.map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.label}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-
-                <FormField
-                  htmlFor={`orderItemQuantity-${field.id}`}
-                  label="Miqdor"
-                  error={errors.items?.[index]?.quantity?.message}
-                  required
-                >
-                  <Input
-                    id={`orderItemQuantity-${field.id}`}
-                    type="number"
-                    min={1}
-                    step={1}
-                    disabled={formDisabled}
-                    aria-invalid={Boolean(errors.items?.[index]?.quantity)}
-                    {...register(`items.${index}.quantity`)}
-                  />
-                </FormField>
-
-                <FormField
-                  htmlFor={`orderItemPrice-${field.id}`}
-                  label="Birlik narx"
-                  error={errors.items?.[index]?.unitPrice?.message}
-                >
-                  <Input
-                    id={`orderItemPrice-${field.id}`}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Tizim narxi"
-                    disabled={formDisabled}
-                    aria-invalid={Boolean(errors.items?.[index]?.unitPrice)}
-                    {...register(`items.${index}.unitPrice`)}
-                  />
-                </FormField>
-
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={formDisabled || fields.length === 1}
-                    onClick={() => remove(index)}
-                    aria-label="Mahsulot qatorini o‘chirish"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+                index={index}
+                fieldId={field.id}
+                control={control}
+                register={register}
+                errors={errors}
+                formDisabled={formDisabled}
+                variantOptions={variantOptions}
+                remove={remove}
+                canRemove={fields.length > 1}
+                variantId={watchedItems[index]?.productVariantId}
+                setValue={setValue}
+                isEdit={isEdit}
+              />
             ))}
           </div>
 
           {typeof errors.items?.message === "string" ? (
-            <p role="alert" className="text-xs text-rose-500">
+            <p role="alert" className="text-sm font-medium text-rose-500">
               {errors.items.message}
+            </p>
+          ) : null}
+          
+          {missingPrice ? (
+            <p role="alert" className="text-sm font-medium text-rose-500">
+              Diqqat: Ba&apos;zi mahsulotlarda aktiv narx yo‘q. Iltimos, narx belgilangan mahsulotlarni tanlang.
             </p>
           ) : null}
         </section>
 
         <FormField htmlFor="orderNote" label="Izoh">
-          <Textarea
-            id="orderNote"
-            placeholder="Ixtiyoriy izoh"
-            disabled={formDisabled}
-            {...register("note")}
-          />
+          <Textarea id="orderNote" placeholder="Ixtiyoriy izoh" disabled={formDisabled} {...register("note")} />
         </FormField>
 
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
-          <p className="font-medium">Taxminiy summa</p>
-          <p className="text-muted-foreground">
-            {hasProvidedPrices
-              ? `${estimatedTotal.toLocaleString("uz-UZ")} so‘m · faqat kiritilgan narxlar bo‘yicha. Yakuniy summa tizim tomonidan qaytariladi.`
-              : "Narx kiritilmagan qatorlar tizimdagi aktiv narx bilan hisoblanadi."}
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-primary">Jami summa</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Barcha qatorlar bo‘yicha hisoblangan yakuniy summa
+            </p>
+          </div>
+          <p className="text-2xl font-bold text-primary text-right">
+            {estimatedTotal.toLocaleString("uz-UZ")} so‘m
           </p>
         </div>
 
         {clients.length === 0 ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Avval mijoz yarating. Buyurtma faol mijozga bog‘lanadi.
+            Avval mijoz yarating.
           </p>
         ) : null}
-
         {variants.length === 0 ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Avval mahsulot varianti yarating. Buyurtma mahsulot variantiga bog‘lanadi.
+            Avval mahsulot yarating.
           </p>
         ) : null}
-
         {errorMessage ? (
-          <p
-            role="alert"
-            className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300"
-          >
+          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
             {errorMessage}
           </p>
         ) : null}
-
-        <DrawerFooter><Button
-          type="submit"
-          className="w-full"
-          disabled={formDisabled || clients.length === 0 || variants.length === 0}
-        >
-          {isSubmitting
-            ? isEdit
-              ? "Saqlanmoqda..."
-              : "Buyurtma yaratilmoqda..."
-            : isEdit
-              ? "O‘zgarishlarni saqlash"
-              : "Buyurtma yaratish"}
-        </Button></DrawerFooter>
       </form>
     </Drawer>
   );
@@ -370,6 +432,5 @@ function buildPayload(values: OrderFormValues): CreateSalesOrderPayload {
 
 function normalizeOptional(value?: string): string | null {
   const trimmed = value?.trim() ?? "";
-
   return trimmed.length > 0 ? trimmed : null;
 }

@@ -99,7 +99,7 @@ export function Drawer({
             <X size={18} />
           </button>
         </header>
-        <div className="min-h-0 flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 pb-0 sm:p-5 sm:pb-0 relative">
+        <div className="min-h-0 flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 sm:p-5 relative">
           {children}
         </div>
         {footer ? (

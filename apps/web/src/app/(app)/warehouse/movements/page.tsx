@@ -1,4 +1,13 @@
 import { PageHeader } from "@/components/page-header";
+import { WarehouseNav } from "@/features/warehouse/components/warehouse-nav";
 import { MovementsModule } from "@/features/warehouse/movements/movements-module";
 
-export default function MovementsPage() { return <><PageHeader title="Ombor kirim-chiqim tarixi" description="Kirim, chiqim, qoldiqni tuzatish va ko‘chirish tarixi" /><MovementsModule /></>; }
+export default function MovementsPage() {
+  return (
+    <>
+      <PageHeader title="Kirim-chiqim" description="Omborga kirim, chiqim va ichki ko‘chirishlar tarixi" />
+      <WarehouseNav />
+      <MovementsModule />
+    </>
+  );
+}

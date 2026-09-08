@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { ModuleNavigation } from "@/components/navigation/module-navigation";
+import { WarehouseNav } from "@/features/warehouse/components/warehouse-nav";
 import { StockOverviewModule } from "@/features/warehouse/stock/stock-overview-module";
 
 export default function WarehousePage() {
@@ -7,15 +7,9 @@ export default function WarehousePage() {
     <>
       <PageHeader
         title="Ombor"
-        description="Asosiy ombor qoldiqlari, zonalar va materiallar holati"
+        description="Barcha mahsulot va material qoldiqlari bo‘yicha yig‘ma hisobot"
       />
-      <ModuleNavigation
-        items={[
-          { href: "/warehouse/materials", label: "Materiallar" },
-          { href: "/warehouse/movements", label: "Kirim-chiqim tarixi" },
-          { href: "/warehouse/zones", label: "Zonalar" },
-        ]}
-      />
+      <WarehouseNav />
       <StockOverviewModule />
     </>
   );

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
+import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -97,8 +97,19 @@ export function ClientFormDrawer({
       onOpenChange={onOpenChange}
       title={title}
       description={description}
+      footer={
+        <Button form="client-form" type="submit" className="w-full" disabled={effectiveSubmitting}>
+          {effectiveSubmitting
+            ? "Saqlanmoqda..."
+            : mode === "create"
+              ? "Mijoz yaratish"
+              : "O‘zgarishni saqlash"}
+        </Button>
+      }
     >
-      <form className="space-y-4 flex flex-col h-full min-h-[min-content]"
+      <form
+        id="client-form"
+        className="space-y-4"
         onSubmit={handleSubmit(async (values) => {
           if (effectiveSubmitting) return;
           setInFlight(true);
@@ -161,14 +172,6 @@ export function ClientFormDrawer({
             {errorMessage}
           </p>
         ) : null}
-
-        <DrawerFooter><Button type="submit" className="w-full" disabled={effectiveSubmitting}>
-          {effectiveSubmitting
-            ? "Saqlanmoqda..."
-            : mode === "create"
-              ? "Mijoz yaratish"
-              : "O‘zgarishni saqlash"}
-        </Button></DrawerFooter>
       </form>
     </Drawer>
   );
