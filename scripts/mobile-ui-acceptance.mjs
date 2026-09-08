@@ -301,17 +301,38 @@ async function runWarehouseOperator() {
 // To pass: seed an active production run via POST /production/runs before test.
 
 async function runShiftReceiver() {
-  const token = await apiLogin('shift@paypoq.local');
-  const runsData = await apiFetch('/production/runs', token);
-  const activeRuns = (runsData?.data ?? []).filter(r => r.status === 'ACTIVE');
-
-  if (activeRuns.length === 0) {
-    throw new Error(
-      'No ACTIVE production runs — seed via POST /production/runs before this test'
-    );
+  const ownerToken = await apiLogin('owner@paypoq.local');
+  
+  // 1. Fixture Setup: Create an ACTIVE/RUNNING production run deterministically
+  const machines = await apiFetch('/machines', ownerToken);
+  let machine = machines?.data?.[0];
+  if (!machine) {
+    const r = await apiFetch('/machines', ownerToken, 'POST', { code: 'M-SHIFT', name: 'Shift Test Machine' });
+    machine = { id: r.data.id };
   }
+  const stock = await apiFetch('/warehouse/stock', ownerToken);
+  const variantId = stock?.data?.[0]?.productVariant?.id;
+  
+  const emps = await apiFetch('/production/lookups/employees', ownerToken);
+  const op = emps?.data?.find(e => e.workProfile === 'MACHINE_OPERATOR');
+  const mech = emps?.data?.find(e => e.workProfile === 'MECHANIC');
+  const shifts = await apiFetch('/settings/work-shifts', ownerToken);
+  const shift = shifts?.data?.find(s => s.code === 'DAY');
 
-  const runId = activeRuns[0].id;
+  try {
+    await apiFetch('/machines/assignments', ownerToken, 'POST', {
+      machineId: machine.id, mechanicId: mech.id, workShiftId: shift.id, validFrom: new Date().toISOString(),
+    });
+  } catch (e) { /* might exist */ }
+
+  const runReq = await apiFetch('/production/runs', ownerToken, 'POST', {
+    machineId: machine.id, productVariantId: variantId, operatorEmployeeId: op.id, workShiftId: shift.id, note: "UI test fixture"
+  });
+  const runId = runReq?.data?.id;
+  assert.ok(runId, 'Failed to create Production Run fixture');
+
+  // 2. Perform the UI workflow as Shift Receiver
+  const token = await apiLogin('shift@paypoq.local');
   const defectsBefore = await apiFetch('/production/defects', token);
   const countBefore   = (defectsBefore?.data ?? []).length;
 
@@ -328,10 +349,13 @@ async function runShiftReceiver() {
     await page.waitForTimeout(600);
 
     const testQty = 2;
-    await page.fill('input[type="number"]', String(testQty));
+    await page.fill('input#defectQuantity', String(testQty));
+    await page.fill('textarea#defectReason', `UI-TEST-${RUN_ID}: defect test`);
 
-    const submitBtn = page.getByRole('button', { name: 'Saqlash' });
-    await submitBtn.waitFor({ state: 'visible', timeout: 5000 });
+    // The submit button in the DrawerFooter also says "Brak qayd qilish"
+    const submitBtn = page.getByRole('button', { name: 'Brak qayd qilish' }).last();
+    await assertDrawerFooterReachable(page, submitBtn);
+
     // Standard click — no force
     await submitBtn.click();
     await waitForDrawerClose(page, submitBtn);
@@ -343,7 +367,7 @@ async function runShiftReceiver() {
 
     recordPass('Shift Receiver', 'Chromium', '360x740',
       'Defect Recording Flow',
-      'Clicked Brak qayd qilish (standard click)',
+      `Filled qty=2, reason="...test" then clicked Brak qayd qilish (standard click)`,
       'Drawer closed',
       `Defect count: ${countBefore} -> ${(defectsAfter?.data ?? []).length} for run ${runId}`);
   } finally {
