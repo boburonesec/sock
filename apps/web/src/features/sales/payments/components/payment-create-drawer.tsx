@@ -263,7 +263,7 @@ export function PaymentCreateDrawer({
                   <Button
                     type="button"
                     variant="outline"
-                    className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                    className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-0 bg-transparent"
                     disabled={formDisabled || fields.length === 1}
                     onClick={() => remove(index)}
                     aria-label="Taqsimot qatorini o‘chirish"
@@ -320,6 +320,21 @@ export function PaymentCreateDrawer({
             {errorMessage}
           </p>
         ) : null}
+
+        <DrawerFooter>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              formDisabled ||
+              clients.length === 0 ||
+              clientOrders.length === 0 ||
+              Math.abs(unallocatedAmount) > 0.000001
+            }
+          >
+            {isSubmitting ? "To‘lov saqlanmoqda..." : "To‘lov qayd qilish"}
+          </Button>
+        </DrawerFooter>
       </form>
     </Drawer>
   );
