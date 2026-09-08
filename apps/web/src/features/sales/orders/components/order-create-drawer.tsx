@@ -98,7 +98,7 @@ function OrderItemRow({
   const [userChangedVariant, setUserChangedVariant] = useState(false);
 
   useEffect(() => {
-    if (activePriceData && variantId) {
+    if (activePriceData !== undefined && variantId) {
       const activePrice = activePriceData?.amount || null;
       // If there is an active price, set it. 
       // ONLY overwrite if it's a NEW row (userChangedVariant) OR we're not in edit mode
