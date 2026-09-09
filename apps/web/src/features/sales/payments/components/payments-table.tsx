@@ -6,10 +6,12 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import type { ClientPayment } from "@/lib/api/sales";
 import { formatCurrency } from "@/lib/utils";
 import { formatDateTimeForUser } from "@/lib/format";
+import { PaymentCard } from "./payment-card";
 
 const methodLabel: Record<string, string> = {
   CASH: "Naqd",
@@ -37,6 +39,14 @@ export function PaymentsTable({
   onSelect: (payment: ClientPayment) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={payments}
+      getKey={(payment) => payment.id}
+      renderCard={(payment) => <PaymentCard payment={payment} onSelect={onSelect} />}
+      ariaLabel="To‘lovlar ro‘yxati"
+      emptyTitle="To‘lovlar mavjud emas"
+      emptyDescription="Sotuvchi yoki hisobchi to‘lov qayd qilgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="To‘lovlar ro‘yxati">
       <DataTableHead>
         <DataTableRow>
@@ -90,5 +100,6 @@ export function PaymentsTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

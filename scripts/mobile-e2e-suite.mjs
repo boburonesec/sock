@@ -107,28 +107,29 @@ async function runMobileSuite() {
         await page.locator("aside button[aria-label='Menyuni yopish']").click();
         await page.waitForTimeout(200);
 
-        // Check /sales/orders table and row click
+        // Check /sales/orders — migrated to a mobile card list (mobile UX
+        // audit Phase 2): the table (and its own "Jadvalni surish mumkin"
+        // scroll cue) no longer renders at this width at all, replaced by
+        // ResponsiveDataList's card list. Dedicated deterministic coverage
+        // for this lives in scripts/phase2-orders-payments-mobile-acceptance.mjs;
+        // this suite still checks the table is genuinely hidden and the new
+        // card interaction works, so a regression here still fails loudly.
         await page.goto(`${BASE}/sales/orders`, { waitUntil: "networkidle" });
         await checkNoOverflow(page, "Sales Orders page");
 
-        // Check mobile table scroll cue
-        const scrollCue = page.locator("text=Jadvalni surish mumkin →");
-        if (await scrollCue.first().isVisible()) {
-          pass("Mobile table scroll cue 'Jadvalni surish mumkin →' is visible on phone");
-        }
+        const ordersDesktopTable = page.locator(".hidden.sm\\:block").first();
+        assert(!(await ordersDesktopTable.isVisible()), "Desktop orders table must be hidden on mobile");
+        pass("Orders desktop table hidden on mobile (card list used instead)");
 
-        // Check order row tap opens detail drawer
-        const firstOrderRow = page.locator("tbody tr").first();
-        if (await firstOrderRow.isVisible()) {
-          await firstOrderRow.click();
-          await page.waitForTimeout(400);
-          const orderDrawer = page.locator("section[role='dialog']");
-          if (await orderDrawer.isVisible()) {
-            pass("Tapping order row opens order detail drawer on mobile");
-            await orderDrawer.locator("button[aria-label='Yopish']").click();
-            await page.waitForTimeout(300);
-          }
-        }
+        const firstOrderCard = page.locator('ul[aria-label="Buyurtmalar ro‘yxati"] > li').first().locator("button");
+        assert(await firstOrderCard.isVisible(), "First order card must be visible");
+        await firstOrderCard.click();
+        await page.waitForTimeout(400);
+        const orderDrawer = page.locator("section[role='dialog']");
+        assert(await orderDrawer.isVisible(), "Tapping an order card must open the order detail drawer");
+        pass("Tapping order card opens order detail drawer on mobile");
+        await orderDrawer.locator("button[aria-label='Yopish']").click();
+        await page.waitForTimeout(300);
 
         // Check /sales/clients and phone formatting
         await page.goto(`${BASE}/sales/clients`, { waitUntil: "networkidle" });

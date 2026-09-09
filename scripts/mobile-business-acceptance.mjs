@@ -385,21 +385,29 @@ async function runAcceptanceAudit() {
                 await page.waitForTimeout(500);
 
 
-        // Verify order in table
-        await page.waitForSelector(`tr:has-text('${uniqueClientName}')`, { timeout: 10000 });
-        const createdOrderRow = page.locator(`tr:has-text('${uniqueClientName}')`).first();
-        assert(await createdOrderRow.isVisible(), "New order must appear in orders table");
-        const rowText = (await createdOrderRow.textContent()).replace(/\s+/g, " ");
+        // Verify order in the list. At this 390x844 viewport, Sales Orders
+        // renders the mobile card list (mobile UX audit Phase 2) — the
+        // desktop `tr` this used to target is `display:none` here, not
+        // "not yet rendered", so the old locator would time out waiting for
+        // visibility rather than failing fast. Target the card instead.
+        await page.waitForSelector(`ul[aria-label="Buyurtmalar ro‘yxati"] li:has-text('${uniqueClientName}')`, {
+          timeout: 10000,
+        });
+        const createdOrderCard = page
+          .locator(`ul[aria-label="Buyurtmalar ro‘yxati"] li:has-text('${uniqueClientName}')`)
+          .first();
+        assert(await createdOrderCard.isVisible(), "New order must appear in orders card list");
+        const rowText = (await createdOrderCard.textContent()).replace(/\s+/g, " ");
         // Dynamically check total
         const totalStr = expectedTotal.toLocaleString("en-US").replace(/,/g, "[, ]?");
         const totalRegex = new RegExp(totalStr);
-        assert(totalRegex.test(rowText), "Order total (" + expectedTotal + ") must appear in table row");
+        assert(totalRegex.test(rowText), "Order total (" + expectedTotal + ") must appear on order card");
 
-        // Tap order row -> details drawer
-        await createdOrderRow.click();
+        // Tap order card -> details drawer
+        await createdOrderCard.locator("button").click();
         await page.waitForTimeout(400);
         const orderDetailDrawer = page.locator("section[role='dialog']");
-        assert(await orderDetailDrawer.isVisible(), "Order detail drawer must open on row tap");
+        assert(await orderDetailDrawer.isVisible(), "Order detail drawer must open on card tap");
         const detailText = (await orderDetailDrawer.textContent()).replace(/\s+/g, " ");
         assert(totalRegex.test(detailText), "Order detail must show " + expectedTotal + " so'm total");
         await orderDetailDrawer.getByRole("button", { name: "Yopish" }).click();
@@ -460,10 +468,12 @@ async function runAcceptanceAudit() {
                 await page.waitForTimeout(500);
 
 
-        // Verify payment is listed in UI
-        await page.waitForSelector("tbody tr", { timeout: 10000 });
-        const paymentsTableText = (await page.locator("tbody").textContent()).replace(/\s+/g, " ");
-        assert(/50[, ]000/.test(paymentsTableText), "Payment table must include 50,000 so'm");
+        // Verify payment is listed in UI. Sales Payments renders the mobile
+        // card list at this viewport (mobile UX audit Phase 2) — the
+        // desktop `tbody` this used to target is `display:none` here.
+        await page.waitForSelector('ul[aria-label="To‘lovlar ro‘yxati"] li', { timeout: 10000 });
+        const paymentsListText = (await page.locator('ul[aria-label="To‘lovlar ro‘yxati"]').textContent()).replace(/\s+/g, " ");
+        assert(/50[, ]000/.test(paymentsListText), "Payment card list must include 50,000 so'm");
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const debtsAfterRes = await apiCall("/sales/debts", { token: sellerAuth.accessToken });

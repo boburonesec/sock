@@ -6,10 +6,12 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { SalesOrder } from "@/lib/api/sales";
 import { formatCurrency } from "@/lib/utils";
 import { formatDateShort } from "@/lib/format";
+import { OrderCard } from "./order-card";
 
 const orderStatus: Record<string, { label: string; tone: StatusTone }> = {
   DRAFT: { label: "Qoralama", tone: "neutral" },
@@ -41,6 +43,14 @@ export function OrdersTable({
   onSelect: (order: SalesOrder) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={orders}
+      getKey={(order) => order.id}
+      renderCard={(order) => <OrderCard order={order} onSelect={onSelect} />}
+      ariaLabel="Buyurtmalar ro‘yxati"
+      emptyTitle="Buyurtmalar mavjud emas"
+      emptyDescription="Sotuvchi buyurtma yaratgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Buyurtmalar ro‘yxati">
       <DataTableHead>
         <DataTableRow>
@@ -113,5 +123,6 @@ export function OrdersTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }
