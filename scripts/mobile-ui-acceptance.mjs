@@ -90,8 +90,18 @@ async function apiFetch(path, token, method = 'GET', body) {
 async function uiLogin(context, email, isPlatform = false) {
   const page = await context.newPage();
   await page.goto(`${BASE_URL}${isPlatform ? '/admin/login' : '/login'}`);
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', PASSWORD);
+  // click() + type() (real per-character events), not fill(): in WebKit,
+  // fill() sets the DOM value and dispatches an input event, but React's
+  // controlled-input state doesn't reliably commit before the synchronous
+  // submit reads it — the login POST body ends up with email: "" despite
+  // the field visibly showing the typed value. Reproduced against
+  // unmodified origin/main, so this is a harness issue, not a product bug
+  // (same root cause already fixed in business-api-rbac-acceptance.mjs).
+  // Chromium is unaffected either way.
+  await page.click('input[type="email"]');
+  await page.type('input[type="email"]', email, { delay: 12 });
+  await page.click('input[type="password"]');
+  await page.type('input[type="password"]', PASSWORD, { delay: 12 });
   await page.click('button[type="submit"]');
   if (!isPlatform) {
     await page.waitForSelector('button[aria-label="Menyuni ochish"]', { timeout: 15000 });
@@ -303,13 +313,21 @@ async function runWarehouseOperator() {
 async function runShiftReceiver() {
   const ownerToken = await apiLogin('owner@paypoq.local');
   
-  // 1. Fixture Setup: Create an ACTIVE/RUNNING production run deterministically
-  const machines = await apiFetch('/machines', ownerToken);
-  let machine = machines?.data?.[0];
-  if (!machine) {
-    const r = await apiFetch('/machines', ownerToken, 'POST', { code: 'M-SHIFT', name: 'Shift Test Machine' });
-    machine = { id: r.data.id };
-  }
+  // 1. Fixture Setup: Create an ACTIVE/RUNNING production run deterministically.
+  // Always create a fresh, uniquely-coded machine rather than reusing
+  // `machines.data[0]`: ProductionRun creation 409s if the target machine
+  // already has an open (PLANNED/RUNNING/HOLD) run, so reusing an arbitrary
+  // existing machine (e.g. one left over from another fixture, or from a
+  // prior run of this same script if it didn't get to complete its own run)
+  // makes this fixture setup collide with state outside its control. A
+  // unique machine per run — completed in `finally` below — can never
+  // collide with anything.
+  const shiftMachineCode = `M-SHIFT-${RUN_ID}`;
+  const machineRes = await apiFetch('/machines', ownerToken, 'POST', {
+    code: shiftMachineCode,
+    name: `Shift Test Machine ${RUN_ID}`,
+  });
+  const machine = { id: machineRes.data.id };
   const stock = await apiFetch('/warehouse/stock', ownerToken);
   const variantId = stock?.data?.[0]?.productVariant?.id;
   
@@ -371,6 +389,13 @@ async function runShiftReceiver() {
       'Drawer closed',
       `Defect count: ${countBefore} -> ${(defectsAfter?.data ?? []).length} for run ${runId}`);
   } finally {
+    // Own this fixture's lifecycle: complete the run so it never lingers
+    // RUNNING and blocks a future invocation's machine (see setup comment
+    // above). Best-effort — a failure here shouldn't mask the real test
+    // result, so don't rethrow.
+    try {
+      await apiFetch(`/production/runs/${runId}/status`, ownerToken, 'PATCH', { status: 'COMPLETED' });
+    } catch { /* already completed/cancelled, or run creation itself failed above */ }
     await browser.close();
   }
 }

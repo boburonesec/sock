@@ -112,10 +112,37 @@ async function runForEngine(engineName, launcher) {
       CUID_LIKE.test(paymentCardText) ? `FOUND cuid-like token in: "${paymentCardText.slice(0, 60)}"` : "no cuid-like token present",
     );
 
+    const expectedPaymentClient = paymentCardText.split("\n")[0];
+
     await firstPaymentCard.click();
     await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
     const paymentDialogOpen = await page.locator('[role="dialog"]').isVisible();
     record(engineName, "Payments: card opens payment detail", paymentDialogOpen, `dialogOpen=${paymentDialogOpen}`);
+
+    // The drawer title used to be the raw payment.id (Prisma cuid) — assert
+    // it isn't, and that the drawer shows the same payment the card opened
+    // (not merely that *a* dialog appeared).
+    const paymentDrawerTitle = await page.locator("#drawer-title").textContent();
+    record(
+      engineName,
+      "Payments: drawer title is not a raw CUID",
+      Boolean(paymentDrawerTitle) && !CUID_LIKE.test(paymentDrawerTitle),
+      `title="${paymentDrawerTitle}"`,
+    );
+    const paymentDrawerText = await page.locator('[role="dialog"]').innerText();
+    record(
+      engineName,
+      "Payments: detail drawer shows the correct payment (client matches card)",
+      paymentDrawerText.includes(expectedPaymentClient),
+      `card client="${expectedPaymentClient}"`,
+    );
+    record(
+      engineName,
+      "Payments: no raw CUID anywhere in the visible detail drawer",
+      !CUID_LIKE.test(paymentDrawerText),
+      CUID_LIKE.test(paymentDrawerText) ? "FOUND cuid-like token in drawer" : "clean",
+    );
+
     await page.locator('[aria-label="Yopish"]').first().click();
   } finally {
     await context.close();

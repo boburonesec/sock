@@ -8,6 +8,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
@@ -44,8 +45,13 @@ export function PaymentDetailsDrawer({
     <Drawer
       open={Boolean(payment)}
       onOpenChange={onOpenChange}
-      title={payment.id}
-      description={formatDate(payment.paymentDate)}
+      // No canonical payment reference exists in the domain model (see the
+      // mobile card this drawer opens from) — the raw database id must not
+      // stand in as the user-facing title either. Client + date carry the
+      // identity here instead; amount/method/status remain in the first
+      // InfoCard just below.
+      title="To‘lov tafsilotlari"
+      description={`${payment.client.name} · ${formatDate(payment.paymentDate)}`}
       className="max-w-4xl"
     >
       <div className="space-y-6">
@@ -114,37 +120,62 @@ export function PaymentDetailsDrawer({
 
         <section>
           <p className="mb-3 text-sm font-semibold">Bog‘langan buyurtmalar</p>
-          <DataTable
-            label="To‘lov taqsimotlari"
-            className="border-0 shadow-none"
+          {/*
+            Measured at 320/390px: the 2-column table (order number + amount)
+            is 560px wide against a ~284-354px wrapper, cutting the amount
+            column off and forcing a horizontal scroll inside the drawer to
+            read it. Reusing the same ResponsiveDataList pattern already
+            established for the Orders/Payments lists — not a new pattern —
+            since allocations are typically 1-3 rows, a stacked mobile card
+            reads at least as well as the table it replaces at this width.
+          */}
+          <ResponsiveDataList
+            items={payment.allocations}
+            getKey={(allocation) => allocation.id}
+            ariaLabel="To‘lov taqsimotlari"
+            renderCard={(allocation) => (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/40 p-3">
+                <span className="min-w-0 truncate text-sm" title={allocation.order.orderNumber}>
+                  {allocation.order.orderNumber}
+                </span>
+                <span className="shrink-0 font-semibold">{formatCurrency(allocation.amount)}</span>
+              </div>
+            )}
+            emptyTitle="Bog‘langan buyurtma yo‘q"
+            emptyDescription="To‘lovlar to‘liq taqsimot bilan yaratiladi. Agar bu holat ko‘rinsa, ma’lumotni tekshirish kerak."
           >
-            <DataTableHead>
-              <DataTableRow>
-                <DataTableHeader>Buyurtma raqami</DataTableHeader>
-                <DataTableHeader>Buyurtmaga ajratilgan summa</DataTableHeader>
-              </DataTableRow>
-            </DataTableHead>
-            <tbody>
-              {payment.allocations.length > 0 ? (
-                payment.allocations.map((allocation) => (
-                  <DataTableRow key={allocation.id}>
-                    <DataTableCell>
-                      {allocation.order.orderNumber}
-                    </DataTableCell>
-                    <DataTableCell className="font-semibold">
-                      {formatCurrency(allocation.amount)}
-                    </DataTableCell>
-                  </DataTableRow>
-                ))
-              ) : (
-                <EmptyTableState
-                  colSpan={2}
-                  title="Bog‘langan buyurtma yo‘q"
-                  description="To‘lovlar to‘liq taqsimot bilan yaratiladi. Agar bu holat ko‘rinsa, ma’lumotni tekshirish kerak."
-                />
-              )}
-            </tbody>
-          </DataTable>
+            <DataTable
+              label="To‘lov taqsimotlari"
+              className="border-0 shadow-none"
+            >
+              <DataTableHead>
+                <DataTableRow>
+                  <DataTableHeader>Buyurtma raqami</DataTableHeader>
+                  <DataTableHeader>Buyurtmaga ajratilgan summa</DataTableHeader>
+                </DataTableRow>
+              </DataTableHead>
+              <tbody>
+                {payment.allocations.length > 0 ? (
+                  payment.allocations.map((allocation) => (
+                    <DataTableRow key={allocation.id}>
+                      <DataTableCell>
+                        {allocation.order.orderNumber}
+                      </DataTableCell>
+                      <DataTableCell className="font-semibold">
+                        {formatCurrency(allocation.amount)}
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))
+                ) : (
+                  <EmptyTableState
+                    colSpan={2}
+                    title="Bog‘langan buyurtma yo‘q"
+                    description="To‘lovlar to‘liq taqsimot bilan yaratiladi. Agar bu holat ko‘rinsa, ma’lumotni tekshirish kerak."
+                  />
+                )}
+              </tbody>
+            </DataTable>
+          </ResponsiveDataList>
         </section>
 
         <InfoCard title="Izoh">
