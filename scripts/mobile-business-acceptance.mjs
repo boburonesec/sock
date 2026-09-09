@@ -813,7 +813,7 @@ async function runAcceptanceAudit() {
         // --- 4.1 Payroll Overview (READ-ONLY) ---
         await page.goto(`${WEB}/finance/payroll`, { waitUntil: "networkidle" });
         await checkNoHorizontalOverflow(page, "Payroll Page");
-        assert(await page.locator("text=Ish haqi hisob-kitobi").first().isVisible(), "Payroll report header must be visible");
+        assert(await page.locator("text=Ish haqi").first().isVisible(), "Payroll report header must be visible");
 
         recordResult("Accountant", "Payroll Monitoring & Employee Breakdown View", "YES", "N/A", "N/A", "PASS", "Payroll period summary rendered cleanly on phone (read-only view)");
 

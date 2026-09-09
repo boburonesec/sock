@@ -5,7 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
+import { Drawer } from "@/components/overlays/drawer";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -320,21 +320,6 @@ export function PaymentCreateDrawer({
             {errorMessage}
           </p>
         ) : null}
-
-        <DrawerFooter>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={
-              formDisabled ||
-              clients.length === 0 ||
-              clientOrders.length === 0 ||
-              Math.abs(unallocatedAmount) > 0.000001
-            }
-          >
-            {isSubmitting ? "To‘lov saqlanmoqda..." : "To‘lov qayd qilish"}
-          </Button>
-        </DrawerFooter>
       </form>
     </Drawer>
   );
