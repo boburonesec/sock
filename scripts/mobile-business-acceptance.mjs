@@ -121,6 +121,110 @@ async function assertApiRbacDenied(endpoint, token, method = "GET", body = null)
   );
 }
 
+/**
+ * A fresh `demo:prepare` seed carries Employees, WorkShifts and
+ * ProductVariants but zero Machines / ProductionRuns — nothing in the seed
+ * ever puts a run into RUNNING, which is what the Shift Receiver intake
+ * assertions below need. Rather than requiring manual DB prep before this
+ * suite runs, build a disposable RUNNING run through the same application
+ * APIs a real Owner + Shift Receiver would use (Machine → mechanic
+ * assignment → piece rates → ProductionRun), all tagged with a unique
+ * per-run id so two runs of this suite never collide even if a prior run's
+ * cleanup was skipped or failed.
+ */
+async function setupShiftReceiverProductionFixture(shiftAuth) {
+  const ownerAuth = await getAuthToken("owner@paypoq.local");
+  const runTag = `ACCEPTANCE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const validFrom = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [machineLookupsRes, variantLookupsRes] = await Promise.all([
+    apiCall("/machines/lookups", { token: ownerAuth.accessToken, activeFactoryId: ownerAuth.activeFactoryId }),
+    apiCall("/production/lookups/product-variants", { token: ownerAuth.accessToken, activeFactoryId: ownerAuth.activeFactoryId }),
+  ]);
+  assert(machineLookupsRes.ok, `GET /machines/lookups must succeed: ${JSON.stringify(machineLookupsRes.data)}`);
+  assert(variantLookupsRes.ok, `GET /production/lookups/product-variants must succeed: ${JSON.stringify(variantLookupsRes.data)}`);
+
+  const mechanic = machineLookupsRes.data.data.employees.find((e) => e.workProfile === "MECHANIC");
+  const operator = machineLookupsRes.data.data.employees.find((e) => e.workProfile === "MACHINE_OPERATOR");
+  const workShift = machineLookupsRes.data.data.shifts[0];
+  const variant = variantLookupsRes.data.data[0];
+  assert(mechanic, "Fixture precondition: an active MECHANIC employee must exist in the seed");
+  assert(operator, "Fixture precondition: an active MACHINE_OPERATOR employee must exist in the seed");
+  assert(workShift, "Fixture precondition: a WorkShift must exist in the seed");
+  assert(variant, "Fixture precondition: a ProductVariant must exist in the seed");
+
+  const machineRes = await apiCall("/machines", {
+    method: "POST",
+    token: ownerAuth.accessToken,
+    activeFactoryId: ownerAuth.activeFactoryId,
+    body: { code: runTag, name: `Test Machine ${runTag}`, note: "Created by mobile-business-acceptance.mjs; safe to delete." },
+  });
+  assert(machineRes.ok, `POST /machines must succeed: ${JSON.stringify(machineRes.data)}`);
+  const machineId = machineRes.data.data.id;
+
+  const assignmentRes = await apiCall("/machines/assignments", {
+    method: "POST",
+    token: ownerAuth.accessToken,
+    activeFactoryId: ownerAuth.activeFactoryId,
+    body: { machineId, mechanicId: mechanic.id, workShiftId: workShift.id, validFrom },
+  });
+  assert(assignmentRes.ok, `POST /machines/assignments must succeed: ${JSON.stringify(assignmentRes.data)}`);
+
+  // Piece rates are per-product master data, not per-run: an open-ended
+  // (effectiveTo: null) rate for this product+role always overlaps any
+  // later attempt to create another one (409 Conflict), unlike the Machine
+  // above which is disposable and uniquely named per run. Resolve first,
+  // create only if genuinely missing, so repeated suite runs reuse the same
+  // rate instead of colliding with the one a prior run already created.
+  const existingRatesRes = await apiCall("/machines/piece-rates", {
+    token: ownerAuth.accessToken,
+    activeFactoryId: ownerAuth.activeFactoryId,
+  });
+  assert(existingRatesRes.ok, `GET /machines/piece-rates must succeed: ${JSON.stringify(existingRatesRes.data)}`);
+  for (const workRole of ["MECHANIC", "MACHINE_OPERATOR"]) {
+    const hasCurrentRate = existingRatesRes.data.data.some(
+      (rate) =>
+        rate.product.id === variant.product.id &&
+        rate.workRole === workRole &&
+        (!rate.effectiveTo || new Date(rate.effectiveTo) > new Date()),
+    );
+    if (hasCurrentRate) continue;
+    const rateRes = await apiCall("/machines/piece-rates", {
+      method: "POST",
+      token: ownerAuth.accessToken,
+      activeFactoryId: ownerAuth.activeFactoryId,
+      body: { productId: variant.product.id, workRole, amount: 100, effectiveFrom: validFrom },
+    });
+    assert(rateRes.ok, `POST /machines/piece-rates (${workRole}) must succeed: ${JSON.stringify(rateRes.data)}`);
+  }
+
+  const runRes = await apiCall("/production/runs", {
+    method: "POST",
+    token: shiftAuth.accessToken,
+    activeFactoryId: shiftAuth.activeFactoryId,
+    body: { machineId, productVariantId: variant.id, operatorEmployeeId: operator.id, workShiftId: workShift.id, note: runTag },
+  });
+  assert(runRes.ok, `POST /production/runs must succeed: ${JSON.stringify(runRes.data)}`);
+  assert.equal(runRes.data.data.status, "RUNNING", "Fixture run must start in RUNNING status");
+
+  return { runId: runRes.data.data.id, machineId, runTag };
+}
+
+/** Always run from a `finally`: completes the fixture run so it never lingers RUNNING for the next suite run. */
+async function teardownShiftReceiverProductionFixture(fixture, shiftAuth) {
+  if (!fixture) return;
+  const res = await apiCall(`/production/runs/${fixture.runId}/status`, {
+    method: "PATCH",
+    token: shiftAuth.accessToken,
+    activeFactoryId: shiftAuth.activeFactoryId,
+    body: { status: "COMPLETED" },
+  });
+  assert(
+    res.ok,
+    `Fixture cleanup failed: PATCH /production/runs/${fixture.runId}/status -> COMPLETED did not succeed: ${JSON.stringify(res.data)}`,
+  );
+}
+
 async function runAcceptanceAudit() {
   console.log("===============================================================================");
   console.log("PAYPOQ OS — FINAL MOBILE BUSINESS ACCEPTANCE & ROLE MATRIX AUDIT");
@@ -427,7 +531,14 @@ async function runAcceptanceAudit() {
       const page = await context.newPage();
       page.setDefaultTimeout(15000);
 
+      let shiftFixture = null;
       try {
+        // Own this role's fixture lifecycle end-to-end: a fresh demo seed has
+        // no Machine/ProductionRun, so build a disposable RUNNING run through
+        // the real Machine → assignment → piece-rate → ProductionRun APIs
+        // before touching any UI that depends on one existing.
+        shiftFixture = await setupShiftReceiverProductionFixture(shiftAuth);
+
         await loginUser(page, "shift@paypoq.local", "ChangeMe123!", "/production");
         await checkNoHorizontalOverflow(page, "Shift Receiver Board (/production)");
 
@@ -438,8 +549,8 @@ async function runAcceptanceAudit() {
           activeFactoryId: shiftAuth.activeFactoryId,
         });
         assert(runsRes.ok, "API GET /production/runs must succeed");
-        const runningRun = runsRes.data.data.find((r) => r.status === "RUNNING");
-        assert(runningRun, "At least one RUNNING machine run must exist for intake test");
+        const runningRun = runsRes.data.data.find((r) => r.id === shiftFixture.runId && r.status === "RUNNING");
+        assert(runningRun, "The fixture's ProductionRun must be visible and RUNNING via GET /production/runs");
 
         const stageInvBeforeRes = await apiCall("/production/stage-inventory", {
           token: shiftAuth.accessToken,
@@ -549,10 +660,14 @@ async function runAcceptanceAudit() {
         await moveDrawer.locator("#moveQuantity").fill(String(moveQty));
         await page.waitForTimeout(200);
 
-        // Submit movement
-        const moveSubmitBtn = moveDrawer.getByRole("button", { name: "Smenani saqlash" });
-        assert(await moveSubmitBtn.isVisible(), "Smenani saqlash button must be visible");
-        await assertTouchTarget(moveSubmitBtn, "Smenani saqlash submit button");
+        // Submit movement. Label matches production-action-forms.tsx post
+        // mobile-UX-audit Phase 1 (commit b4a0c86): the submit button used to
+        // be mislabeled "Smenani saqlash" ("Save shift") on this stage-
+        // transfer action; it now reads "Keyingi bosqichga o‘tkazish",
+        // matching the drawer's own title.
+        const moveSubmitBtn = moveDrawer.getByRole("button", { name: "Keyingi bosqichga o‘tkazish" });
+        assert(await moveSubmitBtn.isVisible(), "Keyingi bosqichga o‘tkazish submit button must be visible");
+        await assertTouchTarget(moveSubmitBtn, "Keyingi bosqichga o‘tkazish submit button");
         await moveSubmitBtn.click();
         
         // Wait for API to return the price by checking if placeholder goes away or value is set
@@ -657,6 +772,12 @@ async function runAcceptanceAudit() {
         recordResult("Shift Receiver", "Shift Receiver Full Acceptance", "FAILED", "FAILED", "FAILED", "FAIL", err.message);
         throw err;
       } finally {
+        // Own fixture lifecycle end-to-end regardless of pass/fail above:
+        // complete the run so it never lingers RUNNING for the next suite
+        // run. A unique machine per run (see setup) means a failed cleanup
+        // here still can't block a subsequent run — this is hygiene, not
+        // the isolation guarantee.
+        await teardownShiftReceiverProductionFixture(shiftFixture, shiftAuth);
         await context.close();
       }
     }
@@ -707,12 +828,24 @@ async function runAcceptanceAudit() {
 
         // Select material matching target
         await matDrawer.locator("#materialReceiptMaterialId").selectOption(targetMaterialId);
+        await page.waitForTimeout(300); // let the unit-autofill effect settle
         // Select zone matching target
         await matDrawer.locator("#materialReceiptZoneId").selectOption(targetZoneId);
         // Quantity: 35
         await matDrawer.locator("#materialReceiptQuantity").fill("35");
-        // Unit: kg
-        await matDrawer.locator("#materialReceiptUnit").fill("kg");
+        // Unit: `targetMaterialId` already has stock (it came from GET
+        // /warehouse/material-stock above), so post mobile-UX-audit Phase 1
+        // (commit b4a0c86) the unit field auto-fills from that stock record
+        // and is readOnly — typing into it is no longer possible, and no
+        // longer necessary. Assert the auto-fill is actually correct instead
+        // of blindly typing a value.
+        const unitField = matDrawer.locator("#materialReceiptUnit");
+        assert.equal(
+          await unitField.inputValue(),
+          targetMatStockBefore.unit,
+          `Unit field must auto-fill with this material's established unit (${targetMatStockBefore.unit})`,
+        );
+        assert(await unitField.evaluate((el) => el.readOnly), "Unit field must be readOnly for a material with existing stock");
         const uniqueMatNote = `Mobil qabul tekshiruvi ${Date.now().toString().slice(-4)}`;
         await matDrawer.locator("#materialReceiptNote").fill(uniqueMatNote);
 

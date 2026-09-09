@@ -21,10 +21,23 @@ async function loginAndGetToken(context, email, isAdmin = false) {
   const page = await context.newPage();
   const loginUrl = isAdmin ? `${URL}/admin/login` : `${URL}/login`;
   await page.goto(loginUrl);
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', 'ChangeMe123!');
+  // WebKit-specific harness fix: locator.fill() sets the DOM value directly
+  // and dispatches an input event, but in this environment WebKit doesn't
+  // reliably commit that into React's controlled-input state before the
+  // synchronous form submit reads it — the request body ends up with
+  // `email: ""` even though the field visibly shows the typed value
+  // (confirmed by inspecting the actual POST /auth/login payload). This is
+  // a WebKit+Playwright interaction quirk, not a product bug: reproduced
+  // identically against unmodified origin/main, and Chromium is unaffected.
+  // click() + type() (real per-character keydown/input events) is what
+  // React's onChange reliably observes on both engines, so use that
+  // unconditionally here rather than branching on browser type.
+  await page.click('input[type="email"]');
+  await page.type('input[type="email"]', email, { delay: 15 });
+  await page.click('input[type="password"]');
+  await page.type('input[type="password"]', 'ChangeMe123!', { delay: 15 });
   await page.click('button[type="submit"]');
-  await page.waitForFunction(() => !window.location.href.includes('login'), { timeout: 10000 });
+  await page.waitForFunction(() => !window.location.href.includes('login'), { timeout: 15000 });
   const cookies = await context.cookies();
   const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join('; ');
   
