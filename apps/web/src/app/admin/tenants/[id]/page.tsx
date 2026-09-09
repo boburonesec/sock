@@ -67,6 +67,8 @@ function formatUserRole(role: string): string {
     Seller: "Sotuvchi",
     "Warehouse Operator": "Omborchi",
     "Shift Receiver": "Smena qabul qiluvchi",
+    Mechanic: "Mexanik",
+    "Mechanic Master": "Mexanik-master",
   };
 
   return labels[role] ?? role;

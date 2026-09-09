@@ -153,6 +153,7 @@ export function MaterialsModule() {
         open={isReceiptOpen}
         materials={materialOptions}
         zones={zoneOptions}
+        existingStock={materials}
         isSubmitting={receiptMutation.isPending}
         errorMessage={
           receiptMutation.error instanceof Error

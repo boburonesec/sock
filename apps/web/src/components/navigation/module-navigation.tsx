@@ -21,10 +21,10 @@ export function ModuleNavigation({
   return (
     <nav
       aria-label="Bo‘lim sahifalari"
-      className={cn(
-        "-mx-3 mb-6 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:mb-7 sm:flex-wrap sm:px-0",
-        className,
-      )}
+      // Wrap onto additional rows instead of scrolling horizontally: with a
+      // handful of tabs per module this stays readable, and nothing is ever
+      // clipped off-screen or reachable only by an undiscoverable swipe.
+      className={cn("mb-6 flex flex-wrap gap-2 sm:mb-7", className)}
     >
       {items.map((item) => {
         // Robust prefix matching:

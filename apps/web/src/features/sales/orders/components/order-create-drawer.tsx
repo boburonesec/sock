@@ -302,7 +302,12 @@ export function OrderCreateDrawer({
           ? "Faqat yetkazilmagan buyurtma o‘zgartiriladi. Narxlar o‘zgartirilmasa oldingi holaticha saqlanadi."
           : "Buyurtma yaratiladi — bu mijozga yetkazilgan degani emas. Birlik narx tizim tomonidan olinadi."
       }
-      className="max-w-4xl"
+      // `Drawer`'s own default is `sm:max-w-lg`; tailwind-merge only drops a
+      // conflicting class when the variant matches exactly, so an
+      // unprefixed override here would sit alongside (not replace) that
+      // default and lose to it above the `sm:` breakpoint. Match the prefix
+      // so the wider modal actually applies at `sm:` and up.
+      className="sm:max-w-4xl"
       footer={
         <Button
           form="order-create-form"

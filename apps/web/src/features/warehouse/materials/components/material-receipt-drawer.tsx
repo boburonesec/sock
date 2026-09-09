@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Drawer, DrawerFooter } from "@/components/overlays/drawer";
@@ -14,6 +14,7 @@ import type { MasterDataItem } from "@/lib/api/product";
 import type {
   MaterialReceiptPayload,
   MaterialReceipt,
+  MaterialStock,
   WarehouseZone,
 } from "@/lib/api/warehouse";
 import { formatWarehouseZoneName } from "@/lib/status-labels";
@@ -42,6 +43,15 @@ interface MaterialReceiptDrawerProps {
   open: boolean;
   materials: MasterDataItem[];
   zones: WarehouseZone[];
+  /**
+   * Current stock records, used only to look up the unit each material is
+   * already tracked in (Material itself has no `unit` field — the unit lives
+   * per MaterialStock row). When a material with existing stock is selected,
+   * its established unit is filled in and locked so operators can't
+   * introduce an inconsistent unit for the same material. A material with no
+   * stock yet has no established unit, so the field stays free text.
+   */
+  existingStock: MaterialStock[];
   isSubmitting: boolean;
   errorMessage?: string | null;
   onOpenChange: (open: boolean) => void;
@@ -52,6 +62,7 @@ export function MaterialReceiptDrawer({
   open,
   materials,
   zones,
+  existingStock,
   isSubmitting,
   errorMessage,
   onOpenChange,
@@ -68,6 +79,7 @@ export function MaterialReceiptDrawer({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<MaterialReceiptFormValues>({
     resolver: zodResolver(materialReceiptFormSchema),
@@ -86,6 +98,22 @@ export function MaterialReceiptDrawer({
   const selectedMaterial = materials.find((item) => item.id === selectedMaterialId);
   const selectedZone = zones.find((item) => item.id === selectedZoneId);
 
+  // Most-recently-updated stock record per material decides that material's
+  // established unit (a material can have several stock rows, one per zone).
+  const establishedUnitByMaterialId = useMemo(() => {
+    const map = new Map<string, { unit: string; updatedAt: string }>();
+    for (const stock of existingStock) {
+      const existing = map.get(stock.material.id);
+      if (!existing || stock.updatedAt > existing.updatedAt) {
+        map.set(stock.material.id, { unit: stock.unit, updatedAt: stock.updatedAt });
+      }
+    }
+    return map;
+  }, [existingStock]);
+  const establishedUnit = selectedMaterialId
+    ? establishedUnitByMaterialId.get(selectedMaterialId)?.unit
+    : undefined;
+
   useEffect(() => {
     if (!open) {
       reset({
@@ -95,8 +123,14 @@ export function MaterialReceiptDrawer({
         warehouseZoneId: "",
         note: "",
       });
+      return;
     }
-  }, [open, reset]);
+
+    // Keep the unit field in sync with the selected material: fill + lock it
+    // when that material already has an established unit, otherwise clear it
+    // back to free text so a stale locked value never survives a re-select.
+    setValue("unit", establishedUnit ?? "", { shouldValidate: false });
+  }, [open, establishedUnit, setValue, reset]);
 
   return (
     <Drawer
@@ -168,10 +202,27 @@ export function MaterialReceiptDrawer({
             <Input
               id="materialReceiptUnit"
               placeholder="kg, roll, dona..."
+              // `readOnly`, not `disabled`: a disabled input's value is
+              // excluded from the form submission entirely (native HTML +
+              // react-hook-form both drop disabled fields), which would
+              // silently send an empty unit even though one is shown here.
+              // readOnly blocks typing but keeps the derived value in the
+              // submitted payload.
+              readOnly={Boolean(establishedUnit)}
               disabled={isSubmitting}
+              className={establishedUnit ? "bg-muted/60 text-muted-foreground cursor-not-allowed" : undefined}
               aria-invalid={Boolean(errors.unit)}
               {...register("unit")}
             />
+            {establishedUnit ? (
+              <p className="text-xs text-muted-foreground">
+                Bu material uchun tizimda saqlangan birlik — o‘zgartirib bo‘lmaydi.
+              </p>
+            ) : selectedMaterialId ? (
+              <p className="text-xs text-muted-foreground">
+                Bu material uchun birlik hali belgilanmagan — birinchi qabulda kiriting.
+              </p>
+            ) : null}
           </FormField>
         </div>
 

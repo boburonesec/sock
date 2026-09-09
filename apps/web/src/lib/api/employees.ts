@@ -69,6 +69,16 @@ export interface EmployeePayload {
 
 export const employeesApi = {
   getEmployees: () => apiClient<ApiCollection<Employee>>("/employees"),
+  /**
+   * Same list, but a 403 (e.g. a `finance.write` role like Accountant that
+   * lacks `employees.view`) only disables the caller's picker instead of
+   * tripping the app-wide forbidden-action banner. Kept separate from
+   * `getEmployees` above — that one is passed by reference as a bare
+   * `queryFn` elsewhere, so changing its own signature (even by adding an
+   * optional param) shifts how TanStack Query infers its result type there.
+   */
+  getEmployeesSilentlyForbidden: () =>
+    apiClient<ApiCollection<Employee>>("/employees", { silentForbidden: true }),
   createEmployee: (payload: EmployeePayload) =>
     apiClient<{ data: Employee }>("/employees", {
       method: "POST",

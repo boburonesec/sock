@@ -26,10 +26,15 @@ export function AdvancesModule() {
   const canPay = permissions.includes("expense.pay");
   const queryClient = useQueryClient();
   const { data, error, isError, isPending, refetch } = useAdvances();
+  // `silentForbidden`: not every finance.write role also has employees.view
+  // (e.g. Accountant). A missing employee list should only disable the
+  // "who is this for" picker below, not trip the page-level forbidden banner.
   const employeesQuery = useQuery({
     queryKey: queryKeys.employees.list(),
-    queryFn: employeesApi.getEmployees,
+    queryFn: employeesApi.getEmployeesSilentlyForbidden,
+    retry: false,
   });
+  const canPickEmployee = !employeesQuery.isError;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [form, setForm] = useState({ employeeId: "", amount: "", reason: "" });
@@ -132,10 +137,21 @@ export function AdvancesModule() {
         title="Avans so‘rovlari"
         description="So‘rov → menejer tasdiqlaydi → buxgalter to‘laydi. Ish haqiga faqat tasdiqlangan/to‘langan avanslar kiradi."
       >
-        <div className="mb-4 flex justify-end">
-          <Button type="button" onClick={() => setDrawerOpen(true)}>
+        <div className="mb-4 flex flex-col items-end gap-1.5">
+          <Button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            disabled={!canPickEmployee}
+          >
             Avans so‘rovi
           </Button>
+          {!canPickEmployee ? (
+            <p className="text-right text-xs text-muted-foreground">
+              Xodimlar ro‘yxatini ko‘rish uchun ruxsatingiz yo‘q — yangi avans
+              so‘rovini shu yerdan ochib bo‘lmaydi. Kerak bo‘lsa korxona
+              egasidan ruxsat so‘rang.
+            </p>
+          ) : null}
         </div>
         {actionError ? (
           <p className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">

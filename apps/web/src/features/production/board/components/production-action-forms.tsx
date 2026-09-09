@@ -840,7 +840,7 @@ function MoveStageForm({
           !allowedDestinationStage
         }
       >
-        {isMoveStagePending ? "Yuborilmoqda..." : "Smenani saqlash"}
+        {isMoveStagePending ? "Yuborilmoqda..." : "Keyingi bosqichga o‘tkazish"}
       </Button></DrawerFooter>
     </form>
   );

@@ -597,7 +597,7 @@ export class PlatformAdminService {
           hasProductCatalog: productCount > 0,
         },
         notes: [
-          'Tenant suspension login enforcement is deferred in this milestone.',
+          'Korxonani to‘xtatish hozircha faqat holatni belgilaydi — operatorlar kirishini hali cheklamaydi.',
         ],
       },
     };

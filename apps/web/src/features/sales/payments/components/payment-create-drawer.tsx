@@ -91,6 +91,7 @@ export function PaymentCreateDrawer({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -110,7 +111,8 @@ export function PaymentCreateDrawer({
   });
   const selectedClientId = watch("clientId");
   const watchedAllocations = watch("allocations");
-  const paymentAmount = Number(watch("amount"));
+  const amountRaw = watch("amount");
+  const paymentAmount = Number(amountRaw);
 
   const submitPayment = handleSubmit(async (values) => {
     if (submissionRef.current) return;
@@ -135,6 +137,19 @@ export function PaymentCreateDrawer({
     }
   }, [open, reset]);
 
+  // With exactly one allocation row, its amount must always equal the total
+  // payment (the schema requires the allocations to sum to the payment
+  // amount exactly), so retyping the same number into that single row is
+  // pure duplicate entry. Keep it mirrored to the payment amount — still a
+  // normal editable field, so a deliberate manual edit sticks until the
+  // payment amount itself changes again or a second order is added, at
+  // which point the split is the seller's to manage by hand as before.
+  useEffect(() => {
+    if (fields.length === 1) {
+      setValue("allocations.0.amount", amountRaw, { shouldValidate: false });
+    }
+  }, [amountRaw, fields.length, setValue]);
+
   const clientOrders = useMemo(
     () => orders.filter((order) => order.client.id === selectedClientId && !["DRAFT", "CANCELLED"].includes(order.status)),
     [orders, selectedClientId],
@@ -153,7 +168,10 @@ export function PaymentCreateDrawer({
       onOpenChange={onOpenChange}
       title="To‘lov qayd qilish"
       description="Mijoz to‘lovini qabul qilish va mavjud buyurtmalarga taqsimlash."
-      className="max-w-4xl"
+      // See order-create-drawer.tsx: an unprefixed override can't beat
+      // Drawer's own `sm:max-w-lg` default in the compiled CSS, so this
+      // never actually widened past 512px on desktop despite the intent.
+      className="sm:max-w-4xl"
       footer={
         <Button
           form="payment-create-form"
