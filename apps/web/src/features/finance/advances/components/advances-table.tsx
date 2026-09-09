@@ -7,20 +7,14 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
-import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
+import { StatusBadge } from "@/components/data-display/status-badge";
 import type { Advance } from "@/lib/api/finance";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
 import { formatDateTimeForUser } from "@/lib/format";
-
-const advanceStatusTone: Record<string, StatusTone> = {
-  REQUESTED: "warning",
-  APPROVED: "info",
-  REJECTED: "danger",
-  PAID: "success",
-  APPLIED: "success",
-  CANCELLED: "neutral",
-};
+import { advanceStatusTone, getVisibleAdvanceActions } from "../lib/advance-actions";
+import { AdvanceCard } from "./advance-card";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -50,6 +44,25 @@ export function AdvancesTable({
   onPay?: (advance: Advance) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={advances}
+      getKey={(advance) => advance.id}
+      renderCard={(advance) => (
+        <AdvanceCard
+          advance={advance}
+          busy={busyId === advance.id}
+          isRequester={!allowRequesterBypass && advance.requestedBy?.id === currentUserId}
+          canApprove={canApprove}
+          canPay={canPay}
+          onApprove={onApprove}
+          onReject={onReject}
+          onPay={onPay}
+        />
+      )}
+      ariaLabel="Avans so‘rovlari"
+      emptyTitle="Avanslar mavjud emas"
+      emptyDescription="Avans so‘rovlari yaratilgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Avans so‘rovlari">
       <DataTableHead>
         <DataTableRow>
@@ -69,6 +82,7 @@ export function AdvancesTable({
             const busy = busyId === advance.id;
             const isRequester =
               !allowRequesterBypass && advance.requestedBy?.id === currentUserId;
+            const actions = getVisibleAdvanceActions(advance, { canApprove, canPay, isRequester });
             return (
               <DataTableRow key={advance.id}>
                 <DataTableCell className="font-semibold">
@@ -86,29 +100,29 @@ export function AdvancesTable({
                 <DataTableCell>{formatDate(advance.paidAt)}</DataTableCell>
                 <DataTableCell>
                   <div className="flex flex-wrap gap-2">
-                    {advance.status === "REQUESTED" && canApprove && !isRequester ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8 px-2 text-xs"
-                          disabled={busy}
-                          onClick={() => onApprove?.(advance)}
-                        >
-                          Tasdiqlash
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8 px-2 text-xs"
-                          disabled={busy}
-                          onClick={() => onReject?.(advance)}
-                        >
-                          Rad etish
-                        </Button>
-                      </>
+                    {actions.approve ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 px-2 text-xs"
+                        disabled={busy}
+                        onClick={() => onApprove?.(advance)}
+                      >
+                        Tasdiqlash
+                      </Button>
                     ) : null}
-                    {advance.status === "APPROVED" && canPay && !isRequester ? (
+                    {actions.reject ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 px-2 text-xs"
+                        disabled={busy}
+                        onClick={() => onReject?.(advance)}
+                      >
+                        Rad etish
+                      </Button>
+                    ) : null}
+                    {actions.pay ? (
                       <Button
                         type="button"
                         className="h-8 px-2 text-xs"
@@ -135,5 +149,6 @@ export function AdvancesTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

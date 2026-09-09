@@ -7,6 +7,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import {
   employeeWorkProfileLabels,
@@ -14,10 +15,19 @@ import {
 } from "@/lib/api/employees";
 import { formatDateTimeForUser } from "@/lib/format";
 import { formatRoleName } from "@/lib/status-labels";
+import { EmployeeCard } from "./employee-card";
 
 interface EmployeeTableProps { employees: Employee[]; onSelect: (employee: Employee) => void; }
 export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
   return (
+    <ResponsiveDataList
+      items={employees}
+      getKey={(employee) => employee.id}
+      renderCard={(employee) => <EmployeeCard employee={employee} onSelect={onSelect} />}
+      ariaLabel="Xodimlar ro‘yxati"
+      emptyTitle="Xodimlar yo‘q"
+      emptyDescription="Xodim qo‘shilgach, shu ro‘yxatda ko‘rinadi."
+    >
     <DataTable label="Xodimlar ro‘yxati">
       <DataTableHead>
         <DataTableRow>
@@ -95,5 +105,6 @@ export function EmployeeTable({ employees, onSelect }: EmployeeTableProps) {
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

@@ -9,6 +9,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -18,6 +19,7 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { formatDateTimeForUser } from "@/lib/format";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
+import { AdjustmentCard } from "./components/adjustment-card";
 
 type Kind = "bonus" | "penalty";
 
@@ -61,6 +63,14 @@ export function AdjustmentsListModule({ kind }: { kind: Kind }) {
     : "Jarima yozuvlari xodim kartasidan yoki moliya bo‘limidan qo‘shilgach shu yerda ko‘rinadi.";
 
   return (
+    <ResponsiveDataList
+      items={rows}
+      getKey={(row) => row.id}
+      renderCard={(row) => <AdjustmentCard row={row} />}
+      ariaLabel={isBonus ? "Bonuslar ro‘yxati" : "Jarimalar ro‘yxati"}
+      emptyTitle={emptyTitle}
+      emptyDescription={emptyDescription}
+    >
     <DataTable label={isBonus ? "Bonuslar" : "Jarimalar"}>
       <DataTableHead>
         <DataTableRow>
@@ -97,5 +107,6 @@ export function AdjustmentsListModule({ kind }: { kind: Kind }) {
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

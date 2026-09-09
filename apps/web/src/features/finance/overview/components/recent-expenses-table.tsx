@@ -6,7 +6,9 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
+import { ExpenseCard } from "@/features/finance/expenses/components/expense-card";
 import type { Expense } from "@/lib/api/finance";
 import { expenseStatusLabel, labelStatus } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
@@ -28,6 +30,17 @@ function formatDate(value: string): string {
 
 export function RecentExpensesTable({ expenses }: { expenses: Expense[] }) {
   return (
+    <ResponsiveDataList
+      items={expenses}
+      getKey={(expense) => expense.id}
+      // Read-only preview: no approve/pay/cancel handlers, so the shared
+      // card renders with no action row — matches this table's own
+      // read-only desktop columns (no "Amallar" column here).
+      renderCard={(expense) => <ExpenseCard expense={expense} isRequester={false} />}
+      ariaLabel="So‘nggi xarajatlar"
+      emptyTitle="Xarajatlar mavjud emas"
+      emptyDescription="Xarajat yozuvlari paydo bo‘lgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="So‘nggi xarajatlar">
       <DataTableHead>
         <DataTableRow>
@@ -62,5 +75,6 @@ export function RecentExpensesTable({ expenses }: { expenses: Expense[] }) {
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

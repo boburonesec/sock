@@ -6,7 +6,9 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
+import { AdvanceCard } from "@/features/finance/advances/components/advance-card";
 import type { Advance } from "@/lib/api/finance";
 import { advanceStatusLabel, labelStatus } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
@@ -27,6 +29,17 @@ function formatDate(value: string): string {
 
 export function RecentAdvancesTable({ advances }: { advances: Advance[] }) {
   return (
+    <ResponsiveDataList
+      items={advances}
+      getKey={(advance) => advance.id}
+      // Read-only preview: no approve/pay handlers, so the shared card
+      // renders with no action row — matches this table's own read-only
+      // desktop columns (no "Amallar" column here).
+      renderCard={(advance) => <AdvanceCard advance={advance} isRequester={false} />}
+      ariaLabel="So‘nggi avanslar"
+      emptyTitle="Avanslar mavjud emas"
+      emptyDescription="Avans so‘rovlari paydo bo‘lgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="So‘nggi avanslar">
       <DataTableHead>
         <DataTableRow>
@@ -61,5 +74,6 @@ export function RecentAdvancesTable({ advances }: { advances: Advance[] }) {
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

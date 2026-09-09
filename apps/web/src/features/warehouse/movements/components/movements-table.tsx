@@ -6,6 +6,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import type { StockMovement } from "@/lib/api/warehouse";
 import {
   formatStockMovementReason,
@@ -16,6 +17,7 @@ import {
   stockMovementTypeLabel,
 } from "@/lib/status-labels";
 import { formatDateTimeForUser } from "@/lib/format";
+import { MovementCard } from "./movement-card";
 
 function formatDate(value: string): string {
   return formatDateTimeForUser(new Date(value));
@@ -37,6 +39,14 @@ export function MovementsTable({
   onSelect: (movement: StockMovement) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={movements}
+      getKey={(movement) => movement.id}
+      renderCard={(movement) => <MovementCard movement={movement} onSelect={onSelect} />}
+      ariaLabel="Ombor harakatlari"
+      emptyTitle="Ombor harakatlari mavjud emas"
+      emptyDescription="Ombor harakatlari paydo bo‘lgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Ombor harakatlari">
       <DataTableHead>
         <DataTableRow>
@@ -100,5 +110,6 @@ export function MovementsTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

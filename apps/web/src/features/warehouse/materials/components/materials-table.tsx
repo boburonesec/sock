@@ -6,9 +6,11 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { formatWarehouseZoneName } from "@/lib/status-labels";
 import type { MaterialStock } from "@/lib/api/warehouse";
 import { formatDateTimeForUser } from "@/lib/format";
+import { MaterialCard } from "./material-card";
 
 function formatDate(value: string): string {
   return formatDateTimeForUser(new Date(value));
@@ -22,6 +24,14 @@ export function MaterialsTable({
   onSelect: (material: MaterialStock) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={materials}
+      getKey={(material) => material.id}
+      renderCard={(material) => <MaterialCard material={material} onSelect={onSelect} />}
+      ariaLabel="Materiallar ro‘yxati"
+      emptyTitle="Material qoldiqlari mavjud emas"
+      emptyDescription="Material stock yozuvlari paydo bo‘lgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Materiallar ro‘yxati">
       <DataTableHead>
         <DataTableRow>
@@ -61,5 +71,6 @@ export function MaterialsTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

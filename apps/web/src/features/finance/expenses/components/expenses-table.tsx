@@ -7,19 +7,14 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
-import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
+import { StatusBadge } from "@/components/data-display/status-badge";
 import type { Expense } from "@/lib/api/finance";
 import { expenseStatusLabel, labelStatus } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
 import { formatDateTimeForUser } from "@/lib/format";
-
-const expenseStatusTone: Record<string, StatusTone> = {
-  REQUESTED: "warning",
-  APPROVED: "info",
-  REJECTED: "danger",
-  PAID: "success",
-  CANCELLED: "neutral",
-};
+import { expenseStatusTone, getVisibleExpenseActions } from "../lib/expense-actions";
+import { ExpenseCard } from "./expense-card";
 
 function formatDate(value: string): string {
   return formatDateTimeForUser(new Date(value));
@@ -49,6 +44,26 @@ export function ExpensesTable({
   onCancel?: (expense: Expense) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={expenses}
+      getKey={(expense) => expense.id}
+      renderCard={(expense) => (
+        <ExpenseCard
+          expense={expense}
+          busy={busyId === expense.id}
+          isRequester={!allowRequesterBypass && expense.requestedBy?.id === currentUserId}
+          canApprove={canApprove}
+          canPay={canPay}
+          onApprove={onApprove}
+          onReject={onReject}
+          onPay={onPay}
+          onCancel={onCancel}
+        />
+      )}
+      ariaLabel="Xarajat so‘rovlari"
+      emptyTitle="Xarajatlar mavjud emas"
+      emptyDescription="Xarajat so‘rovlari yaratilgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Xarajat so‘rovlari">
       <DataTableHead>
         <DataTableRow>
@@ -69,6 +84,7 @@ export function ExpensesTable({
             const busy = busyId === expense.id;
             const isRequester =
               !allowRequesterBypass && expense.requestedBy?.id === currentUserId;
+            const actions = getVisibleExpenseActions(expense, { canApprove, canPay, isRequester });
             return (
               <DataTableRow key={expense.id}>
                 <DataTableCell className="font-semibold">
@@ -89,29 +105,29 @@ export function ExpensesTable({
                 </DataTableCell>
                 <DataTableCell>
                   <div className="flex flex-wrap gap-2">
-                    {expense.status === "REQUESTED" && canApprove && !isRequester ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-9 px-3 text-xs"
-                          disabled={busy}
-                          onClick={() => onApprove?.(expense)}
-                        >
-                          Tasdiqlash
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-9 px-3 text-xs"
-                          disabled={busy}
-                          onClick={() => onReject?.(expense)}
-                        >
-                          Rad etish
-                        </Button>
-                      </>
+                    {actions.approve ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-9 px-3 text-xs"
+                        disabled={busy}
+                        onClick={() => onApprove?.(expense)}
+                      >
+                        Tasdiqlash
+                      </Button>
                     ) : null}
-                    {expense.status === "REQUESTED" ? (
+                    {actions.reject ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-9 px-3 text-xs"
+                        disabled={busy}
+                        onClick={() => onReject?.(expense)}
+                      >
+                        Rad etish
+                      </Button>
+                    ) : null}
+                    {actions.cancel ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -122,28 +138,17 @@ export function ExpensesTable({
                         Bekor
                       </Button>
                     ) : null}
-                    {expense.status === "APPROVED" && canPay && !isRequester ? (
-                        <Button
-                          type="button"
-                          className="min-h-9 px-3 text-xs"
-                          disabled={busy}
-                          onClick={() => onPay?.(expense)}
-                        >
-                          To‘lash
-                        </Button>
+                    {actions.pay ? (
+                      <Button
+                        type="button"
+                        className="min-h-9 px-3 text-xs"
+                        disabled={busy}
+                        onClick={() => onPay?.(expense)}
+                      >
+                        To‘lash
+                      </Button>
                     ) : null}
-                    {expense.status === "APPROVED" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-9 px-3 text-xs"
-                          disabled={busy}
-                          onClick={() => onCancel?.(expense)}
-                        >
-                          Bekor
-                        </Button>
-                    ) : null}
-                    {expense.status !== "REQUESTED" && expense.status !== "APPROVED" ? (
+                    {!actions.approve && !actions.reject && !actions.cancel && !actions.pay ? (
                       <span className="text-xs text-muted-foreground">—</span>
                     ) : null}
                   </div>
@@ -160,5 +165,6 @@ export function ExpensesTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }
