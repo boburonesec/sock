@@ -17,6 +17,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PageSection } from "@/components/layout/page-section";
@@ -44,6 +45,7 @@ import type {
   ProductVariantOption,
 } from "./components/production-action-forms";
 import type { ProductionAction } from "./components/production-action-types";
+import { ProductionMovementCard } from "./components/production-movement-card";
 import { ProductionStageCard } from "./components/production-stage-card";
 import { ShiftReconciliationPanel } from "./components/shift-reconciliation-panel";
 import { CorrectionManagerQueue, CorrectionRequestButton } from "./components/correction-request-panel";
@@ -349,6 +351,19 @@ export function ProductionBoard() {
         title="Oxirgi bosqich o‘tkazishlari"
         description="Bosqichlar orasidagi oxirgi ma’lumot mahsulot o‘tishlari"
       >
+        <ResponsiveDataList
+          items={movements}
+          getKey={(movement) => movement.id}
+          renderCard={(movement) => (
+            <ProductionMovementCard
+              movement={movement}
+              canRequestProductionCorrection={canRequestProductionCorrection}
+            />
+          )}
+          ariaLabel="Oxirgi bosqich o‘tkazishlari"
+          emptyTitle="Bosqich o‘tkazishlari mavjud emas"
+          emptyDescription="Bosqichlar orasidagi mahsulot o‘tishlari qayd etilgach, ular shu yerda ko‘rinadi."
+        >
         <DataTable label="Oxirgi bosqich o‘tkazishlari">
           <DataTableHead>
             <DataTableRow>
@@ -394,6 +409,7 @@ export function ProductionBoard() {
             )}
           </tbody>
         </DataTable>
+        </ResponsiveDataList>
       </PageSection>
 
       <PageSection title="Oxirgi ishchi faoliyati" description="Kiritilgan ish natijalari va xatoni bildirish amali">
