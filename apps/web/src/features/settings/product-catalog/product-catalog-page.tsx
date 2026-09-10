@@ -17,6 +17,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
@@ -39,6 +40,8 @@ import {
 import { queryKeys } from "@/lib/api/query-keys";
 import type { ProductVariantReference } from "@/lib/api/types";
 import { formatDateShort } from "@/lib/format";
+import { ProductCard } from "./components/product-card";
+import { VariantCard } from "./components/variant-card";
 
 const productFormSchema = z.object({
   name: z
@@ -394,6 +397,16 @@ function ProductsTable({
   onArchive: (product: Product) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={products}
+      getKey={(product) => product.id}
+      renderCard={(product) => (
+        <ProductCard product={product} onSelect={onSelect} onEdit={onEdit} onArchive={onArchive} />
+      )}
+      ariaLabel="Mahsulotlar jadvali"
+      emptyTitle="Mahsulotlar mavjud emas"
+      emptyDescription="Mahsulot yaratilgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Mahsulotlar jadvali">
       <DataTableHead>
         <DataTableRow>
@@ -434,6 +447,7 @@ function ProductsTable({
         ))}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }
 
@@ -525,6 +539,23 @@ function ProductDetailDrawer({
         <div className="flex justify-end">
           <Button onClick={() => onCreateVariant(product)}>Variant qo‘shish</Button>
         </div>
+        <ResponsiveDataList
+          items={product.variants}
+          getKey={(variant) => variant.id}
+          renderCard={(variant) => (
+            <VariantCard
+              product={product}
+              variant={variant}
+              onSelectVariant={onSelectVariant}
+              onEditVariant={onEditVariant}
+              onAddPrice={onAddPrice}
+              onArchiveVariant={onArchiveVariant}
+            />
+          )}
+          ariaLabel="Variantlar"
+          emptyTitle="Variantlar mavjud emas"
+          emptyDescription="Rang, material va mavsumni tanlab mahsulot turini yarating."
+        >
         <DataTable label="Variantlar">
           <DataTableHead>
             <DataTableRow>
@@ -572,6 +603,7 @@ function ProductDetailDrawer({
             )}
           </tbody>
         </DataTable>
+        </ResponsiveDataList>
 
         <VariantPriceHistory variant={selectedVariant} />
       </div>

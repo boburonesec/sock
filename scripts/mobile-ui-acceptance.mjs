@@ -155,18 +155,34 @@ async function assertDrawerFooterReachable(page, submitLocator) {
 async function runSeller() {
   const token = await apiLogin('seller@paypoq.local');
 
-  const clientsData = await apiFetch('/sales/clients', token);
-  const clients = clientsData?.data ?? [];
-  if (clients.length === 0) throw new Error('No clients — seed required');
+  // Deterministic fixture: create a uniquely-named client for this run via
+  // the real API instead of reusing whichever client `GET /sales/clients`
+  // happens to return first (previously `clients[0]`, which resolved to
+  // the shared demo client "Andijon Savdo" and left it with a growing pile
+  // of orphaned 36,000 so'm orders every run — the root cause behind a
+  // Sales Payments acceptance failure in mobile-business-acceptance.mjs,
+  // fixed in Phase 7 by decoupling that test from the shared client; this
+  // was the follow-up, task_f274b341, to also stop creating the pollution
+  // in the first place). This run's client is referenced nowhere else, so
+  // it can never affect another test or another run — and the assertions
+  // below check the order for *this* client specifically, not "whichever
+  // order sorts first".
+  const uniqueClientName = `Seller UI Test ${RUN_ID}`;
+  const createdClientRes = await apiFetch('/sales/clients', token, 'POST', { name: uniqueClientName });
+  const clientId = createdClientRes?.data?.id;
+  assert.ok(clientId, 'Failed to create unique client fixture via API');
+
+  // The product catalog is stable seed data — never created or mutated by
+  // any acceptance run — so deriving a variant from it is deterministic
+  // without depending on any prior order's history.
+  const productsData = await apiFetch('/product/products', token);
+  const products = productsData?.data ?? [];
+  const variantId = products.map((p) => p.variants?.[0]?.id).find(Boolean);
+  assert.ok(variantId, 'No product variant available in catalog — seed required');
 
   const ordersData = await apiFetch('/sales/orders', token);
-  const existingOrders = ordersData?.data ?? [];
-  if (existingOrders.length === 0) throw new Error('No existing orders to derive a product variant');
-
-  const variantId   = existingOrders[0].items[0].productVariant.id;
-  const clientId    = clients[0].id;
-  const testQty     = 3;
-  const countBefore = existingOrders.length;
+  const countBefore = (ordersData?.data ?? []).length;
+  const testQty = 3;
 
   const browser = await webkit.launch();
   const context = await browser.newContext({ viewport: { width: 375, height: 667 } });
@@ -211,7 +227,10 @@ async function runSeller() {
     const afterOrders = afterData?.data ?? [];
     assert.ok(afterOrders.length > countBefore,
       `Order count did not increase: before=${countBefore} after=${afterOrders.length}`);
-    const created = afterOrders[0];
+    // Exact postcondition — the order for *this run's own client*, not
+    // merely "whichever order the API happens to list first".
+    const created = afterOrders.find((o) => o.client?.name === uniqueClientName);
+    assert.ok(created, `No order found for this run's client '${uniqueClientName}'`);
     assert.ok(
       created.items.some(i => i.quantity === testQty),
       `No item with qty=${testQty}; items=${JSON.stringify(created.items)}`
@@ -221,9 +240,23 @@ async function runSeller() {
       'Create Order Flow',
       'Clicked Buyurtma yaratish (standard click)',
       'Drawer closed',
-      `Order #${created.orderNumber} created · qty=${testQty} confirmed via API`);
+      `Order #${created.orderNumber} created for unique client '${uniqueClientName}' · qty=${testQty} confirmed via API`);
   } finally {
     await browser.close();
+    // Fixture cleanup: archive the client this run created (the real
+    // POST /sales/clients/:id/archive API, which Seller already holds
+    // sales.write for) so it doesn't linger as an ACTIVE client forever.
+    // Best-effort — Sales orders have no delete/archive lifecycle in this
+    // domain, so uniqueness (not deletion) is what actually keeps runs
+    // independent; archiving the client is additional hygiene on top of
+    // that, not the isolation guarantee itself.
+    try {
+      if (clientId) {
+        await apiFetch(`/sales/clients/${clientId}/archive`, token, 'POST');
+      }
+    } catch {
+      // Never let cleanup failure mask the real assertion result above.
+    }
   }
 }
 

@@ -6,10 +6,12 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { PageSection } from "@/components/layout/page-section";
 import type { ExecutiveSummary } from "@/lib/api/dashboard";
 import { formatDateTimeForUser } from "@/lib/format";
 import { formatVisibleStatusText } from "@/lib/status-labels";
+import { RecentActivityCard } from "./recent-activity-card";
 
 type RecentActivityItem = ExecutiveSummary["recentActivity"][number];
 
@@ -24,6 +26,14 @@ export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
       title="So‘nggi faollik"
       description="Tizimdagi oxirgi muhim yozuvlar"
     >
+      <ResponsiveDataList
+        items={items}
+        getKey={(item) => `${item.type}-${item.id}`}
+        renderCard={(item) => <RecentActivityCard item={item} />}
+        ariaLabel="So‘nggi faollik"
+        emptyTitle="So‘nggi faollik yo‘q"
+        emptyDescription="Hozircha so‘nggi faollik bo‘yicha ma’lumot yo‘q."
+      >
       <DataTable label="So‘nggi faollik">
         <DataTableHead>
           <DataTableRow>
@@ -52,6 +62,7 @@ export function RecentActivity({ items }: { items: RecentActivityItem[] }) {
           )}
         </tbody>
       </DataTable>
+      </ResponsiveDataList>
     </PageSection>
   );
 }

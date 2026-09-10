@@ -1,8 +1,10 @@
 import { DataTable, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { ExecutiveHealthStatus, ExecutiveSummary } from "@/lib/api/dashboard";
 import { formatCurrency } from "@/lib/utils";
+import { TopClientCard } from "./top-client-card";
 
 type TopClient = ExecutiveSummary["topClients"][number];
 
@@ -20,6 +22,14 @@ const statusTones: Record<ExecutiveHealthStatus, StatusTone> = {
 
 export function TopClients({ clients }: { clients: TopClient[] }) {
   return (
+    <ResponsiveDataList
+      items={clients}
+      getKey={(client) => client.clientId}
+      renderCard={(client) => <TopClientCard client={client} />}
+      ariaLabel="Eng faol mijozlar"
+      emptyTitle="Mijozlar bo‘yicha ma’lumot yo‘q"
+      emptyDescription="Hozircha tizim bu ro‘yxat uchun ma’lumot qaytarmadi."
+    >
     <DataTable label="Eng faol mijozlar">
       <DataTableHead>
         <DataTableRow>
@@ -50,5 +60,6 @@ export function TopClients({ clients }: { clients: TopClient[] }) {
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }
