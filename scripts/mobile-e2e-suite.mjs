@@ -155,17 +155,29 @@ async function runMobileSuite() {
           await page.waitForTimeout(300);
         }
 
-        // Test client row tap opens client detail drawer
-        const firstClientRow = page.locator("tbody tr").first();
-        if (await firstClientRow.isVisible()) {
-          await firstClientRow.click();
-          await page.waitForTimeout(400);
-          const detailDrawer = page.locator("section[role='dialog']");
-          if (await detailDrawer.isVisible()) {
-            pass("Tapping client row opens client detail drawer on mobile");
-            await detailDrawer.locator("button[aria-label='Yopish']").click();
-          }
-        }
+        // Check Sales Clients — migrated to a mobile card list (mobile UX
+        // audit Phase 4): the table no longer renders at this width at all,
+        // replaced by ResponsiveDataList's card list. Dedicated
+        // deterministic coverage for this lives in
+        // scripts/phase4-sales-mobile-acceptance.mjs; this suite still
+        // checks the table is genuinely hidden and the new card
+        // interaction works, so a regression here still fails loudly
+        // (this used to be a soft `if (isVisible)` check against the
+        // desktop table's `tbody tr`, which silently stopped asserting
+        // anything once that table was legitimately hidden on mobile —
+        // fixed to assert against the actual mobile card, mirroring the
+        // Orders check above).
+        const clientsDesktopTable = page.locator(".hidden.sm\\:block").first();
+        assert(!(await clientsDesktopTable.isVisible()), "Desktop clients table must be hidden on mobile");
+
+        const firstClientCard = page.locator('ul[aria-label="Mijozlar ro‘yxati"] > li').first().locator("button");
+        assert(await firstClientCard.isVisible(), "First client card must be visible");
+        await firstClientCard.click();
+        await page.waitForTimeout(400);
+        const clientDetailDrawer = page.locator("section[role='dialog']");
+        assert(await clientDetailDrawer.isVisible(), "Tapping a client card must open the client detail drawer");
+        pass("Tapping client card opens client detail drawer on mobile");
+        await clientDetailDrawer.locator("button[aria-label='Yopish']").click();
 
       } catch (err) {
         fail("Seller workflow on common phone", err);

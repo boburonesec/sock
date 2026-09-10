@@ -6,8 +6,10 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { Client } from "@/lib/api/sales";
+import { ClientCard } from "./client-card";
 
 const statusTone: Record<string, StatusTone> = {
   ACTIVE: "success",
@@ -27,6 +29,14 @@ export function ClientsTable({
   onSelect: (client: Client) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={clients}
+      getKey={(client) => client.id}
+      renderCard={(client) => <ClientCard client={client} onSelect={onSelect} />}
+      ariaLabel="Mijozlar ro‘yxati"
+      emptyTitle="Mijozlar mavjud emas"
+      emptyDescription="Mijoz qo‘shilgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="Mijozlar ro‘yxati">
       <DataTableHead>
         <DataTableRow>
@@ -86,5 +96,6 @@ export function ClientsTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

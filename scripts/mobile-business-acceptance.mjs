@@ -297,7 +297,17 @@ async function runAcceptanceAudit() {
         // Submit client
         await clientSubmitBtn.click();
         await page.waitForTimeout(800);
-        await page.waitForSelector(`text=${uniqueClientName}`, { timeout: 10000 });
+        // Sales Clients is migrated to a mobile card list (mobile UX audit
+        // Phase 4): the desktop table now renders `display:none` at this
+        // width but is still in the DOM, so a bare `text=` selector matches
+        // it *and* the visible mobile card — Playwright's deprecated
+        // `waitForSelector` picks the first DOM match (the hidden table
+        // row) and times out waiting for it to become visible. Scope to
+        // the visible mobile card list explicitly instead.
+        await page
+          .locator(`ul[aria-label="Mijozlar ro‘yxati"]`)
+          .getByText(uniqueClientName)
+          .waitFor({ state: "visible", timeout: 10000 });
 
         // Verify clean reset on next open
         await addClientBtn.click();
@@ -307,13 +317,19 @@ async function runAcceptanceAudit() {
         await clientDrawer.getByRole("button", { name: "Yopish" }).click();
         await page.waitForTimeout(300);
 
-        // Tap client row -> detail drawer opens
-        const newClientRow = page.locator(`tr:has-text('${uniqueClientName}')`).first();
-        assert(await newClientRow.isVisible(), "New client row must be visible");
-        await newClientRow.click();
+        // Tap client card -> detail drawer opens. Sales Clients renders the
+        // mobile card list at this viewport (mobile UX audit Phase 4) — the
+        // desktop `tr` this used to target is `display:none` here.
+        const newClientCard = page
+          .locator(`ul[aria-label="Mijozlar ro‘yxati"] > li`)
+          .filter({ hasText: uniqueClientName })
+          .first()
+          .locator("button");
+        assert(await newClientCard.isVisible(), "New client card must be visible");
+        await newClientCard.click();
         await page.waitForTimeout(400);
         const detailDrawer = page.locator("section[role='dialog']");
-        assert(await detailDrawer.isVisible(), "Tapping client row must open detail drawer");
+        assert(await detailDrawer.isVisible(), "Tapping client card must open detail drawer");
         assert(await detailDrawer.locator(`text=${uniqueClientName}`).first().isVisible(), "Detail drawer must show client name");
         await detailDrawer.getByRole("button", { name: "Yopish" }).click();
         await page.waitForTimeout(300);

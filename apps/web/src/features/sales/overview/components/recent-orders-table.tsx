@@ -6,10 +6,12 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import type { SalesSummary } from "@/lib/api/sales";
 import { formatCurrency } from "@/lib/utils";
 import { formatDateShort } from "@/lib/format";
+import { RecentOrderCard } from "./recent-order-card";
 
 type RecentOrder = SalesSummary["recentOrders"][number];
 
@@ -27,6 +29,14 @@ function formatDate(value: string): string {
 
 export function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
   return (
+    <ResponsiveDataList
+      items={orders}
+      getKey={(order) => order.id}
+      renderCard={(order) => <RecentOrderCard order={order} />}
+      ariaLabel="So‘nggi buyurtmalar"
+      emptyTitle="So‘nggi buyurtmalar mavjud emas"
+      emptyDescription="Sotuvchilar buyurtma yaratgach, ular shu yerda ko‘rinadi."
+    >
     <DataTable label="So‘nggi buyurtmalar">
       <DataTableHead>
         <DataTableRow>
@@ -67,5 +77,6 @@ export function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }

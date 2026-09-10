@@ -6,8 +6,10 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import type { ClientDebt } from "@/lib/api/sales";
 import { formatCurrency } from "@/lib/utils";
+import { DebtCard } from "./debt-card";
 
 export function ClientDebtsTable({
   debts,
@@ -17,6 +19,14 @@ export function ClientDebtsTable({
   onSelect: (debt: ClientDebt) => void;
 }) {
   return (
+    <ResponsiveDataList
+      items={debts}
+      getKey={(debt) => debt.client.id}
+      renderCard={(debt) => <DebtCard debt={debt} onSelect={onSelect} />}
+      ariaLabel="Mijoz qarzdorligi"
+      emptyTitle="Mijoz qarzlari mavjud emas"
+      emptyDescription="Buyurtma va to‘lovlar paydo bo‘lgach, tizim hisob-kitob shu yerda ko‘rinadi."
+    >
     <DataTable label="Mijoz qarzdorligi">
       <DataTableHead>
         <DataTableRow>
@@ -56,5 +66,6 @@ export function ClientDebtsTable({
         )}
       </tbody>
     </DataTable>
+    </ResponsiveDataList>
   );
 }
