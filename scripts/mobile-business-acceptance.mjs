@@ -442,13 +442,43 @@ async function runAcceptanceAudit() {
         recordResult("Seller", "Order Creation & Details (Variant Select, Calculation, Server Persist)", "YES", "YES", "N/A", "PASS", "Order for " + expectedTotal + " so'm created & verified in API and UI");
 
         // --- 1.3 Payment Allocation Workflow ---
+        // Deterministic fixture: pay against the order just created for
+        // `uniqueClientName` above, instead of the shared demo client
+        // "Andijon Savdo" this used to hardcode. "Andijon Savdo" silently
+        // accumulates dozens of leftover 36,000 so'm UNPAID orders from
+        // mobile-ui-acceptance.mjs's own Seller flow (which has no
+        // cleanup), and the old `selectOption({ index: 1 })` on the
+        // allocation dropdown picked whichever of that client's orders
+        // happened to sort first — sometimes one whose remaining balance
+        // was smaller than the fixed 50,000 payment. The backend correctly
+        // rejects an allocation that exceeds an order's remaining balance
+        // ("Allocation exceeds remaining balance for order ...",
+        // sales.service.ts), so the payment silently failed to be created
+        // and every downstream assertion about it failed too — a
+        // non-deterministic-harness bug (shared, cross-script-polluted
+        // fixture data), not a product defect. This run's own client has
+        // exactly one order, so allocation dropdown index 1 is now always
+        // unambiguous, and the payment amount is derived from that order's
+        // own known total so it can never exceed it.
+        const paymentAmount = Math.floor(expectedTotal / 2);
+        assert(
+          paymentAmount > 0 && paymentAmount < expectedTotal,
+          `Computed partial payment amount must be a genuine partial amount (0 < ${paymentAmount} < ${expectedTotal})`,
+        );
+
         // Capture debt state before payment via API
         const debtsBeforeRes = await apiCall("/sales/debts", { token: sellerAuth.accessToken });
         assert(debtsBeforeRes.ok, "API GET /sales/debts must succeed");
-        const andijonDebtBefore = debtsBeforeRes.data.data.find((d) => d.client.name === "Andijon Savdo");
-        assert(andijonDebtBefore, "Andijon Savdo debt record must exist before payment");
-        const beforeDebtAmount = Number(andijonDebtBefore.debt);
-        const beforePaidAmount = Number(andijonDebtBefore.totalPaid);
+        const clientDebtBefore = debtsBeforeRes.data.data.find((d) => d.client.name === uniqueClientName);
+        assert(clientDebtBefore, `${uniqueClientName} debt record must exist before payment`);
+        const beforeDebtAmount = Number(clientDebtBefore.debt);
+        const beforePaidAmount = Number(clientDebtBefore.totalPaid);
+        assert.equal(
+          beforeDebtAmount,
+          expectedTotal,
+          `Starting debt for a brand-new client's first order must equal the order total exactly (expected ${expectedTotal}, got ${beforeDebtAmount})`,
+        );
+        assert.equal(beforePaidAmount, 0, "Starting totalPaid for a brand-new client must be exactly 0");
 
         await page.goto(`${WEB}/sales/payments`, { waitUntil: "networkidle" });
         await checkNoHorizontalOverflow(page, "Seller Payments Page");
@@ -462,64 +492,127 @@ async function runAcceptanceAudit() {
         const paymentDrawer = page.locator("section[role='dialog']");
         assert(await paymentDrawer.isVisible(), "Payment receipt drawer must open");
 
-        // Select client with confirmed orders
-        await paymentDrawer.locator("#paymentClient").selectOption({ label: "Andijon Savdo" });
+        // Select the client created earlier in this run (unique, exactly one order)
+        await paymentDrawer.locator("#paymentClient").selectOption({ label: uniqueClientName });
         await page.waitForTimeout(400);
 
         // Fill payment amount
-        await paymentDrawer.locator("#paymentAmount").fill("50000");
-        // Select order allocation
+        await paymentDrawer.locator("#paymentAmount").fill(String(paymentAmount));
+
+        // Select order allocation — deterministic: this client has exactly
+        // one order, so the dropdown must offer only the placeholder plus it.
         const allocOrderSelect = paymentDrawer.locator("select[id^='paymentAllocationOrder-']").first();
+        const allocOrderOptionsCount = await allocOrderSelect.locator("option").count();
+        assert.equal(
+          allocOrderOptionsCount,
+          2,
+          `Payment allocation dropdown must offer exactly this client's one order (plus the placeholder); found ${allocOrderOptionsCount} options`,
+        );
         await allocOrderSelect.selectOption({ index: 1 });
+        const selectedOrderIdInDropdown = await allocOrderSelect.inputValue();
+        assert.equal(
+          selectedOrderIdInDropdown,
+          dbOrder.id,
+          "Allocation dropdown's only order must be the order created earlier in this run",
+        );
+
         const allocAmountInput = paymentDrawer.locator("input[id^='paymentAllocationAmount-']").first();
-        await allocAmountInput.fill("50000");
+        await allocAmountInput.fill(String(paymentAmount));
 
         // Submit payment
         const paymentSubmitBtn = paymentDrawer.getByRole("button", { name: "To‘lov qayd qilish" });
         await assertTouchTarget(paymentSubmitBtn, "Payment submit button");
         await paymentSubmitBtn.click();
-        
+
         // Wait for API to return the price by checking if placeholder goes away or value is set
         await page.waitForTimeout(1500);
                 await page.waitForTimeout(500);
 
+        // The drawer must actually close on a successful submit — if the
+        // backend had rejected the allocation, the drawer would stay open
+        // with a visible error instead, which the list assertion below
+        // would otherwise mask by simply timing out.
+        assert(
+          !(await paymentDrawer.isVisible().catch(() => false)),
+          "Payment drawer must close after a successful submit (a lingering drawer means the API rejected the payment)",
+        );
 
-        // Verify payment is listed in UI. Sales Payments renders the mobile
-        // card list at this viewport (mobile UX audit Phase 2) — the
-        // desktop `tbody` this used to target is `display:none` here.
-        await page.waitForSelector('ul[aria-label="To‘lovlar ro‘yxati"] li', { timeout: 10000 });
-        const paymentsListText = (await page.locator('ul[aria-label="To‘lovlar ro‘yxati"]').textContent()).replace(/\s+/g, " ");
-        assert(/50[, ]000/.test(paymentsListText), "Payment card list must include 50,000 so'm");
+        // Verify payment is listed in UI, scoped to this run's own client
+        // so a coincidentally-matching amount elsewhere in the (large,
+        // shared) payments list can't produce a false pass. Sales Payments
+        // renders the mobile card list at this viewport (mobile UX audit
+        // Phase 2) — the desktop `tbody` this used to target is
+        // `display:none` here.
+        const paymentAmountStr = paymentAmount.toLocaleString("en-US").replace(/,/g, "[, ]?");
+        const paymentAmountRegex = new RegExp(paymentAmountStr);
+        await page.waitForSelector(`ul[aria-label="To‘lovlar ro‘yxati"] li:has-text('${uniqueClientName}')`, {
+          timeout: 10000,
+        });
+        const paymentCard = page
+          .locator(`ul[aria-label="To‘lovlar ro‘yxati"] li:has-text('${uniqueClientName}')`)
+          .first();
+        const paymentCardText = (await paymentCard.textContent()).replace(/\s+/g, " ");
+        assert(
+          paymentAmountRegex.test(paymentCardText),
+          `Payment card for ${uniqueClientName} must show the exact amount ${paymentAmount}; got "${paymentCardText}"`,
+        );
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const debtsAfterRes = await apiCall("/sales/debts", { token: sellerAuth.accessToken });
         assert(debtsAfterRes.ok, "API GET /sales/debts must succeed");
-        const andijonDebtAfter = debtsAfterRes.data.data.find((d) => d.client.name === "Andijon Savdo");
-        assert(andijonDebtAfter, "Andijon Savdo debt record must exist after payment");
-        const afterDebtAmount = Number(andijonDebtAfter.debt);
-        const afterPaidAmount = Number(andijonDebtAfter.totalPaid);
+        const clientDebtAfter = debtsAfterRes.data.data.find((d) => d.client.name === uniqueClientName);
+        assert(clientDebtAfter, `${uniqueClientName} debt record must exist after payment`);
+        const afterDebtAmount = Number(clientDebtAfter.debt);
+        const afterPaidAmount = Number(clientDebtAfter.totalPaid);
 
         assert.equal(
           afterDebtAmount,
-          beforeDebtAmount - 50000,
-          `Client debt must decrease by exactly 50,000 (before: ${beforeDebtAmount}, after: ${afterDebtAmount})`,
+          beforeDebtAmount - paymentAmount,
+          `Client debt must decrease by exactly ${paymentAmount} (before: ${beforeDebtAmount}, after: ${afterDebtAmount})`,
         );
         assert.equal(
           afterPaidAmount,
-          beforePaidAmount + 50000,
-          `Client totalPaid must increase by exactly 50,000 (before: ${beforePaidAmount}, after: ${afterPaidAmount})`,
+          beforePaidAmount + paymentAmount,
+          `Client totalPaid must increase by exactly ${paymentAmount} (before: ${beforePaidAmount}, after: ${afterPaidAmount})`,
         );
 
         const paymentsRes = await apiCall("/sales/payments", { token: sellerAuth.accessToken });
         assert(paymentsRes.ok, "API GET /sales/payments must succeed");
-        const latestPayment = paymentsRes.data.data[0];
-        assert(latestPayment, "Latest payment record must exist in DB");
-        assert.equal(Number(latestPayment.amount), 50000, "Payment amount in DB must be exactly 50,000");
-        assert.equal(latestPayment.client.name, "Andijon Savdo", "Payment client in DB must be Andijon Savdo");
+        const latestPayment = paymentsRes.data.data.find((p) => p.client.name === uniqueClientName);
+        assert(latestPayment, `Payment for ${uniqueClientName} must exist in DB`);
+        assert.equal(Number(latestPayment.amount), paymentAmount, `Payment amount in DB must be exactly ${paymentAmount}`);
+        assert.equal(latestPayment.client.name, uniqueClientName, `Payment client in DB must be ${uniqueClientName}`);
         assert(latestPayment.allocations.length > 0, "Payment must have allocations in DB");
-        assert.equal(Number(latestPayment.allocations[0].amount), 50000, "Allocation amount in DB must be 50,000");
+        assert.equal(
+          latestPayment.allocations[0].order.id,
+          dbOrder.id,
+          "Payment allocation must target the order created earlier in this run",
+        );
+        assert.equal(
+          Number(latestPayment.allocations[0].amount),
+          paymentAmount,
+          `Allocation amount in DB must be exactly ${paymentAmount}`,
+        );
 
-        recordResult("Seller", "Payment Receipt & Allocation (Amount entry, Allocation, Server Persist)", "YES", "YES", "N/A", "PASS", "Payment of 50,000 so'm recorded, debt reduced by 50,000 in DB & UI");
+        const orderAfterRes = await apiCall("/sales/orders", { token: sellerAuth.accessToken });
+        assert(orderAfterRes.ok, "API GET /sales/orders must succeed");
+        const orderAfter = orderAfterRes.data.data.find((o) => o.id === dbOrder.id);
+        assert(orderAfter, "Order must still exist in DB after payment");
+        assert.equal(
+          orderAfter.paymentStatus,
+          "PARTIALLY_PAID",
+          `Order payment status must be PARTIALLY_PAID after a partial payment; got ${orderAfter.paymentStatus}`,
+        );
+
+        recordResult(
+          "Seller",
+          "Payment Receipt & Allocation (Amount entry, Allocation, Server Persist)",
+          "YES",
+          "YES",
+          "N/A",
+          "PASS",
+          `Payment of ${paymentAmount} so'm recorded against this run's own order, debt reduced by ${paymentAmount} in DB & UI, order now PARTIALLY_PAID`,
+        );
 
         // --- 1.4 RBAC Negative Tests (Frontend & Direct Backend API) ---
         await assertRbacDenied(page, "/finance", "Seller");
@@ -885,9 +978,31 @@ async function runAcceptanceAudit() {
                 await page.waitForTimeout(500);
 
 
-        // Verify stock updated on screen
+        // Verify stock updated on screen. The Warehouse overview's material
+        // balances render as a mobile card list at this viewport (mobile UX
+        // audit Phase 3) — the desktop table this used to bare-`text=`
+        // match is `display:none` here but still earlier in the DOM, so a
+        // plain `.first()` could match that hidden table (or the *product*
+        // breakdown table's incidental "... · <material> · ..." mention,
+        // which is also Phase-3-migrated and precedes this section) instead
+        // of the visible material-stock card, causing a false failure that
+        // has nothing to do with the actual receipt mutation. Scope to the
+        // material-stock card list specifically, and assert the material
+        // that was actually received (not a hardcoded "Paxta") so this
+        // still targets the right record if the seed's first material ever
+        // changes.
+        const receivedMaterialName = targetMatStockBefore.material.name;
         await page.goto(`${WEB}/warehouse`, { waitUntil: "networkidle" });
-        assert(await page.locator("text=Paxta").first().isVisible(), "Paxta stock must be visible in warehouse balances");
+        await page.waitForSelector(`ul[aria-label="Xomashyo qoldig‘i"] li:has-text('${receivedMaterialName}')`, {
+          timeout: 10000,
+        });
+        assert(
+          await page
+            .locator(`ul[aria-label="Xomashyo qoldig‘i"] li:has-text('${receivedMaterialName}')`)
+            .first()
+            .isVisible(),
+          `${receivedMaterialName} stock must be visible in warehouse balances`,
+        );
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const matStocksAfterRes = await apiCall("/warehouse/material-stock", {
@@ -916,16 +1031,33 @@ async function runAcceptanceAudit() {
         recordResult("Warehouse Operator", "Material Receipt (Material Select, Zone, Quantity, Stock Increase)", "YES", "YES", "N/A", "PASS", "35 kg material received, stock increased by exactly +35 in DB and verified in movements");
 
         // --- 3.2 Movements History & Row Details (READ-ONLY) ---
+        // Warehouse Movements renders a mobile card list at this viewport
+        // (mobile UX audit Phase 3) — the desktop `tbody` this used to
+        // target is `display:none` here, so `tbody tr` resolved to a
+        // hidden element and this assertion failed (or, depending on
+        // Playwright version behavior, hung) regardless of whether any
+        // movements actually existed. Target the visible card for the
+        // receipt just recorded above instead — scoped by material name so
+        // this opens *that* movement's detail, not merely "some" card.
         await page.goto(`${WEB}/warehouse/movements`, { waitUntil: "networkidle" });
         await checkNoHorizontalOverflow(page, "Warehouse Movements Page");
 
-        const firstMoveRow = page.locator("tbody tr").first();
-        assert(await firstMoveRow.isVisible(), "Movements table must have records");
-        await firstMoveRow.click();
+        const receiptMoveCard = page
+          .locator('ul[aria-label="Ombor harakatlari"] > li')
+          .filter({ hasText: receivedMaterialName })
+          .filter({ hasText: "Kirim" })
+          .first();
+        assert(await receiptMoveCard.isVisible(), "Movements card list must have a record for this run's own material receipt");
+        await receiptMoveCard.locator("button").click();
         await page.waitForTimeout(400);
 
         const moveDetailDrawer = page.locator("section[role='dialog']");
-        assert(await moveDetailDrawer.isVisible(), "Movement detail drawer must open on row tap");
+        assert(await moveDetailDrawer.isVisible(), "Movement detail drawer must open on card tap");
+        const moveDetailText = (await moveDetailDrawer.textContent()).replace(/\s+/g, " ");
+        assert(
+          moveDetailText.includes(receivedMaterialName),
+          `Movement detail drawer must show the correct record (${receivedMaterialName}); got "${moveDetailText.slice(0, 200)}"`,
+        );
         await moveDetailDrawer.getByRole("button", { name: "Yopish" }).click();
         await page.waitForTimeout(300);
 
@@ -1007,8 +1139,15 @@ async function runAcceptanceAudit() {
                 await page.waitForTimeout(500);
 
 
-        // Verify expense is in table
-        await page.waitForSelector(`text=${uniqueReason}`, { timeout: 10000 });
+        // Verify expense is in the list. Finance Expenses renders the
+        // mobile card list at this viewport (mobile UX audit Phase 3) — a
+        // bare `text=` selector matches both the hidden desktop table's
+        // `<td>` and the visible mobile card, and Playwright picks the
+        // first (hidden) DOM match, which never becomes visible. Scope to
+        // the visible card list explicitly.
+        await page.waitForSelector(`ul[aria-label="Xarajat so‘rovlari"] li:has-text('${uniqueReason}')`, {
+          timeout: 10000,
+        });
 
         // SERVER-SIDE MUTATION VERIFICATION (API)
         const expensesRes = await apiCall("/finance/expenses", {

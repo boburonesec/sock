@@ -280,18 +280,27 @@ async function runMobileSuite() {
         await page.goto(`${BASE}/warehouse/movements`, { waitUntil: "networkidle" });
         await checkNoOverflow(page, "Warehouse Movements");
 
-        // Check movement row click
-        const firstMoveRow = page.locator("tbody tr").first();
-        if (await firstMoveRow.isVisible()) {
-          await firstMoveRow.click();
-          await page.waitForTimeout(400);
-          const moveDrawer = page.locator("section[role='dialog']");
-          if (await moveDrawer.isVisible()) {
-            pass("Tapping movement row opens movement details drawer on mobile");
-            await moveDrawer.locator("button[aria-label='Yopish']").click();
-            await page.waitForTimeout(300);
-          }
-        }
+        // Check movement card tap. Warehouse Movements renders the mobile
+        // card list at this viewport (mobile UX audit Phase 3) — the
+        // desktop table this used to target via `tbody tr` is
+        // `display:none` here, so that locator never resolves to a
+        // visible element and this soft `if (isVisible)` guard silently
+        // stopped asserting anything at all once Phase 3 shipped (same
+        // pattern already fixed for Sales Clients earlier in this file).
+        // Assert against the actual mobile card instead, matching the
+        // Orders/Clients checks above, so a regression here fails loudly.
+        const movementsDesktopTable = page.locator(".hidden.sm\\:block").first();
+        assert(!(await movementsDesktopTable.isVisible()), "Desktop movements table must be hidden on mobile");
+
+        const firstMoveCard = page.locator('ul[aria-label="Ombor harakatlari"] > li').first().locator("button");
+        assert(await firstMoveCard.isVisible(), "First movement card must be visible");
+        await firstMoveCard.click();
+        await page.waitForTimeout(400);
+        const moveDrawer = page.locator("section[role='dialog']");
+        assert(await moveDrawer.isVisible(), "Tapping a movement card must open the movement detail drawer");
+        pass("Tapping movement card opens movement details drawer on mobile");
+        await moveDrawer.locator("button[aria-label='Yopish']").click();
+        await page.waitForTimeout(300);
 
         // Check material receipt drawer
         await page.goto(`${BASE}/warehouse/materials`, { waitUntil: "networkidle" });

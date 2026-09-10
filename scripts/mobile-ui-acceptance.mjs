@@ -442,17 +442,35 @@ async function runMechanic() {
     await navTo(page, 'Mexanik', '**/mechanic**');
     await page.waitForTimeout(800);
 
-    // Wait for task to appear in list
-    await page.waitForSelector(`text=${taskDesc}`, { timeout: 15000 });
+    // Wait for this fixture's own task card, then scope every subsequent
+    // locator to it. The task list is shared with every OPEN/IN_PROGRESS
+    // task ever created by any past run (no cross-task isolation exists in
+    // the UI — every non-COMPLETED task renders its own "Vazifani ochish"
+    // button), and the API orders by `[{status:'asc'},{dueAt:'asc'}]` with
+    // no tiebreaker among same-status/null-dueAt tasks — so a bare
+    // `.first()` on that button previously picked whichever task happened
+    // to sort first, not necessarily this fixture's own task. That is a
+    // non-deterministic-harness bug, not a product defect: once one run's
+    // click landed on the wrong (older, leftover) task, this fixture's own
+    // task stayed OPEN forever, and the *next* run would then click that
+    // still-OPEN leftover instead of its own new task — an infinite,
+    // self-perpetuating chain across every prior phase's acceptance runs.
+    // Scoping to the card that actually contains this run's unique
+    // `taskDesc` text (embeds RUN_ID) makes the click deterministic
+    // regardless of how many other tasks exist or what order they render
+    // in.
+    const taskCard = page.locator('article', { hasText: taskDesc });
+    await taskCard.waitFor({ state: 'visible', timeout: 15000 });
 
-    // Click "Vazifani ochish" to expand the task detail panel
-    const openBtn = page.getByRole('button', { name: 'Vazifani ochish' }).first();
+    const openBtn = taskCard.getByRole('button', { name: 'Vazifani ochish' });
     await openBtn.waitFor({ state: 'visible', timeout: 10000 });
     // Standard click — no force
     await openBtn.click();
     await page.waitForTimeout(800);
 
-    // The expanded detail shows "Ishni boshlash" for OPEN tasks
+    // The expanded detail is a single shared region below the list (only
+    // one task can be selected at a time), so once the correct card above
+    // set the selection, this button is unambiguous.
     const startBtn = page.getByRole('button', { name: 'Ishni boshlash' });
     await startBtn.waitFor({ state: 'visible', timeout: 8000 });
     // Standard click — no force
@@ -469,11 +487,29 @@ async function runMechanic() {
 
     recordPass('Mechanic', 'WebKit', '390x844',
       'Maintenance Task Start Flow',
-      'Clicked Vazifani ochish then Ishni boshlash (standard clicks)',
+      'Clicked Vazifani ochish then Ishni boshlash (standard clicks, scoped to this run’s own task card)',
       'Task status changed',
       `Task ${taskId}: OPEN -> ${updated.status} confirmed via API`);
   } finally {
     await browser.close();
+    // Fixture cleanup: complete the task this run created so it never
+    // lingers as a non-COMPLETED task that could poison a future run's
+    // task-list ordering (see the non-determinism note above). Runs
+    // regardless of pass/fail so a failed assertion still leaves the
+    // fixture in a terminal state instead of compounding the next run's
+    // ambiguity.
+    try {
+      const cleanupToken = await apiLogin('owner@paypoq.local');
+      await apiFetch(`/machines/tasks/${taskId}`, cleanupToken, 'PATCH', {
+        status: 'COMPLETED',
+        resolution: `Acceptance run ${RUN_ID} cleanup`,
+      });
+    } catch {
+      // Best-effort: if this task was already completed by the UI action
+      // itself under some future product change, or cleanup otherwise
+      // fails, don't mask the real assertion result above with a cleanup
+      // error.
+    }
   }
 }
 
