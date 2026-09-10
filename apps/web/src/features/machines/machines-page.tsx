@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useRef, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmDialog } from "@/components/overlays/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { machinesApi } from "@/lib/api/machines";
-import { productionApi } from "@/lib/api/production";
+import { productionApi, type ProductionRun } from "@/lib/api/production";
 import { formatVisibleStatusText } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -90,6 +91,9 @@ export function MachinesPage() {
     },
   ]);
   const [intake, setIntake] = useState<Record<string, string>>({});
+  const [runToComplete, setRunToComplete] = useState<ProductionRun | null>(
+    null,
+  );
   const [success, setSuccess] = useState("");
   const [activeWorkflow, setActiveWorkflow] =
     useState<MachineWorkflow | null>(null);
@@ -129,6 +133,9 @@ export function MachinesPage() {
         quantity,
         idempotencyKey: crypto.randomUUID(),
       }),
+  });
+  const completeRunMutation = useMutation({
+    mutationFn: (id: string) => productionApi.changeRunStatus(id, "COMPLETED"),
   });
   const createRate = useMutation({
     mutationFn: () =>
@@ -176,6 +183,14 @@ export function MachinesPage() {
         "Ishlab chiqarilgan mahsulot qabul qilindi.",
         () => setIntake((current) => ({ ...current, [payload.id]: "" })),
       ),
+  };
+  const completeRun = async (run: ProductionRun) => {
+    await submitOnce(
+      `complete-run:${run.id}`,
+      () => completeRunMutation.mutateAsync(run.id),
+      "Stanok ishi yakunlandi.",
+      () => setRunToComplete(null),
+    );
   };
   const createSpec = {
     ...createSpecMutation,
@@ -879,11 +894,43 @@ export function MachinesPage() {
                   >
                     Chiqqan mahsulotni qabul qilish
                   </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-rose-500/40 text-rose-300 hover:bg-rose-500/10 sm:w-auto"
+                    disabled={r.status !== "RUNNING" || completeRunMutation.isPending}
+                    onClick={() => setRunToComplete(r)}
+                  >
+                    Ishni yakunlash
+                  </Button>
                 </>
               )}
             </div>
           ))}
       </section>
+      <ConfirmDialog
+        open={Boolean(runToComplete)}
+        onOpenChange={(open) => {
+          if (!open) setRunToComplete(null);
+        }}
+        title="Stanok ishini yakunlaysizmi?"
+        description={
+          runToComplete
+            ? `${runToComplete.machine.code} uchun ishlab chiqarish jarayoni yakunlangan deb belgilanadi. Bu amalni ortga qaytarib bo‘lmaydi — yakunlangandan so‘ng bu run uchun yangi mahsulot qabul qilib bo‘lmaydi.`
+            : ""
+        }
+        confirmLabel="Ha, ishni yakunlash"
+        destructive
+        isPending={completeRunMutation.isPending}
+        errorMessage={
+          completeRunMutation.error instanceof Error
+            ? completeRunMutation.error.message
+            : null
+        }
+        onConfirm={() => {
+          if (!runToComplete) return;
+          return completeRun(runToComplete);
+        }}
+      />
     </div>
   );
 }

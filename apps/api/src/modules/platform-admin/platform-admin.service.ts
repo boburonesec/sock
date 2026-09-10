@@ -597,7 +597,7 @@ export class PlatformAdminService {
           hasProductCatalog: productCount > 0,
         },
         notes: [
-          'Korxonani to‘xtatish hozircha faqat holatni belgilaydi — operatorlar kirishini hali cheklamaydi.',
+          'Korxonani to‘xtatish operatorlar kirishini cheklaydi: yangi login rad etiladi, joriy sessiyalar esa keyingi so‘rovda tugaydi.',
         ],
       },
     };

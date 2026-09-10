@@ -24,6 +24,7 @@ const EXACT: Record<string, string> = {
   'Invalid access token.': 'Kirish tokeni yaroqsiz. Qayta kiring.',
   'Invalid refresh session.': 'Sessiya yaroqsiz. Qayta kiring.',
   'Invalid email or password.': 'Email yoki parol noto‘g‘ri.',
+  'Tenant is not active.': 'Korxona faol emas. Kirish vaqtincha to‘xtatilgan.',
   'Factory access is not allowed.': 'Bu fabrikaga ruxsatingiz yo‘q.',
   'Insufficient permissions.': 'Bu amal uchun ruxsatingiz yo‘q.',
   'Request context is required for permission checks.':
