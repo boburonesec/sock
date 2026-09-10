@@ -9,6 +9,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { auditApi } from "@/lib/api/audit";
 import { queryKeys } from "@/lib/api/query-keys";
 import { formatDateTimeForUser } from "@/lib/format";
 import { formatAuditAction, formatAuditEntityType } from "@/lib/status-labels";
+import { AuditLogCard } from "./components/audit-log-card";
 
 function formatAction(action: string): string {
   return formatAuditAction(action);
@@ -57,6 +59,14 @@ export function AuditModule() {
         Muhim amallar tarixi (o‘zgartirish o‘chirilmaydi). So‘nggi{" "}
         {logs.length} yozuv.
       </p>
+      <ResponsiveDataList
+        items={logs}
+        getKey={(log) => log.id}
+        renderCard={(log) => <AuditLogCard log={log} />}
+        ariaLabel="Audit jurnali"
+        emptyTitle="Hozircha yozuv yo‘q"
+        emptyDescription="Korxonada amallar bajarilgach, audit shu yerda paydo bo‘ladi."
+      >
       <DataTable label="Audit jurnali">
         <DataTableHead>
           <DataTableRow>
@@ -100,6 +110,7 @@ export function AuditModule() {
           )}
         </tbody>
       </DataTable>
+      </ResponsiveDataList>
     </div>
   );
 }

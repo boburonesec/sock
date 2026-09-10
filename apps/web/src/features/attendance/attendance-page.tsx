@@ -11,6 +11,7 @@ import {
   DataTableRow,
 } from "@/components/data-display/data-table";
 import { EmptyTableState } from "@/components/data-display/empty-table-state";
+import { ResponsiveDataList } from "@/components/data-display/responsive-data-list";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -20,6 +21,9 @@ import { Input } from "@/components/ui/input";
 import { attendanceApi } from "@/lib/api/attendance";
 import { queryKeys } from "@/lib/api/query-keys";
 import { formatDateTimeForUser } from "@/lib/format";
+import { AttendanceRecordCard } from "./components/attendance-record-card";
+import { AttendanceStatus } from "./components/attendance-status";
+import { EmployeeSummaryCard } from "./components/employee-summary-card";
 
 function currentMonth() {
   const now = new Date();
@@ -62,6 +66,14 @@ export function AttendancePage() {
           </div>
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">Xodimlar bo‘yicha</h2>
+            <ResponsiveDataList
+              items={overview.employees}
+              getKey={(employee) => employee.employeeId}
+              renderCard={(employee) => <EmployeeSummaryCard employee={employee} />}
+              ariaLabel="Xodimlar davomat hisoboti"
+              emptyTitle="Xodimlar topilmadi"
+              emptyDescription="Tanlangan oy uchun faol xodim yo‘q."
+            >
             <DataTable label="Xodimlar davomat hisoboti">
               <DataTableHead><DataTableRow><DataTableHeader>Xodim</DataTableHeader><DataTableHeader>Smena</DataTableHeader><DataTableHeader>Kelgan kun</DataTableHeader><DataTableHeader>To‘liq</DataTableHeader><DataTableHeader>Yopilmagan</DataTableHeader></DataTableRow></DataTableHead>
               <tbody>
@@ -76,9 +88,18 @@ export function AttendancePage() {
                 )) : <EmptyTableState colSpan={5} title="Xodimlar topilmadi" description="Tanlangan oy uchun faol xodim yo‘q." />}
               </tbody>
             </DataTable>
+            </ResponsiveDataList>
           </section>
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">Kirish-chiqish tafsilotlari</h2>
+            <ResponsiveDataList
+              items={overview.records}
+              getKey={(record) => record.id}
+              renderCard={(record) => <AttendanceRecordCard record={record} />}
+              ariaLabel="Davomat yozuvlari"
+              emptyTitle="Davomat yozuvlari yo‘q"
+              emptyDescription="Trunket integratsiyasidan yozuvlar kelgach shu yerda ko‘rinadi."
+            >
             <DataTable label="Davomat yozuvlari">
               <DataTableHead><DataTableRow><DataTableHeader>Sana</DataTableHeader><DataTableHeader>Xodim</DataTableHeader><DataTableHeader>Smena</DataTableHeader><DataTableHeader>Kirish</DataTableHeader><DataTableHeader>Chiqish</DataTableHeader><DataTableHeader>Holat</DataTableHeader></DataTableRow></DataTableHead>
               <tbody>
@@ -94,15 +115,10 @@ export function AttendancePage() {
                 )) : <EmptyTableState colSpan={6} title="Davomat yozuvlari yo‘q" description="Trunket integratsiyasidan yozuvlar kelgach shu yerda ko‘rinadi." />}
               </tbody>
             </DataTable>
+            </ResponsiveDataList>
           </section>
         </div>
       ) : null}
     </div>
   );
-}
-
-function AttendanceStatus({ status }: { status: "COMPLETE" | "OPEN" | "MISSING_CHECK_OUT" }) {
-  if (status === "COMPLETE") return <StatusBadge tone="success">Kun yopilgan</StatusBadge>;
-  if (status === "OPEN") return <StatusBadge tone="info">Smena davom etmoqda</StatusBadge>;
-  return <StatusBadge tone="danger">Xodim kunni yopmadi</StatusBadge>;
 }
