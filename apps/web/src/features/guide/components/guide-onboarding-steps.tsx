@@ -14,6 +14,7 @@ const ONBOARDING_STEPS = [
     icon: Cog,
     description: "Fabrikadagi mahsulot ranglari, iplar/materiallar, mavsumlar, mahsulot modellari va sotuv narxlarini kiriting.",
     keyAction: "Ranglar, materiallar, mahsulotlar va ularning narxlarini belgilash.",
+    prerequisite: "Ish smenalari sahifasida kunduzgi va kechki smenani «Smenani saqlash» tugmasi bilan saqlang. Ekrandagi tavsiya etilgan vaqtlar saqlanmaguncha smena mavjud bo‘lmaydi.",
     tag: "Boshlang‘ich sozlash",
   },
   {
@@ -50,6 +51,7 @@ const ONBOARDING_STEPS = [
     icon: Play,
     description: "Stanokda to‘qish partiyasini boshlang, chiqqan to‘qimani qabul qiling va bosqichlar (Averlog -> Dazmol -> ...) bo‘ylab ko‘chiring.",
     keyAction: "Smena qabul qiluvchi orqali ishchilar bajargan ishini qayd etish.",
+    prerequisite: "Birinchi smenani yopishdan oldin Manager yoki Owner «Ishlab chiqarish» sahifasidagi «Smena yakuni» bo‘limida omborga topshirish bosqichini (odatda «Ombor») tanlashi shart. Bu bosqich tanlanmaguncha smena yopilmaydi.",
     tag: "Ishlab chiqarish",
   },
   {
@@ -120,6 +122,12 @@ export function GuideOnboardingSteps() {
                   <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
                     {item.description}
                   </p>
+
+                  {item.prerequisite ? (
+                    <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-[11px] leading-relaxed text-foreground">
+                      <strong>Muhim:</strong> {item.prerequisite}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="mt-4 pt-3 border-t">

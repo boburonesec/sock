@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { productionApi, type ProductionStageReference } from "@/lib/api/production";
 import { queryKeys } from "@/lib/api/query-keys";
 import { useAuthStore } from "@/stores/auth-store";
+
+const HANDOFF_SELECT_ID = "warehouse-handoff-stage";
 
 export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageReference[] }) {
   const permissions = useAuthStore((state) => state.permissions);
@@ -23,6 +25,10 @@ export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageRe
   const [stageId, setStageId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   useEffect(() => { const assigned = contextQuery.data?.data.currentWorkShift; if (assigned) setWorkShiftId((current) => current || assigned.id); }, [contextQuery.data]);
+  const handoffSelectRef = useRef<HTMLSelectElement>(null);
+  const focusHandoffConfig = () => { handoffSelectRef.current?.scrollIntoView({ block: "center" }); handoffSelectRef.current?.focus(); };
+  // Settings > "Omborga topshirish bosqichi" links here with this hash.
+  useEffect(() => { if (canConfigure && window.location.hash === `#${HANDOFF_SELECT_ID}`) { handoffSelectRef.current?.scrollIntoView({ block: "center" }); handoffSelectRef.current?.focus(); } }, [canConfigure]);
   const readinessQuery = useQuery({ queryKey: ["production", "shift-readiness", workShiftId, workDate], queryFn: () => productionApi.getShiftReadiness(workShiftId, workDate), enabled: Boolean(workShiftId) });
   const refresh = async () => Promise.all([queryClient.invalidateQueries({ queryKey: queryKeys.production.shiftReconciliations() }), queryClient.invalidateQueries({ queryKey: queryKeys.production.warehouseHandoffStage() })]);
   const action = useMutation({ mutationFn: async (kind: "submit" | "accept" | "return") => {
@@ -31,7 +37,7 @@ export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageRe
     if (reason.trim().length < 3) throw new Error("Kamida 3 belgili sabab yozing.");
     return kind === "accept" ? productionApi.acceptShiftReconciliation({ workShiftId, workDate, reason }) : productionApi.returnShiftReconciliation({ workShiftId, workDate, reason });
   }, onSuccess: async (_, kind) => { setMessage(kind === "submit" ? "Smena topshirishga tayyor." : kind === "accept" ? "Smena qabul qilindi." : "Smena tuzatishga qaytarildi."); setReason(""); await refresh(); await readinessQuery.refetch(); }, onError: () => setMessage("Amal bajarilmadi. Quyidagi tayyorlik ro‘yxatini tekshiring.") });
-  const configure = useMutation({ mutationFn: () => productionApi.configureWarehouseHandoffStage(stageId), onSuccess: async () => { setMessage("Omborga topshirish bosqichi saqlandi."); await refresh(); }, onError: (error) => setMessage(error instanceof Error ? error.message : "Sozlama saqlanmadi.") });
+  const configure = useMutation({ mutationFn: () => productionApi.configureWarehouseHandoffStage(stageId), onSuccess: async () => { setMessage("Omborga topshirish bosqichi saqlandi."); setStageId(""); await Promise.all([refresh(), queryClient.invalidateQueries({ queryKey: ["production", "shift-readiness"] })]); }, onError: (error) => setMessage(error instanceof Error ? error.message : "Sozlama saqlanmadi.") });
   const selected = (recordsQuery.data?.data ?? []).find((record) => record.workShiftId === workShiftId && record.workDate.slice(0, 10) === workDate);
 
   return <div className="space-y-4 rounded-xl border border-border/70 bg-card/40 p-4">
@@ -40,12 +46,13 @@ export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageRe
     {!contextQuery.isLoading && !contextQuery.data?.data.currentWorkShift ? <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">{contextQuery.data?.data.message}</p> : null}
     <p className="text-sm">Holat: <strong>{{ OPEN: "Ochiq", READY_FOR_HANDOVER: "Topshirishga tayyor", ACCEPTED: "Qabul qilingan" }[selected?.status ?? "OPEN"]}</strong></p>
     {workShiftId ? <div className="grid gap-3 md:grid-cols-3">
-      {(["BLOCKER", "WARNING", "READY"] as const).map((status) => <div key={status} className="rounded-lg border p-3"><h4 className="mb-2 font-medium">{{ BLOCKER: "To‘xtatadigan muammolar", WARNING: "Ogohlantirishlar", READY: "Tayyor" }[status]}</h4><div className="space-y-2">{(readinessQuery.data?.data.checks ?? []).filter((item) => item.status === status).map((item) => <div key={item.code} className="text-sm"><p className="font-medium">{item.label}</p><p className="text-muted-foreground">{item.detail}</p>{status !== "READY" ? <p className="mt-1">Keyingi qadam: {item.action}</p> : null}</div>)}{!readinessQuery.isLoading && !(readinessQuery.data?.data.checks ?? []).some((item) => item.status === status) ? <p className="text-sm text-muted-foreground">Yo‘q</p> : null}</div></div>)}
+      {(["BLOCKER", "WARNING", "READY"] as const).map((status) => <div key={status} className="rounded-lg border p-3"><h4 className="mb-2 font-medium">{{ BLOCKER: "To‘xtatadigan muammolar", WARNING: "Ogohlantirishlar", READY: "Tayyor" }[status]}</h4><div className="space-y-2">{(readinessQuery.data?.data.checks ?? []).filter((item) => item.status === status).map((item) => <div key={item.code} className="text-sm"><p className="font-medium">{item.label}</p><p className="text-muted-foreground">{item.detail}</p>{status !== "READY" ? <p className="mt-1">Keyingi qadam: {item.action}</p> : null}{status === "BLOCKER" && item.code === "WAREHOUSE_HANDOFF_CONFIGURED" && canConfigure ? <Button type="button" variant="outline" className="mt-2" onClick={focusHandoffConfig}>Sozlash</Button> : null}</div>)}{!readinessQuery.isLoading && !(readinessQuery.data?.data.checks ?? []).some((item) => item.status === status) ? <p className="text-sm text-muted-foreground">Yo‘q</p> : null}</div></div>)}
     </div> : null}
     {canApproveShift ? <textarea className="min-h-20 w-full rounded-md border bg-background p-3" placeholder="Ogohlantirishni qabul qilish yoki qaytarish sababi" value={reason} onChange={(event) => setReason(event.target.value)} /> : null}
     <div className="flex flex-wrap gap-2"><Button disabled={action.isPending || selected?.status === "ACCEPTED" || Boolean(readinessQuery.data?.data.blockers.length)} onClick={() => action.mutate("submit")}>Topshirishga tayyor</Button>{canApproveShift ? <><Button disabled={action.isPending || selected?.status !== "READY_FOR_HANDOVER" || Boolean(readinessQuery.data?.data.blockers.length)} onClick={() => action.mutate("accept")}>Qabul qilish</Button><Button variant="outline" disabled={action.isPending || selected?.status !== "READY_FOR_HANDOVER"} onClick={() => action.mutate("return")}>Tuzatishga qaytarish</Button></> : null}</div>
     <div className="text-sm">Omborga topshirish bosqichi: <strong>{handoffQuery.data?.data?.name ?? "Sozlanmagan"}</strong></div>
-    {canConfigure ? <div className="flex gap-2"><select className="h-10 flex-1 rounded-md border bg-background px-3" value={stageId} onChange={(event) => setStageId(event.target.value)}><option value="">Bosqichni tanlang</option>{stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select><Button variant="outline" disabled={!stageId || configure.isPending} onClick={() => configure.mutate()}>Saqlash</Button></div> : null}
+    {handoffQuery.isSuccess && !handoffQuery.data.data ? <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">{canConfigure ? "Birinchi smenani yopishdan oldin tayyor mahsulot omborga topshiriladigan bosqichni tanlang (odatda «Ombor»)." : "Smenani yopish uchun Manager yoki Owner omborga topshirish bosqichini tanlashi kerak."}</p> : null}
+    {canConfigure ? <div className="space-y-1"><label htmlFor={HANDOFF_SELECT_ID} className="text-sm font-medium">Omborga topshirish bosqichini tanlash</label><div className="flex gap-2"><select id={HANDOFF_SELECT_ID} ref={handoffSelectRef} className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3" value={stageId} onChange={(event) => setStageId(event.target.value)}><option value="">Bosqichni tanlang</option>{stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select><Button variant="outline" disabled={!stageId || configure.isPending} onClick={() => configure.mutate()}>Saqlash</Button></div></div> : null}
     {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
   </div>;
 }

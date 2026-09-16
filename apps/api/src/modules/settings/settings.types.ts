@@ -81,6 +81,8 @@ export interface SettingsConfigurationHealthResponse {
   label: string;
   description: string;
   status: SettingsOverviewStatus;
+  /** Where the prerequisite is configured, when that is not obvious. */
+  href?: string;
 }
 
 export interface SettingsRecentChangeResponse {

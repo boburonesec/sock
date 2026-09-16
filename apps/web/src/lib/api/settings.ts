@@ -18,6 +18,7 @@ export interface SettingsOverview {
     label: string;
     description: string;
     status: SettingsOverviewStatus;
+    href?: string;
   }>;
   recentChanges: Array<{
     id: string;

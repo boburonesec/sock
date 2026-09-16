@@ -1436,7 +1436,7 @@ export class ProductionService {
     const checks: Array<{ code: string; label: string; status: 'READY' | 'BLOCKER' | 'WARNING'; detail: string; action: string }> = [];
     const add = (code: string, label: string, status: 'READY' | 'BLOCKER' | 'WARNING', detail: string, action: string) => checks.push({ code, label, status, detail, action });
     const handoffReady = Boolean(factory?.warehouseHandoffStage && !factory.warehouseHandoffStage.deletedAt);
-    add('WAREHOUSE_HANDOFF_CONFIGURED', 'Omborga topshirish bosqichi', handoffReady ? 'READY' : 'BLOCKER', handoffReady ? 'Bosqich sozlangan.' : 'Omborga topshirish bosqichi sozlanmagan.', handoffReady ? 'Amal talab qilinmaydi.' : 'Manager sozlamadan omborga topshirish bosqichini tanlashi kerak.');
+    add('WAREHOUSE_HANDOFF_CONFIGURED', 'Omborga topshirish bosqichi', handoffReady ? 'READY' : 'BLOCKER', handoffReady ? 'Bosqich sozlangan.' : 'Omborga topshirish bosqichi sozlanmagan.', handoffReady ? 'Amal talab qilinmaydi.' : 'Manager yoki Owner «Ishlab chiqarish» sahifasidagi «Smena yakuni» bo‘limida omborga topshirish bosqichini tanlashi kerak.');
     const [openRuns, openMovementCorrections] = await Promise.all([
       this.prisma.productionRun.count({ where: { tenantId, factoryId, workShiftId, status: { in: ['PLANNED', 'RUNNING', 'STOPPED', 'HOLD'] } } }),
       this.prisma.correctionRequest.count({ where: { tenantId, factoryId, domain: 'PRODUCTION_MOVEMENT', status: 'OPEN' } }),

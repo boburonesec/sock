@@ -98,6 +98,15 @@ export class SettingsService {
         select: { code: true, updatedAt: true },
       }),
     ]);
+    // Same Factory field that shift-close readiness checks; read-only here.
+    const handoffFactory = await this.prisma.factory.findFirst({
+      where: { id: factoryId, tenantId, deletedAt: null },
+      select: { warehouseHandoffStage: { select: { name: true, deletedAt: true } } },
+    });
+    const handoffStage =
+      handoffFactory?.warehouseHandoffStage && !handoffFactory.warehouseHandoffStage.deletedAt
+        ? handoffFactory.warehouseHandoffStage
+        : null;
 
     const categoryCards: SettingsCategoryCardResponse[] = [
       this.categoryCard({
@@ -208,6 +217,16 @@ export class SettingsService {
           workShifts.some((shift) => shift.code === WorkShiftCode.DAY) &&
             workShifts.some((shift) => shift.code === WorkShiftCode.NIGHT),
         ),
+        href: '/settings/shifts',
+      },
+      {
+        id: 'warehouse-handoff-stage',
+        label: 'Omborga topshirish bosqichi',
+        description: handoffStage
+          ? `Tanlangan bosqich: ${handoffStage.name}.`
+          : 'Tanlanmagan. Birinchi ishlab chiqarish smenasini yopishdan oldin «Smena yakuni» bo‘limida tayyor mahsulot omborga topshiriladigan bosqichni tanlang.',
+        status: this.configured(Boolean(handoffStage)),
+        href: '/production#warehouse-handoff-stage',
       },
       {
         id: 'roles',

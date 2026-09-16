@@ -116,11 +116,15 @@ function ShiftForm({ code, shift }: {
   const isSaving = mutation.isPending;
   const error = mutation.error instanceof Error ? mutation.error.message : null;
 
-  const isDirty = 
-    name !== defaultName || 
-    startTime !== defaultStart || 
-    endTime !== defaultEnd || 
+  // Only a shift returned by the server counts as saved. Suggested defaults
+  // shown before the first save are not persisted and must stay submittable.
+  const isPersisted = Boolean(shift);
+  const isDirty =
+    name !== defaultName ||
+    startTime !== defaultStart ||
+    endTime !== defaultEnd ||
     premiumPerPiece !== defaultPremium;
+  const hasUnsavedChanges = !isPersisted || isDirty;
 
   const premiumNum = Number(premiumPerPiece);
   const invalid = !name.trim() || !startTime || !endTime || startTime === endTime 
@@ -135,10 +139,10 @@ function ShiftForm({ code, shift }: {
 
   return (
     <form
-      className={cn("flex flex-col space-y-4 rounded-2xl border bg-card p-4 sm:p-5 transition-colors", isDirty && "border-amber-500/50 ring-1 ring-amber-500/20")}
+      className={cn("flex flex-col space-y-4 rounded-2xl border bg-card p-4 sm:p-5 transition-colors", hasUnsavedChanges && "border-amber-500/50 ring-1 ring-amber-500/20")}
       onSubmit={(event) => {
         event.preventDefault();
-        if (invalid || !isDirty) return;
+        if (invalid || !hasUnsavedChanges) return;
         setSuccessMsg(null);
         mutation.mutate({ code, name: name.trim(), startTime, endTime, premiumPerPiece: premiumPerPiece.trim() });
       }}
@@ -146,6 +150,11 @@ function ShiftForm({ code, shift }: {
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{code === "DAY" ? "Kunduzgi smena" : "Kechki smena"}</p>
         <h2 className="mt-1 text-lg font-semibold">{name || "Nomsiz smena"}</h2>
+        {!isPersisted ? (
+          <p className="mt-1 text-sm font-medium text-amber-500">
+            Hali saqlanmagan. Tavsiya etilgan qiymatlarni tekshirib, smenani saqlang.
+          </p>
+        ) : null}
         {isSameTime ? (
           <p className="mt-1 text-sm text-rose-500 font-medium">Boshlanish va tugash vaqti bir xil bo&apos;la olmaydi</p>
         ) : durationInfo ? (
@@ -176,8 +185,8 @@ function ShiftForm({ code, shift }: {
       <div className="pt-2 mt-auto">
         {error ? <p role="alert" className="mb-3 text-sm text-rose-500">{error}</p> : null}
         {successMsg ? <p role="status" className="mb-3 text-sm text-emerald-500">{successMsg}</p> : null}
-        <Button type="submit" className="w-full sm:w-auto" disabled={isSaving || invalid || !isDirty}>
-          {isSaving ? "Saqlanmoqda..." : isDirty ? "O'zgarishlarni saqlash" : "Saqlangan"}
+        <Button type="submit" className="w-full sm:w-auto" disabled={isSaving || invalid || !hasUnsavedChanges}>
+          {isSaving ? "Saqlanmoqda..." : !isPersisted ? "Smenani saqlash" : isDirty ? "O'zgarishlarni saqlash" : "Saqlangan"}
         </Button>
       </div>
     </form>

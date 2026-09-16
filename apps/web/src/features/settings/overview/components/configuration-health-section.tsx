@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { InfoCard } from "@/components/cards/info-card";
 import { StatusBadge, type StatusTone } from "@/components/data-display/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -42,6 +43,14 @@ export function ConfigurationHealthSection({
           }
         >
           <p className="text-sm text-muted-foreground">{item.description}</p>
+          {item.href && item.status === "NEEDS_ATTENTION" ? (
+            <Link
+              href={item.href}
+              className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-primary hover:underline"
+            >
+              Sozlash
+            </Link>
+          ) : null}
         </InfoCard>
       ))}
     </div>
