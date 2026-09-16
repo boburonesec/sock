@@ -54,7 +54,9 @@
     "smoke:platform-auth": "pnpm --filter @paypoq/api build && pnpm acceptance:seed && pnpm --filter @paypoq/api smoke:platform-auth",
     "smoke:organization": "pnpm --filter @paypoq/api build && pnpm --filter @paypoq/api prisma:migrate:deploy && pnpm acceptance:seed && pnpm --filter @paypoq/api smoke:organization",
     "smoke:telegram": "pnpm --filter @paypoq/api build && pnpm acceptance:seed && node apps/api/scripts/telegram-smoke-test.mjs",
-    "smoke:employee-self-service": "pnpm --filter @paypoq/api build && node apps/api/scripts/employee-self-service-smoke-test.mjs"
+    "smoke:employee-self-service": "pnpm --filter @paypoq/api build && node apps/api/scripts/employee-self-service-smoke-test.mjs",
+    "test:prod-hardening": "node scripts/production-hardening-acceptance.mjs",
+    "bootstrap:platform-admin": "pnpm --filter @paypoq/api bootstrap:platform-admin"
   },
   "devDependencies": {
     "playwright": "1.51.1"

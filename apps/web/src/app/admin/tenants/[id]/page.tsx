@@ -87,7 +87,7 @@ export default function PlatformTenantDetailPage() {
   const [ownerForm, setOwnerForm] = useState({
     name: "",
     email: "",
-    password: "ChangeMe123!",
+    password: "",
   });
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [passwordForm, setPasswordForm] = useState({ password: "" });
@@ -122,7 +122,7 @@ export default function PlatformTenantDetailPage() {
       await invalidateTenant();
       setGeneratedPassword(response.data.generatedPassword);
       setOwnerDrawerOpen(false);
-      setOwnerForm({ name: "", email: "", password: "ChangeMe123!" });
+      setOwnerForm({ name: "", email: "", password: "" });
     },
   });
 
@@ -357,7 +357,7 @@ export default function PlatformTenantDetailPage() {
           onOpenChange={(open) => {
             setOwnerDrawerOpen(open);
             if (!open) {
-              setOwnerForm({ name: "", email: "", password: "ChangeMe123!" });
+              setOwnerForm({ name: "", email: "", password: "" });
             }
           }}
           title="Korxona egasini ochish"
@@ -372,6 +372,9 @@ export default function PlatformTenantDetailPage() {
             <FormField htmlFor="owner-password" label="Parol">
               <Input id="owner-password" type="text" value={ownerForm.password} onChange={(event) => setOwnerForm({ ...ownerForm, password: event.target.value })} />
             </FormField>
+            <p className="text-xs text-muted-foreground">
+              Parolni bo‘sh qoldiring — tizim kuchli bir martalik parol yaratadi va uni shu sahifada faqat bir marta ko‘rsatadi.
+            </p>
             <p className="text-xs text-muted-foreground">
               Korxona egasi dasturga kiradi va boshqa operatorlarni boshqaradi. Agar filial bo‘lmasa, tizim avtomatik Asosiy filial yaratadi.
             </p>

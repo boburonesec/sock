@@ -22,6 +22,16 @@ They use:
 If PostgreSQL client tools are not installed on the host, the scripts can use a
 PostgreSQL Docker container fallback with `PG_DOCKER_CONTAINER`.
 
+## Operating procedure
+
+The pilot backup operating procedure (cadence, retention, encryption,
+verification command, drill cadence, alert ownership) is defined in
+`docs/RELEASE_RUNBOOK_V1.md` §6. Nothing in this repository installs a
+scheduler: `configs/backup-cron.example` is a template for a real host.
+
+Restores use `pg_restore` through `pnpm restore:db`; the dumps are custom
+format, so `psql < file` does not work.
+
 ## Backup strategy
 
 Recommended production baseline:

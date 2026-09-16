@@ -5,6 +5,35 @@ import { PrismaService } from '../prisma/prisma.service';
 type ReadinessStatus = 'ok' | 'degraded';
 type CheckStatus = 'ok' | 'failed';
 
+/**
+ * Tables that must exist before this process may serve traffic. Kept small and
+ * explicit: it is a deployment contract ("the release migration ran"), not a
+ * full schema validator. `_prisma_migrations` is included so a database that
+ * was created by hand, or whose migration history was lost, is also rejected.
+ */
+const ESSENTIAL_TABLES = [
+  '_prisma_migrations',
+  'Tenant',
+  'Factory',
+  'User',
+  'UserCredential',
+  'RefreshSession',
+  'Permission',
+  'PlatformAdmin',
+] as const;
+
+/**
+ * Public health surface. Deliberately limited to two read-only routes:
+ *
+ * - GET /health            liveness: the process is up (no database access)
+ * - GET /health/readiness  readiness: safe to receive traffic
+ *
+ * There is intentionally no HTTP route that can run migrations, create or
+ * reset a platform admin, seed demo data, or disclose tenant/user counts.
+ * Migrations are an explicit release step (`prisma migrate deploy`) and the
+ * first platform admin is created by an operator CLI
+ * (`pnpm --filter @paypoq/api bootstrap:platform-admin`).
+ */
 @Controller('health')
 export class HealthController {
   constructor(
@@ -13,188 +42,30 @@ export class HealthController {
   ) {}
 
   @Get()
-  getHealth(): { status: 'ok'; service: 'paypoq-os-api' } {
+  getHealth(): {
+    status: 'ok';
+    service: 'paypoq-os-api';
+    version: string;
+  } {
     return {
       status: 'ok',
       service: 'paypoq-os-api',
+      // Non-secret build identifier so an operator can confirm which commit is
+      // running. Empty/unset in local development.
+      version: this.configService.get<string>('app.buildSha', 'unknown'),
     };
-  }
-
-  @Get('migrate')
-  async getMigrate(): Promise<Record<string, unknown>> {
-    try {
-      const { runAutoMigrations } = await import('../prisma/prisma-auto-migrate');
-      const result = await runAutoMigrations(this.prisma);
-      return result;
-    } catch (err: unknown) {
-      return {
-        status: 'error',
-        message: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
-
-  @Get('diagnostic')
-  async getDiagnostic(): Promise<Record<string, unknown>> {
-    try {
-      const userCount = await this.prisma.user.count();
-      const platformAdminCount = await this.prisma.platformAdmin.count();
-      const tenantCount = await this.prisma.tenant.count();
-      return {
-        status: 'ok',
-        userCount,
-        platformAdminCount,
-        tenantCount,
-      };
-    } catch (err: unknown) {
-      return {
-        status: 'error',
-        message: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
-
-  @Get('bootstrap')
-  async getBootstrap(): Promise<Record<string, unknown>> {
-    try {
-      const argon2 = await import('argon2');
-      const platformAdmin = await this.prisma.platformAdmin.upsert({
-        where: { email: 'platform@paypoq.local' },
-        create: {
-          email: 'platform@paypoq.local',
-          name: 'Platform Admin',
-          status: 'ACTIVE',
-        },
-        update: { status: 'ACTIVE', deletedAt: null },
-      });
-      const passwordHash = await argon2.hash('ChangeMe123!');
-      await this.prisma.platformAdminCredential.upsert({
-        where: { platformAdminId: platformAdmin.id },
-        create: { platformAdminId: platformAdmin.id, passwordHash },
-        update: { passwordHash },
-      });
-
-      const tenant = await this.prisma.tenant.upsert({
-        where: { id: 'seed-demo-paypoq-factory' },
-        create: {
-          id: 'seed-demo-paypoq-factory',
-          name: 'Demo Paypoq Factory',
-          status: 'ACTIVE',
-        },
-        update: { status: 'ACTIVE', deletedAt: null },
-      });
-
-      const factory = await this.prisma.factory.upsert({
-        where: {
-          tenantId_name: {
-            tenantId: tenant.id,
-            name: 'Main Factory',
-          },
-        },
-        create: {
-          tenantId: tenant.id,
-          name: 'Main Factory',
-        },
-        update: { deletedAt: null },
-      });
-
-      const ownerRole = await this.prisma.role.upsert({
-        where: {
-          tenantId_name: {
-            tenantId: tenant.id,
-            name: 'Owner',
-          },
-        },
-        create: {
-          tenantId: tenant.id,
-          name: 'Owner',
-        },
-        update: { deletedAt: null },
-      });
-
-      const ownerUser = await this.prisma.user.upsert({
-        where: {
-          tenantId_email: {
-            tenantId: tenant.id,
-            email: 'owner@paypoq.local',
-          },
-        },
-        create: {
-          tenantId: tenant.id,
-          email: 'owner@paypoq.local',
-          name: 'Demo Owner',
-          status: 'ACTIVE',
-        },
-        update: { status: 'ACTIVE', deletedAt: null },
-      });
-
-      await this.prisma.userCredential.upsert({
-        where: {
-          userId_tenantId: {
-            userId: ownerUser.id,
-            tenantId: tenant.id,
-          },
-        },
-        create: {
-          tenantId: tenant.id,
-          userId: ownerUser.id,
-          passwordHash,
-        },
-        update: { passwordHash },
-      });
-
-      await this.prisma.userRole.upsert({
-        where: {
-          tenantId_userId_roleId: {
-            tenantId: tenant.id,
-            userId: ownerUser.id,
-            roleId: ownerRole.id,
-          },
-        },
-        create: {
-          tenantId: tenant.id,
-          userId: ownerUser.id,
-          roleId: ownerRole.id,
-        },
-        update: {},
-      });
-
-      await this.prisma.userFactoryAccess.upsert({
-        where: {
-          tenantId_userId_factoryId: {
-            tenantId: tenant.id,
-            userId: ownerUser.id,
-            factoryId: factory.id,
-          },
-        },
-        create: {
-          tenantId: tenant.id,
-          userId: ownerUser.id,
-          factoryId: factory.id,
-        },
-        update: {},
-      });
-
-      return {
-        status: 'ok',
-        message: 'Bootstrap complete. Users: platform@paypoq.local & owner@paypoq.local created.',
-      };
-    } catch (err: unknown) {
-      return {
-        status: 'error',
-        message: err instanceof Error ? err.message : String(err),
-      };
-    }
   }
 
   @Get('readiness')
   async getReadiness(): Promise<{
     status: ReadinessStatus;
     service: 'paypoq-os-api';
+    version: string;
     checks: Record<string, CheckStatus>;
   }> {
     const checks: Record<string, CheckStatus> = {
       database: 'ok',
+      schema: 'ok',
       jwtConfig: this.hasSecret('auth.jwtAccessSecret') ? 'ok' : 'failed',
       platformJwtConfig: this.hasSecret('platformAuth.jwtAccessSecret') ? 'ok' : 'failed',
       botInternalApiKey: this.hasSecret('bot.internalApiKey') ? 'ok' : 'failed',
@@ -205,6 +76,11 @@ export class HealthController {
       await this.prisma.$queryRaw`SELECT 1`;
     } catch {
       checks.database = 'failed';
+      checks.schema = 'failed';
+    }
+
+    if (checks.database === 'ok') {
+      checks.schema = (await this.hasEssentialSchema()) ? 'ok' : 'failed';
     }
 
     const status: ReadinessStatus = Object.values(checks).every(
@@ -216,6 +92,7 @@ export class HealthController {
     const response = {
       status,
       service: 'paypoq-os-api' as const,
+      version: this.configService.get<string>('app.buildSha', 'unknown'),
       checks,
     };
 
@@ -224,6 +101,42 @@ export class HealthController {
     }
 
     return response;
+  }
+
+  /**
+   * True only when every essential table exists AND at least one migration is
+   * recorded as finished. A database that is reachable but empty (failed or
+   * skipped release migration) therefore fails readiness instead of serving
+   * traffic against a schema the application cannot use.
+   *
+   * Only a boolean ever reaches the response: no table names, row counts or
+   * driver errors are exposed to an unauthenticated caller.
+   */
+  private async hasEssentialSchema(): Promise<boolean> {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ table_name: string }>>`
+        SELECT "table_name"
+        FROM "information_schema"."tables"
+        WHERE "table_schema" = current_schema()
+      `;
+      const present = new Set(rows.map((row) => row.table_name));
+
+      for (const table of ESSENTIAL_TABLES) {
+        if (!present.has(table)) {
+          return false;
+        }
+      }
+
+      const [migrations] = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint AS count
+        FROM "_prisma_migrations"
+        WHERE "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL
+      `;
+
+      return Number(migrations?.count ?? 0) > 0;
+    } catch {
+      return false;
+    }
   }
 
   private hasSecret(configPath: string): boolean {

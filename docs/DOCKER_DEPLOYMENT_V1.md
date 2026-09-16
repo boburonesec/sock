@@ -1,5 +1,9 @@
 # Docker Deployment v1
 
+> **Status: SUPPORTED** for local development and a single-host pilot.
+> The API image starts the API only — migrations and first-admin bootstrap are
+> explicit release steps. Canonical order: `docs/RELEASE_RUNBOOK_V1.md`.
+
 ## Scope
 
 This document describes Docker-based local/pilot runtime for:
@@ -123,7 +127,10 @@ docker compose --env-file .env.docker --profile migrate run --rm migrate
 
 ## Seed workflow
 
-Baseline seed is for development/demo/pilot setup only.
+Baseline seed is for **development/demo only** and refuses to run with
+`NODE_ENV=production`. A production database is provisioned by
+`prisma migrate deploy` + `pnpm --filter @paypoq/api bootstrap:platform-admin`
+(operator-supplied password), then tenants are created from `/admin`.
 
 Host command:
 

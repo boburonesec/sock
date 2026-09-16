@@ -1,92 +1,161 @@
 /**
- * Paypoq OS Production Auth & Smoke Test Suite
+ * Post-deploy production smoke.
  *
- * Tests the live deployment at https://paypoq-web.onrender.com
- * Evaluates:
- * 1. Chromium Engine (Android Chrome runtime equivalent): Login, Partitioned cookie handling, reload persistence.
- * 2. WebKit Engine (Safari runtime equivalent): Evaluates Safari ITP behavior with cross-site onrender.com domains.
+ * Read-only by design, and it never assumes demo data: every credential and
+ * URL comes from the environment (password manager / CI secret store). There
+ * are deliberately no defaults — a missing variable fails the smoke rather
+ * than silently falling back to a demo account.
+ *
+ * Required:
+ *   SMOKE_WEB_URL                 e.g. https://app.example.com
+ *   SMOKE_API_URL                 e.g. https://api.example.com
+ *   SMOKE_PLATFORM_ADMIN_EMAIL    platform admin created by bootstrap:platform-admin
+ *   SMOKE_PLATFORM_ADMIN_PASSWORD
+ *   SMOKE_TENANT_EMAIL            operator account inside the dedicated smoke tenant
+ *   SMOKE_TENANT_PASSWORD
+ *
+ * Optional:
+ *   SMOKE_EXPECTED_SHA            release SHA; asserted against GET /health
+ *   SMOKE_SUSPENDED_TENANT_EMAIL  account in a permanently suspended smoke tenant
+ *   SMOKE_SUSPENDED_TENANT_PASSWORD
+ *
+ * The smoke tenant must be a dedicated tenant that holds no customer data.
+ * Nothing here creates orders, payments, stock or users.
+ *
+ * Usage:
+ *   node scripts/production-smoke-test.mjs
  */
-
-import { chromium, webkit } from 'playwright';
 import assert from 'node:assert/strict';
 
-const PROD_URL = process.env.PROD_URL || 'https://paypoq-web.onrender.com';
+const results = [];
+function record(name, passed, detail) {
+  results.push({ name, passed, detail });
+  console.log(`[${passed ? 'PASS' : 'FAIL'}] ${name}${detail ? ` — ${detail}` : ''}`);
+}
 
-async function testEngine(browserType, engineName) {
-  console.log(`\n----------------------------------------------------------------`);
-  console.log(`Testing Production against ${engineName}`);
-  console.log(`Target: ${PROD_URL}`);
-  console.log(`----------------------------------------------------------------`);
+function requireEnv(name) {
+  const value = process.env[name];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    console.error(`[smoke] ERROR: ${name} is required (no defaults, no demo credentials).`);
+    process.exit(1);
+  }
+  return value.trim();
+}
 
-  const browser = await browserType.launch();
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
+const WEB = requireEnv('SMOKE_WEB_URL').replace(/\/+$/, '');
+const API = requireEnv('SMOKE_API_URL').replace(/\/+$/, '');
+const PLATFORM_EMAIL = requireEnv('SMOKE_PLATFORM_ADMIN_EMAIL');
+const PLATFORM_PASSWORD = requireEnv('SMOKE_PLATFORM_ADMIN_PASSWORD');
+const TENANT_EMAIL = requireEnv('SMOKE_TENANT_EMAIL');
+const TENANT_PASSWORD = requireEnv('SMOKE_TENANT_PASSWORD');
+const EXPECTED_SHA = process.env.SMOKE_EXPECTED_SHA?.trim();
+const SUSPENDED_EMAIL = process.env.SMOKE_SUSPENDED_TENANT_EMAIL?.trim();
+const SUSPENDED_PASSWORD = process.env.SMOKE_SUSPENDED_TENANT_PASSWORD?.trim();
+
+async function call(base, path, { method = 'GET', token, body, factoryId } = {}) {
+  const headers = { Accept: 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (factoryId) headers['X-Factory-Id'] = factoryId;
+  if (body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
   });
-  const page = await context.newPage();
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+  return { status: res.status, ok: res.ok, data };
+}
 
-  let loginCookieSet = false;
-  page.on('response', (res) => {
-    if (res.url().includes('/auth/login')) {
-      const headers = res.headers();
-      if (headers['set-cookie']) {
-        loginCookieSet = true;
-      }
-    }
-  });
+async function main() {
+  // ---- liveness + deployed build identity ----
+  const health = await call(API, '/health');
+  record('API liveness (GET /health) responds ok', health.ok && health.data?.status === 'ok', `status=${health.status}`);
 
-  // 1. Login
-  console.log(`  [1/4] Logging in as seller@paypoq.local...`);
-  await page.goto(`${PROD_URL}/login`, { waitUntil: 'networkidle' });
-  await page.fill('#email', 'seller@paypoq.local');
-  await page.fill('#password', 'ChangeMe123!');
-  await page.click('button[type="submit"]');
-  await page.waitForURL((u) => !u.pathname.includes('/login'), { timeout: 25000 });
-  console.log(`  ✓ Login successful, landed on: ${page.url()}`);
-  console.log(`  ✓ Set-Cookie received on login: ${loginCookieSet}`);
-
-  // 2. Refresh / Hard Reload
-  console.log(`  [2/4] Testing session persistence across hard reload...`);
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForTimeout(1000);
-
-  const sessionPersisted = !page.url().includes('/login');
-  if (sessionPersisted) {
-    console.log(`  ✓ ${engineName}: Session PERSISTED across hard reload on ${page.url()}`);
+  const deployedSha = typeof health.data?.version === 'string' ? health.data.version : 'unknown';
+  if (EXPECTED_SHA) {
+    record(
+      'Deployed build SHA matches the release SHA',
+      deployedSha === EXPECTED_SHA,
+      `deployed=${deployedSha} expected=${EXPECTED_SHA}`,
+    );
   } else {
-    console.log(`  ✗ ${engineName}: Session LOST after reload (redirected to ${page.url()})`);
+    record('Deployed build SHA reported by /health', deployedSha !== 'unknown', `deployed=${deployedSha}`);
   }
 
-  // 3. Navigation
-  if (sessionPersisted) {
-    console.log(`  [3/4] Testing navigation...`);
-    await page.goto(`${PROD_URL}/sales/clients`, { waitUntil: 'networkidle' });
-    assert(page.url().includes('/sales/clients'), 'Navigation to /sales/clients must succeed');
-    console.log(`  ✓ Reached /sales/clients`);
+  // ---- readiness: DB + schema + secrets ----
+  const readiness = await call(API, '/health/readiness');
+  record(
+    'API readiness (GET /health/readiness) is ok',
+    readiness.ok && readiness.data?.status === 'ok',
+    `status=${readiness.status} checks=${JSON.stringify(readiness.data?.checks ?? {})}`,
+  );
+
+  // ---- dangerous operational routes must not exist in production ----
+  for (const route of ['/health/bootstrap', '/health/migrate', '/health/diagnostic']) {
+    const res = await call(API, route);
+    record(`${route} is not exposed`, res.status === 404, `status=${res.status}`);
   }
 
-  // 4. Cleanup
-  await browser.close();
-  return { engine: engineName, sessionPersisted };
+  // ---- platform admin login (operator-supplied credentials) ----
+  const platformLogin = await call(API, '/platform-auth/login', {
+    method: 'POST',
+    body: { email: PLATFORM_EMAIL, password: PLATFORM_PASSWORD },
+  });
+  record('Platform Admin login succeeds', platformLogin.ok, `status=${platformLogin.status}`);
+
+  // ---- smoke tenant login + read-only surface checks ----
+  const tenantLogin = await call(API, '/auth/login', {
+    method: 'POST',
+    body: { email: TENANT_EMAIL, password: TENANT_PASSWORD },
+  });
+  record('Smoke tenant login succeeds', tenantLogin.ok, `status=${tenantLogin.status}`);
+  assert(tenantLogin.ok, 'smoke tenant login must succeed to continue');
+
+  const token = tenantLogin.data.data.accessToken;
+  const factoryId = tenantLogin.data.data.activeFactoryId;
+
+  const readOnly = [
+    ['Production', '/production/operations-summary'],
+    ['Warehouse', '/warehouse/stock'],
+    ['Sales', '/sales/orders'],
+    ['Finance', '/finance/summary'],
+  ];
+  for (const [label, path] of readOnly) {
+    const res = await call(API, path, { token, factoryId });
+    record(`${label} read-only API reachable for smoke tenant`, res.ok, `status=${res.status}`);
+  }
+
+  // ---- web surface is served ----
+  const webLogin = await fetch(`${WEB}/login`, { redirect: 'manual' });
+  record('Web login page is served', webLogin.status === 200, `status=${webLogin.status}`);
+
+  // ---- suspended smoke tenant is denied (optional but recommended) ----
+  if (SUSPENDED_EMAIL && SUSPENDED_PASSWORD) {
+    const denied = await call(API, '/auth/login', {
+      method: 'POST',
+      body: { email: SUSPENDED_EMAIL, password: SUSPENDED_PASSWORD },
+    });
+    record('Suspended smoke tenant is denied login', !denied.ok, `status=${denied.status}`);
+  } else {
+    console.log('[skip] suspended-tenant check (SMOKE_SUSPENDED_TENANT_* not set)');
+  }
+
+  const failed = results.filter((r) => !r.passed);
+  console.log(`\n${results.length - failed.length}/${results.length} passed`);
+  if (failed.length > 0) {
+    console.error(`\n${failed.length} FAILED:`);
+    for (const f of failed) console.error(`  ${f.name}`);
+  }
+  process.exit(failed.length > 0 ? 1 : 0);
 }
 
-async function run() {
-  console.log('================================================================');
-  console.log('PAYPOQ OS PRODUCTION AUTH AUDIT (LIVE SMOKE)');
-  console.log('================================================================');
-
-  const chromiumResult = await testEngine(chromium, 'Chromium (Android Chrome Engine)');
-  const webkitResult = await testEngine(webkit, 'WebKit 18.4 (Safari Engine)');
-
-  console.log('\n================================================================');
-  console.log('PRODUCTION ENGINE RESULTS:');
-  console.log(`  Chromium (Android Chrome): ${chromiumResult.sessionPersisted ? 'PASS (Session Persisted)' : 'FAIL'}`);
-  console.log(`  WebKit (Safari Engine):     ${webkitResult.sessionPersisted ? 'PASS (Session Persisted)' : 'BLOCKED BY SAFARI ITP (Cross-Site *.onrender.com Public Suffix)'}`);
-  console.log('================================================================\n');
-}
-
-run().catch((err) => {
-  console.error('Production audit error:', err);
+main().catch((error) => {
+  console.error('[smoke] fatal:', error instanceof Error ? error.message : error);
   process.exit(1);
 });

@@ -1,3 +1,9 @@
+# Paypoq OS — self-hosted runtime (SUPPORTED for local development and for a
+# single-host pilot when the operator supplies real secrets and origins).
+#
+# Release contract (docs/RELEASE_RUNBOOK_V1.md): backup -> `--profile migrate`
+# -> optional one-shot `--profile bootstrap` -> api -> readiness -> web -> bot
+# -> smoke. The api service never migrates or seeds by itself.
 services:
   postgres:
     image: postgres:16-alpine
@@ -30,10 +36,31 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/paypoq_os?schema=public}
     command: ["pnpm", "--filter", "@paypoq/api", "prisma:migrate:deploy"]
 
+  bootstrap:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    profiles: ["bootstrap"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/paypoq_os?schema=public}
+      # Passed through, not defaulted: the CLI itself refuses to run without
+      # both values (compose interpolates every service, including inactive
+      # profiles, so making these required here would break `up api web bot`).
+      PLATFORM_BOOTSTRAP_EMAIL: ${PLATFORM_BOOTSTRAP_EMAIL:-}
+      PLATFORM_BOOTSTRAP_PASSWORD: ${PLATFORM_BOOTSTRAP_PASSWORD:-}
+    command: ["pnpm", "--filter", "@paypoq/api", "bootstrap:platform-admin"]
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      args:
+        BUILD_SHA: ${BUILD_SHA:-unknown}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -41,8 +68,9 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
+      BUILD_SHA: ${BUILD_SHA:-unknown}
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/paypoq_os?schema=public}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required (exact web origin, e.g. https://app.example.com)}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
       REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
@@ -55,7 +83,7 @@ services:
     ports:
       - "${API_PORT:-3001}:3001"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/health/readiness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -65,7 +93,8 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required at build time (baked into the browser bundle)}
+        BUILD_SHA: ${BUILD_SHA:-unknown}
     restart: unless-stopped
     depends_on:
       api:
@@ -75,7 +104,7 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
       # Browser-facing API URL (baked at build) + server-side TV proxy config.
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:3001}
       FACTORY_TV_ACCESS_TOKEN: ${FACTORY_TV_ACCESS_TOKEN:?FACTORY_TV_ACCESS_TOKEN is required}
     ports:

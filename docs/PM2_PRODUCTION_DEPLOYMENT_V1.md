@@ -1,5 +1,9 @@
 # PM2 Production Deployment v1
 
+> **Status: SUPPORTED (example values)** for a single-host VPS pilot.
+> Domains/certs in `configs/nginx.paypoq.example.conf` are placeholders.
+> Release order, rollback and admin recovery: `docs/RELEASE_RUNBOOK_V1.md`.
+
 ## Recommendation
 
 Use PM2 for the first real factory server.

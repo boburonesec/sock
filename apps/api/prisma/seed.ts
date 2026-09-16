@@ -9,10 +9,17 @@ const prisma = createPrismaClient();
  * Never run against production. Production bootstrap uses platform-admin
  * tenant provisioning (empty-seed / platform APIs), not this file.
  */
-if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
-  // Safe default: skip demo seed unless explicitly enabled
-  console.log('Skipping demo baseline seed in production (ALLOW_DEMO_SEED is not true).');
-  process.exit(0);
+// Hard production guard. This seed creates tenant users with a known demo
+// password, so there is no flag (ALLOW_DEMO_SEED included) that makes it
+// acceptable against a production database. Production provisioning is
+// `prisma migrate deploy` + `pnpm --filter @paypoq/api bootstrap:platform-admin`
+// + Platform Admin tenant creation.
+if (process.env.NODE_ENV === 'production') {
+  console.error(
+    'Refusing to run the demo baseline seed with NODE_ENV=production. ' +
+      'Use bootstrap:platform-admin and create tenants from /admin instead.',
+  );
+  process.exit(1);
 }
 
 const DEMO_TENANT_ID = 'seed-demo-paypoq-factory';

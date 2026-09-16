@@ -340,11 +340,17 @@ For database rollback:
 - Never delete audit records.
 - Never edit historical movement/payment/payroll records to "fix" data.
 
-Restore example:
+Restore example — backups are PostgreSQL **custom format**, so `pg_restore`
+(via the supported script) is required; `psql <file>` will not work:
 
 ```bash
-psql "$DATABASE_URL" < paypoq_pilot_backup_YYYYMMDD_HHMMSS.sql
+ALLOW_DB_RESTORE=true \
+CONFIRM_PRODUCTION_RESTORE=I_UNDERSTAND_THIS_RESTORES_PRODUCTION_DATA \
+RESTORE_DATABASE_URL="$DATABASE_URL" \
+pnpm restore:db backups/paypoq-os-YYYYMMDDTHHMMSSZ.dump
 ```
+
+Full release/rollback order: `docs/RELEASE_RUNBOOK_V1.md`.
 
 Use database restore only with clear approval because it can overwrite pilot
 data.

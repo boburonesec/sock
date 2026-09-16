@@ -3,6 +3,9 @@ export default () => ({
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port: Number(process.env.PORT ?? 3001),
     corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+    // Injected at image build / deploy time; reported by GET /health so an
+    // operator can confirm which commit is actually running.
+    buildSha: process.env.BUILD_SHA?.trim() || 'unknown',
   },
   database: {
     url: process.env.DATABASE_URL,

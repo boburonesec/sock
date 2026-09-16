@@ -39,21 +39,26 @@ function isPrivateHost(hostname: string): boolean {
 }
 
 function getApiBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    if (window.location.hostname.endsWith(".onrender.com")) {
-      return "https://paypoq-api.onrender.com";
-    }
+  // Baked at build time. A production bundle without it is a build defect
+  // (the web image refuses to build), never a reason to guess a public host.
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-    if (isPrivateHost(window.location.hostname)) {
-      return `http://${window.location.hostname}:3001`;
-    }
+  let baseUrl: string;
+
+  if (configured) {
+    baseUrl = configured;
+  } else if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL was not set when this build was created.",
+    );
+  } else if (
+    typeof window !== "undefined" &&
+    isPrivateHost(window.location.hostname)
+  ) {
+    baseUrl = `http://${window.location.hostname}:3001`;
+  } else {
+    baseUrl = "http://localhost:3001";
   }
-
-  let baseUrl =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && !isPrivateHost(window.location.hostname)
-      ? "https://paypoq-api.onrender.com"
-      : "http://localhost:3001");
 
   baseUrl = baseUrl.replace(/\/+$/, "").trim();
   if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {

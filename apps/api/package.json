@@ -21,6 +21,7 @@
     "test:payroll-payment-integrity": "node scripts/payroll-payment-integrity-test.mjs",
     "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm acceptance:seed",
     "empty:seed": "node -r ts-node/register prisma/empty-seed.ts",
+    "bootstrap:platform-admin": "node scripts/bootstrap-platform-admin.mjs",
     "smoke:platform-auth": "node scripts/platform-auth-smoke-test.mjs",
     "smoke:organization": "node scripts/organization-smoke-test.mjs",
     "smoke:finance-rbac": "node scripts/finance-rbac-smoke-test.mjs"

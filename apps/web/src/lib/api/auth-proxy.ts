@@ -6,33 +6,34 @@ import { NextRequest, NextResponse } from "next/server";
  * falls back to NEXT_PUBLIC_API_URL or local default.
  */
 export function resolveInternalApiUrl(): string {
-  let url =
-    process.env.API_INTERNAL_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    (process.env.NODE_ENV === "production"
-      ? "https://paypoq-api.onrender.com"
-      : "http://localhost:3001");
+  const configured =
+    process.env.API_INTERNAL_URL?.trim() || process.env.NEXT_PUBLIC_API_URL?.trim();
 
-  url = url.replace(/\/+$/, "").trim();
+  // Production must be told explicitly where the API is. There is no hosted
+  // fallback: a misconfigured deployment must fail loudly rather than proxy
+  // operator credentials to an unintended host.
+  if (!configured) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "API_INTERNAL_URL (or NEXT_PUBLIC_API_URL) must be set in production.",
+      );
+    }
 
-  // On Render free tier, 'fromService' env vars contain bare service names (e.g. 'paypoq-api')
-  // which lack private DNS resolution without paid instance networking. Map to public domain.
-  if (url === "paypoq-api") {
-    return "https://paypoq-api.onrender.com";
+    return "http://localhost:3001";
   }
 
-  if (
-    !url.includes(".") &&
-    !url.includes("localhost") &&
-    !url.includes("127.0.0.1")
-  ) {
-    return `https://${url}.onrender.com`;
-  }
+  let url = configured.replace(/\/+$/, "").trim();
 
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = url.includes("localhost") || url.includes("127.0.0.1")
-      ? `http://${url}`
-      : `https://${url}`;
+    const isLocal = url.startsWith("localhost") || url.startsWith("127.0.0.1");
+
+    if (!isLocal && process.env.NODE_ENV === "production") {
+      throw new Error(
+        "API_INTERNAL_URL must be an absolute http(s) URL in production.",
+      );
+    }
+
+    url = isLocal ? `http://${url}` : `https://${url}`;
   }
 
   return url;

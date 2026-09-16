@@ -50,7 +50,66 @@ const environmentSchema = Joi.object({
     then: Joi.string().uri({ scheme: ['postgres', 'postgresql'] }).required(),
     otherwise: Joi.string().allow('').optional(),
   }),
-  CORS_ORIGIN: Joi.string().default('*'),
+  // Production must name the exact browser origin(s) that may call this API.
+  // `*`, empty, and local/private origins are rejected: with credentials
+  // enabled, `*` makes the API reflect (and accept) any requesting origin.
+  CORS_ORIGIN: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string()
+      .required()
+      .custom((value, helpers) => {
+        const origins = String(value)
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean);
+
+        if (origins.length === 0) {
+          return helpers.error('any.invalid');
+        }
+
+        for (const origin of origins) {
+          if (origin === '*') {
+            return helpers.error('any.invalid');
+          }
+
+          let parsed: URL;
+          try {
+            parsed = new URL(origin);
+          } catch {
+            return helpers.error('any.invalid');
+          }
+
+          if (parsed.protocol !== 'https:') {
+            return helpers.error('any.invalid');
+          }
+
+          if (parsed.pathname !== '/' && parsed.pathname !== '') {
+            return helpers.error('any.invalid');
+          }
+
+          const host = parsed.hostname.toLowerCase();
+          const isLocal =
+            host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host === '::1' ||
+            host.endsWith('.localhost');
+          if (isLocal) {
+            return helpers.error('any.invalid');
+          }
+        }
+
+        return origins.join(',');
+      }, 'production CORS allowlist')
+      .messages({
+        'any.invalid':
+          '{{#label}} must be an explicit comma-separated https origin allowlist in production (no "*", no localhost, no paths).',
+        'any.required':
+          '{{#label}} is required in production. Set the exact web origin(s) allowed to call this API.',
+      }),
+    otherwise: Joi.string().default('*'),
+  }),
+  // Non-secret build identifier surfaced by GET /health for release verification.
+  BUILD_SHA: Joi.string().allow('').optional(),
   JWT_ACCESS_SECRET: secretSchema({
     productionMin: 32,
     developmentMin: 16,

@@ -18,13 +18,24 @@ COPY apps/mobile/package.json apps/mobile/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
-ARG NEXT_PUBLIC_API_URL=https://paypoq-api.onrender.com
+# NEXT_PUBLIC_* is baked into the browser bundle at build time and CANNOT be
+# changed by runtime env. There is deliberately no default: a production image
+# must be built against the real API origin, never a fallback host.
+ARG NEXT_PUBLIC_API_URL
+ARG BUILD_SHA=unknown
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_BUILD_SHA=$BUILD_SHA
 COPY . .
+RUN test -n "$NEXT_PUBLIC_API_URL" || { \
+      echo "ERROR: --build-arg NEXT_PUBLIC_API_URL=https://api.example.com is required" >&2; \
+      exit 1; \
+    }
 RUN pnpm --filter @paypoq/web build
 
 FROM node:22-bookworm-slim AS runner
+ARG BUILD_SHA=unknown
 ENV NODE_ENV=production
+ENV BUILD_SHA=$BUILD_SHA
 ENV HOSTNAME="0.0.0.0"
 ENV PORT=3000
 WORKDIR /app

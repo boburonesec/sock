@@ -52,16 +52,11 @@ async function bootstrap(): Promise<void> {
 
   const port = configService.get<number>('app.port', 3001);
 
-  // Auto-run migrations on boot
-  try {
-    const { runAutoMigrations } = await import('./prisma/prisma-auto-migrate');
-    const { PrismaService } = await import('./prisma/prisma.service');
-    const prisma = app.get(PrismaService);
-    await runAutoMigrations(prisma);
-  } catch (err: unknown) {
-    console.error('Auto migration warning on startup:', err);
-  }
-
+  // Migrations are NOT run here. `prisma migrate deploy` is an explicit release
+  // step that must succeed before this process is started or receives traffic
+  // (see docs/RELEASE_RUNBOOK_V1.md). A process that boots against an
+  // un-migrated database fails GET /health/readiness, so the rollout stops
+  // instead of serving against an incompatible schema.
   await app.listen(port, '0.0.0.0');
 }
 

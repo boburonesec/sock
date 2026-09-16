@@ -12,6 +12,18 @@ const prisma = createPrismaClient();
 const PLATFORM_ADMIN_EMAIL = 'platform@paypoq.local';
 const PLATFORM_PASSWORD = 'ChangeMe123!';
 
+// This bootstrap uses a known development password and therefore must never
+// touch a production database. The supported production path is
+// `pnpm --filter @paypoq/api bootstrap:platform-admin`, which requires an
+// operator-supplied email and password.
+if (process.env.NODE_ENV === 'production') {
+  console.error(
+    'Refusing to run empty-seed with NODE_ENV=production. ' +
+      'Use bootstrap:platform-admin (operator-supplied credentials) instead.',
+  );
+  process.exit(1);
+}
+
 async function main(): Promise<void> {
   const platformAdmin = await prisma.platformAdmin.upsert({
     where: { email: PLATFORM_ADMIN_EMAIL },

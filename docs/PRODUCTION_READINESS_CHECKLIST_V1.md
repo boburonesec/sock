@@ -27,10 +27,10 @@ Legend:
 | Secrets in password manager; not git/image/chat | **OPS** | Policy: `SECRETS_MANAGEMENT_V1.md` |
 | `apps/api/.env` / `.env.production` outside git | **DONE** | `.gitignore`; examples only in repo |
 | `NEXT_PUBLIC_API_URL` = real HTTPS API | **OPS** | Template: `apps/web/.env.example` |
-| `CORS_ORIGIN` = real web origin only | **DONE** (code) + **OPS** (value) | Production rejects `*` and `localhost` |
+| `CORS_ORIGIN` = real web origin only | **DONE** (code) + **OPS** (value) | Production startup fails on `*`, localhost, empty or non-https origins (`apps/api/src/config/env.validation.ts`); verified by `scripts/production-hardening-acceptance.mjs` |
 | `NODE_ENV=production` | **OPS** | |
 | Cookies HTTPS Secure + domain | **DONE** | HttpOnly + Secure + SameSite strict in prod (`auth.controller.ts`) |
-| Demo passwords not on production DB | **DONE** (guard) + **OPS** | `seed.ts` / `demo-seed.ts` refuse `NODE_ENV=production` |
+| Demo passwords not on production DB | **DONE** (guard) | `seed.ts`, `demo-seed.ts` and `empty-seed.ts` refuse `NODE_ENV=production` unconditionally; the API image no longer seeds at startup |
 | No `demo:reset` / demo seed on production | **DONE** (guard) + **OPS** | `demo-reset.mjs` + seed guards |
 
 ### 1.2 Infrastructure and deploy
@@ -42,7 +42,8 @@ Legend:
 | Deploy method PM2 **or** Docker (not mixed) | **DONE** (docs) + **OPS** | `PM2_PRODUCTION_DEPLOYMENT_V1.md`, `DOCKER_DEPLOYMENT_V1.md` |
 | Reverse proxy + TLS | **PARTIAL** | Example: `configs/nginx.paypoq.example.conf` — install TLS on server |
 | API/Web separate domain or path | **OPS** | nginx example uses `api.` / `app.` |
-| Health `/health`, `/health/readiness` | **DONE** | |
+| Health `/health`, `/health/readiness` | **DONE** | Only these two routes are public. Readiness proves DB + application schema + secrets; traffic health checks must target `/health/readiness` |
+| No mutating/admin HTTP health routes | **DONE** | `bootstrap`, `migrate`, `diagnostic` removed; first admin via `bootstrap:platform-admin` CLI |
 | Process restart policy | **DONE** (docs/config) | PM2 ecosystem / Docker restart |
 | `prisma migrate deploy` only in prod | **DONE** (docs) | |
 | Deploy order: backup → migrate → restart → smoke → rollback | **DONE** (docs) | PM2/Docker runbooks |

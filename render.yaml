@@ -1,3 +1,15 @@
+# Paypoq OS — Render Blueprint (EXAMPLE / evaluation manifest).
+#
+# NOT the canonical pilot target: `plan: free` services sleep and the free
+# database has no operator-managed backups, which the pilot release contract
+# requires (docs/RELEASE_RUNBOOK_V1.md). To use Render for a real pilot, move
+# every service and the database to a paid plan first.
+#
+# Target-specific values are operator-supplied (`sync: false`) so this file can
+# never ship a wildcard CORS origin or point a browser bundle at the wrong API.
+# Render builds images from this repo, so the API image starts the API only:
+# run `prisma migrate deploy` (and, once, bootstrap:platform-admin) as explicit
+# release steps before promoting a deploy.
 services:
   # Backend API
   - type: web
@@ -7,18 +19,22 @@ services:
     dockerContext: .
     plan: free
     region: frankfurt
-    healthCheckPath: /health
+    healthCheckPath: /health/readiness
     envVars:
       - key: NODE_ENV
         value: production
+      - key: BUILD_SHA
+        sync: false
       - key: PORT
         value: "3001"
       - key: DATABASE_URL
         fromDatabase:
           name: paypoq-db
           property: connectionString
+      # Exact web origin(s), e.g. https://app.example.com — production
+      # startup rejects '*', localhost and empty values.
       - key: CORS_ORIGIN
-        value: '*'
+        sync: false
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_ACCESS_TTL_SECONDS
@@ -53,16 +69,12 @@ services:
         value: "3000"
       - key: HOSTNAME
         value: "0.0.0.0"
+      # Absolute https URL of the API, e.g. https://api.example.com.
+      # Baked into the browser bundle at build time.
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: paypoq-api
-          property: host
+        sync: false
       - key: API_INTERNAL_URL
-        fromService:
-          type: web
-          name: paypoq-api
-          property: host
+        sync: false
       - key: FACTORY_TV_ACCESS_TOKEN
         fromService:
           type: web
@@ -88,10 +100,7 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: API_BASE_URL
-        fromService:
-          type: web
-          name: paypoq-api
-          property: host
+        sync: false
       - key: BOT_INTERNAL_API_KEY
         fromService:
           type: web
