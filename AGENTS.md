@@ -1,267 +1,425 @@
 # Paypoq OS — AI Agent Instructions
 
-## Project Purpose
+**This file is the canonical instruction set for every AI agent working in this
+repository** (Claude Code, Codex, Antigravity, Copilot, Cursor, or a human
+following the same rules). Tool-specific files (`CLAUDE.md`,
+`.github/copilot-instructions.md`) only point here — never duplicate rules into
+them.
 
-Paypoq OS is a Manufacturing Operations Platform built primarily for sock factories.
+Precedence when instructions conflict:
 
-It is not a generic ERP.
-It is not a full accounting system.
-It is not an IoT platform in V1.
+1. The user's explicit request in the current task
+2. This file (`AGENTS.md`)
+3. `docs/` source-of-truth documents
+4. Existing code conventions
 
-The platform focuses on:
-- production stage inventory
-- worker activity
-- warehouse stock
-- sales orders
-- client debt
-- supplier debt
-- payroll
-- operational dashboards
+If a rule here is wrong or outdated, say so and propose the fix. Do not silently
+work around it.
 
-## Repository Structure
+---
+
+## 1. Quick start (first 5 minutes in a new session)
+
+```bash
+# 1. Where are we?
+git status --short && git log --oneline -5 && git branch --show-current
+
+# 2. Dependencies (pnpm 11.7.0, Node 22.x is the pinned target)
+pnpm install
+
+# 3. Database (Docker, already running in most dev setups)
+docker ps --format '{{.Names}} | {{.Ports}}'      # expect: sockai-postgres-1 | 55432->5432
+
+# 4. Dev servers (two terminals, or background)
+pnpm api:dev     # NestJS on :3001
+pnpm dev         # Next.js dev on :3000
+
+# 5. Fast sanity check
+curl -s localhost:3001/health && curl -s -o /dev/null -w '%{http_code}\n' localhost:3000/login
+```
+
+Local demo logins (**development database only**, never production):
+`platform@paypoq.local`, `owner@paypoq.local`, `manager@paypoq.local`,
+`seller@paypoq.local`, `warehouse@paypoq.local`, `shift@paypoq.local`,
+`accountant@paypoq.local`, `mechanic@paypoq.local` — password `ChangeMe123!`.
+
+---
+
+## 2. Project status
+
+Check `git log --oneline -5` first; this section states the stable picture, not a
+commit SHA.
+
+| Area | Status |
+| --- | --- |
+| Product scope (pilot) | **Closed** — Mobile UX phases 1–8, Day-0 onboarding, production run closure, mechanic provisioning, tenant suspension, payroll UI lifecycle, supplier lifecycle all accepted |
+| Deployment/infrastructure | **Hardened** — see §7 invariants and `docs/RELEASE_RUNBOOK_V1.md` |
+| Real deployment | **Not performed.** No provider selected; no production environment exists yet |
+| Open product decision | **Mechanic Master** role — unresolved product/scope decision, do not implement |
+| Physical devices | iPhone Safari / Android Chrome — never tested on real hardware |
+
+Known non-blocking follow-ups: audit event-label localization (P2), payment date
+`05:00` display (P3), in-memory auth rate limiter (P2, multi-instance only),
+no HSTS on web (P2), no structured logging / error reporting (P2).
+
+---
+
+## 3. Product boundary and source of truth
+
+Paypoq OS is a Manufacturing Operations Platform for sock factories.
+It is **not** a generic ERP, **not** a full accounting ledger, **not** an IoT
+platform in V1.
+
+Focus: production stage inventory · worker activity · warehouse stock · sales
+orders · client debt · supplier debt · payroll · operational dashboards.
+
+Read before any product or architecture decision:
+
+- `docs/product-requirements.md`
+- `docs/DOMAIN_MODEL_V1.md`
+- `docs/page-map-v1.md`
+- `docs/ui-specification-v1.md`
+- `docs/codex-master-context-v1.md` (condensed business contract)
+- `docs/USER_GUIDE_V1.md` (how the product is installed and operated)
+- `docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md` (requirements vs reality)
+- `docs/MVP_KNOWN_LIMITATIONS_V2.md` (what is intentionally missing)
+- `docs/RELEASE_RUNBOOK_V1.md` (release, rollback, backup, admin recovery)
+
+If a required rule is missing or ambiguous, **ask** — do not invent business
+logic. Do not recreate deleted historical QA/audit docs; keep `docs/` lean.
+
+---
+
+## 4. Repository structure
 
 ```text
 paypoq-os/
-├── docs/
+├── docs/                 # product source-of-truth, user guide, runbooks, policies
 ├── apps/
-│   ├── web/        # Next.js frontend
-│   ├── api/        # NestJS backend
-│   ├── bot/        # Telegram employee/client bot
-│   └── mobile/     # Expo React Native mobile
-├── packages/
-│   └── shared/     # shared types, constants, schemas
+│   ├── api/              # NestJS + Prisma backend (:3001)
+│   ├── web/              # Next.js App Router frontend (:3000)
+│   ├── bot/              # Telegram employee/client bot
+│   └── mobile/           # Expo React Native foundation
+├── packages/shared/      # shared types, constants, Zod schemas, enums
+├── scripts/              # acceptance suites, smoke tests, backup/restore
+├── configs/              # nginx / PM2 / backup-cron examples
+├── docker-compose.yml    # self-hosted runtime (supported)
+├── render.yaml           # example manifest only (NOT the pilot target)
 └── AGENTS.md
 ```
 
-## Source of Truth
+---
 
-Before making product or architecture decisions, read:
+## 5. Environment facts
 
-docs/product-requirements.md
-docs/DOMAIN_MODEL_V1.md
-docs/page-map-v1.md
-docs/ui-specification-v1.md
-docs/codex-master-context-v1.md
+| Item | Value |
+| --- | --- |
+| Package manager | pnpm `11.7.0` (`packageManager` field; use corepack) |
+| Node | 22.x is the pinned target (Docker images + CI). Newer local versions usually work |
+| API | `http://localhost:3001` (NestJS) |
+| Web | `http://localhost:3000` (Next.js) |
+| Postgres | Docker container `sockai-postgres-1`, host port **55432** |
+| API env | `apps/api/.env` (see `.env.example`) |
+| Web env | `apps/web/.env.local` (see `.env.example`) |
+| Browser tests | Playwright (`playwright` at repo root); Chromium **and** WebKit |
 
-How to install and operate the product:
+`NEXT_PUBLIC_*` values are **baked into the browser bundle at build time**. A
+runtime env change cannot alter an already-built web bundle — rebuild instead.
 
-docs/USER_GUIDE_V1.md
+---
 
-Business acceptance / human QA walkthrough (requirements vs reality):
+## 6. Engineering principles
 
-docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md
+Business first · MVP first · simplicity over complexity · operator-friendly UX ·
+Uzbek-first UI · dark mode first · human before IoT · no premature automation.
 
-If a required rule is missing or ambiguous, do not invent business logic. Ask for clarification.
+Avoid: microservices, CQRS, event sourcing, workflow engines, premature Kafka,
+unnecessary abstractions.
 
-Do not recreate deleted historical QA/audit docs. Keep `docs/` lean: product
-source-of-truth, USER_GUIDE, limitations, deploy/runbook, and active policies only.
+### Frontend (`apps/web`)
 
-## Engineering Principles
+Next.js App Router · TypeScript · Tailwind · shadcn/ui · Zustand for UI state ·
+TanStack Query for API state.
 
-Business first
-MVP first
-Simplicity over complexity
-Operator-friendly UX
-Dark mode first
-Human before IoT
-No premature automation
-No overengineering
+- Never calculate business-critical values (payroll, debt, stock totals, finance)
+  in the UI. Render backend-calculated values.
+- Reuse existing design-system components before creating new primitives.
+- Do not add forms, mutations, API calls or business logic unless requested.
+- Mobile surfaces: card lists at small widths, desktop tables hidden — see the
+  phase suites in §10 before touching list rendering.
 
-Avoid:
+### Backend (`apps/api`)
 
-microservices
-CQRS
-event sourcing
-workflow engines
-premature Kafka usage
-unnecessary abstractions
+NestJS · PostgreSQL · Prisma · Redis only when genuinely needed.
 
-## Frontend Rules
+- Modular monolith; modules aligned with the domain model.
+- All business calculations live here.
+- Tenant isolation is mandatory on every query.
+- Audit important actions (`AuditService.createWithTransaction`) inside the same
+  transaction as the mutation.
+- No microservices, no Kafka, no IoT in V1.
 
-Frontend lives in:
+### Shared (`packages/shared`)
 
-apps/web
+Only shared types, constants, Zod schemas, domain enums. No business services, no
+React components, no database logic.
 
-Frontend stack:
+### Cross-domain read models
 
-Next.js App Router
-TypeScript
-Tailwind CSS
-shadcn/ui
-Zustand only for UI state
-TanStack Query for API state
+Read-only projections (dashboards, executive summary, TV, reports) may live in
+their own modules (`DashboardModule`, `ReportsModule`, `TvModule`). Read-only
+only: no mutations, no orchestration, no ownership transfer.
 
-Rules:
+---
 
-Do not calculate business-critical values in frontend.
-Do not calculate payroll, debt, stock totals, or finance values in UI.
-Show backend-calculated values from API or mock data.
-Keep mock data local to features until API integration.
-Do not mix API hooks with mock data in the same feature.
-Use existing design system components before creating new primitives.
-Keep UI Uzbek-first.
-Keep dark mode first.
-Do not add forms, mutations, API calls, or business logic unless explicitly requested.
+## 7. Production & security invariants (NEVER regress)
 
-## Backend Rules
+These were closed as release blockers after a production readiness audit. Any
+change that reintroduces one is a **P0 defect**. `scripts/production-hardening-acceptance.mjs`
+enforces them — run it after touching anything in this section.
 
-Backend lives in:
+1. **No mutating or disclosing public health routes.** Only `GET /health`
+   (liveness + build SHA) and `GET /health/readiness` are public. There must be
+   no HTTP route that runs migrations, creates/resets a platform admin, seeds
+   demo data, or discloses tenant/user counts.
+2. **No automatic seeding in the API image.** The container entrypoint starts the
+   API only. `ALLOW_DEMO_SEED` must never appear in an image or manifest.
+   `seed.ts`, `demo-seed.ts` and `empty-seed.ts` refuse `NODE_ENV=production`.
+3. **One migration mechanism.** `prisma migrate deploy`, run as an explicit
+   release step. `main.ts` must never run migrations; no boot-time migration
+   runner; no `|| true` around release commands.
+4. **Readiness proves the schema.** `/health/readiness` checks DB connectivity,
+   essential tables + migration history, and production secret validity. It must
+   return 503 on schema drift, and must never leak table names, SQL or secrets.
+5. **Traffic health checks target `/health/readiness`**, not `/health`.
+6. **CORS fails closed in production.** `*`, localhost, empty and non-https
+   origins are rejected at startup. Only an explicit https allowlist is valid.
+7. **No hosted URL fallbacks.** No hardcoded `onrender.com` (or any host) in
+   `client.ts`, `platform-client.ts`, `auth-proxy.ts`, or Dockerfiles. The web
+   image refuses to build without `NEXT_PUBLIC_API_URL`.
+8. **No default passwords anywhere in a production path.** First platform admin
+   is created by `pnpm --filter @paypoq/api bootstrap:platform-admin` with an
+   operator-supplied email and password. UI forms must not pre-fill passwords.
+9. **Production smoke uses no demo credentials** — all inputs come from env.
 
-apps/api
+### Financial semantics are frozen
 
-Backend stack target:
+Do not change without an explicit, separate approval:
 
-NestJS
-PostgreSQL
-Prisma
-Redis only when needed
+- Expense: requester cannot approve/pay their own request where SoD prohibits it
+- Advance: approval and payment separation
+- Payroll: calculation, advance deduction floor (final never below 0), approval,
+  payment semantics
+- Supplier debt formula: purchases − allocated payments
+- Pricing: historical price preservation on orders
 
-Rules:
+---
 
-Start as modular monolith.
-Keep modules aligned with domain model.
-Business calculations belong in backend.
-Audit important actions.
-Tenant isolation is mandatory.
-Do not create microservices.
-Do not add Kafka unless explicitly justified.
-Do not implement IoT in V1.
+## 8. Release & deployment contract
 
-## Shared Package Rules
+Full procedure: **`docs/RELEASE_RUNBOOK_V1.md`**. Summary:
 
-Shared package lives in:
+```text
+accepted SHA → backup (+verify) → prisma migrate deploy (exactly once)
+→ [first release only] bootstrap:platform-admin → start API → /health/readiness 200
+→ start Web → start Bot last → production smoke → verify BUILD_SHA
+```
 
-packages/shared
+Deployment model status (do not blur these):
 
-Use it only for:
+| Config | Status |
+| --- | --- |
+| `docker-compose.yml` + Dockerfiles | **Supported** (local + single-host pilot) |
+| `configs/pm2.ecosystem.config.cjs` + nginx example | **Supported**, example values |
+| `render.yaml` | **Example only — not the pilot target** (free plans, no backups) |
 
-shared TypeScript types
-shared constants
-shared Zod schemas
-shared domain enums
+No provider has been chosen. Do not deploy anything without an explicit request.
+Pilot releases run in a maintenance window; zero-downtime is not supported.
 
-Do not put business services here.
-Do not put frontend components here.
-Do not put backend database logic here.
+---
 
-## Domain Rules
+## 9. Testing & acceptance discipline
 
-Important domain facts:
+**These rules exist because violating them produced hours of false failures.**
 
-Main business metric is Stage Inventory.
-Batch is used for traceability, not main reporting.
-Workers do not use web app directly.
-Shift Receiver enters production data.
-Workers are paid per piece.
-Client debt is calculated from orders and payments.
-Supplier debt is calculated from purchases and payments.
-Stock is tracked by product/material, warehouse, and zone.
-Low stock threshold is configurable.
-Employee is never hard-deleted; use inactive status.
+### Always test against a production build, never a long-lived dev server
 
-## Cross-Domain Read Models
+Browser acceptance suites must run against the built web app:
 
-Cross-domain dashboards, executive summaries, TV screens, reports, and other
-read-only projections MAY introduce dedicated read modules when they do not
-naturally belong to a single business domain.
+```bash
+# stop `next dev` first — it shares .next with the build
+pnpm --filter @paypoq/web build
+BUILD_SHA=$(git rev-parse HEAD) PORT=3000 HOSTNAME=127.0.0.1 \
+  node apps/web/.next/standalone/apps/web/server.js
+```
 
-Examples:
+A `next dev` server that has been running for days recompiles per request and
+collapses under sustained multi-browser load: symptoms are
+`ERR_NETWORK_IO_SUSPENDED`, `networkidle`/`page.type` timeouts, expired-token
+401s, and gate runtimes inflated ~15x. Those are **environment failures, not
+product regressions**.
 
-- DashboardModule
-- ReportsModule
-- TvModule
+If you rebuild the web app, fully stop the old standalone server (`lsof -nP
+-iTCP:3000 -sTCP:LISTEN -t`, then kill by PID) before starting the new one —
+a failed restart (`EADDRINUSE`) silently leaves a stale server serving.
 
-Rules:
+### Classify before retrying
 
-- Read-only only
-- No business ownership transfer
-- No mutations
-- No orchestration workflows
-- No CQRS/Event Sourcing unless explicitly approved
-- Prefer reusing existing domain services when possible
+Never "retry until green". When a gate fails, classify it:
 
-## Senior Engineering Review Behavior
+- **PRODUCT DEFECT** — assertion fails deterministically with correct data
+- **HARNESS/LOCATOR DEFECT** — strict-mode violations, ambiguous selectors
+- **ENVIRONMENT/TIMING** — timeouts, inflated runtimes, network aborts
+- **FIXTURE CONTAMINATION** — leftover rows from an earlier failed run
 
-AI agents must not behave like blind code generators.
+Fix the correct layer only. Preserve the failing logs as evidence.
 
-For every task, the agent must:
+### Test authoring rules
 
-1. Execute the requested scope exactly.
-2. Identify risks, edge cases, and possible better approaches.
-3. Suggest optimizations or alternative designs when relevant.
-4. Clearly separate implemented work from recommendations.
-5. Never implement extra recommendations without explicit approval.
-6. Challenge unclear requirements instead of inventing business logic.
-7. Warn about overengineering if the requested solution is too complex.
-8. Warn about underengineering if the requested solution is too fragile.
-9. Report trade-offs for meaningful architecture decisions.
-10. Mention if a task should be split into smaller steps.
+- Chromium **and** WebKit for anything user-facing.
+- Fixtures own their lifecycle: a suite must be runnable **twice in a row** with
+  no manual cleanup. Create disposable tenants and suspend them at the end.
+- No `force: true`. No `requestSubmit()`/JS `click()` substituting for a real
+  user interaction. The business action under test must be performed through the
+  UI; API calls may set up fixtures and verify state afterwards.
+- No arbitrary `.first()` / `.nth()` on lists shared with other runs — scope to a
+  locator containing that run's unique tag.
+- Never mutate the shared demo tenant for infrastructure experiments; create a
+  disposable database instead.
+- Mobile checks: page-level `scrollWidth === clientWidth`, primary action visible,
+  not covered by a footer, hit-testable.
 
-Suggestions are advisory only. Do not implement suggestions unless the user
-explicitly approves them.
+### Fixture contamination (real example)
 
-Before implementation, if the requested solution appears overengineered,
-underengineered, inconsistent with AGENTS.md, or inconsistent with the Product
-Specification, stop and explain why.
+A crashed run left two ACTIVE `PILOT-Mechanic-*` employees in the demo tenant.
+`/production/lookups/employees` orders ACTIVE employees by name, a gate picked
+"the first MECHANIC", and "PILOT-…" sorts before "Rustam Mexanik" — so an
+unrelated suite failed reproducibly. Clean up via supported endpoints
+(`POST /employees/:id/inactivate`, `PATCH /machines/tasks/:id` with a
+`resolution`), never direct SQL.
 
-Provide:
+---
 
-- issue
-- risk
-- recommended alternative
+## 10. Acceptance gate catalogue
 
-Wait for approval if the change would affect architecture.
+Run with API (:3001) + production web (:3000) up, unless marked static.
 
-## Implementation Workflow
+| Gate | Command | Notes |
+| --- | --- | --- |
+| API build | `pnpm --filter @paypoq/api build` | static |
+| Web build | `pnpm --filter @paypoq/web build` | static |
+| API types | `pnpm --filter @paypoq/api typecheck` | static |
+| Web types | `cd apps/web && npx tsc --noEmit` | static |
+| Web lint | `pnpm --filter @paypoq/web lint` | static |
+| Pilot scope | `pnpm --filter @paypoq/web test:pilot-scope` | static |
+| Guide role isolation | `pnpm --filter @paypoq/web test:guide-role` | static |
+| Stage movement | `pnpm --filter @paypoq/web test:stage-movement-quantity` | static |
+| UI routes | `node scripts/ui-route-case-test.mjs` | |
+| Form UX | `node scripts/form-ux-lifecycle-test.mjs` | |
+| Mobile E2E | `node scripts/mobile-e2e-suite.mjs` | |
+| Hardened mobile UI | `node scripts/mobile-ui-acceptance.mjs` | Chromium + WebKit |
+| Mobile business | `node scripts/mobile-business-acceptance.mjs` | |
+| Business API/RBAC | `node scripts/business-api-rbac-acceptance.mjs` | Chromium + WebKit |
+| Pricing RBAC | `node scripts/pricing-rbac-test.mjs` | |
+| Pricing semantics | `node scripts/pricing-semantics-test.mjs` | |
+| Phase 2/3/4/5/6/8 | `node scripts/phase{2,3,4,5,6,8}-*.mjs` | mobile surfaces |
+| Production run closure | `node scripts/pilot-production-run-closure-acceptance.mjs` | |
+| Mechanic provisioning | `node scripts/pilot-mechanic-provisioning-acceptance.mjs` | |
+| Tenant suspension | `node scripts/pilot-tenant-suspension-acceptance.mjs` | |
+| Day-0 onboarding closure | `node scripts/day0-onboarding-closure-acceptance.mjs` | fresh tenants |
+| **Production hardening** | `pnpm test:prod-hardening` | static + disposable DB |
 
-For every task:
+Full regression = every row above exits 0. Report the table with exit codes; use
+"FULL REGRESSION GREEN" only when all rows are 0.
 
-Read relevant docs.
-Confirm scope.
-Avoid adding unrelated features.
-Keep changes small.
-Run build/typecheck.
-Report changed files.
-Report assumptions.
-Report build result.
+CI (`.github/workflows/ci.yml`) enforces three jobs: `build-and-smoke`,
+`production-hardening`, and `pilot-acceptance` (Chromium + WebKit browser gates,
+PRs into `main` and pushes to `main`).
 
-## Reporting Format
+---
 
-After every task, report:
+## 11. Data hygiene
+
+Before finishing any task that ran suites:
+
+- No `PLANNED`/`RUNNING`/`HOLD`/`STOPPED` disposable ProductionRuns left
+- No `OPEN`/`IN_PROGRESS` disposable maintenance tasks left
+- Disposable tenants suspended through the Platform Admin API
+- Disposable databases dropped
+- Shared demo tenant not used for infrastructure experiments
+- No debug scripts, screenshots, dumps or credentials committed
+  (`backups/`, `*.dump`, `.env*` are gitignored — keep it that way)
+
+Scratch files belong in the session scratch directory, not the repo.
+
+---
+
+## 12. Git & CI workflow
+
+- Work on a dedicated branch: `feature/…`, `fix/…`, `docs/…`, `infra/…`.
+- Small, focused commits; explain **why**, not only what.
+- Commit/push only when asked. Never force push.
+- Fast-forward `main` only (`git merge --ff-only`), verify with
+  `git merge-base --is-ancestor origin/main HEAD` before pushing.
+- `main` protection: verify current state with
+  `gh api repos/boburonesec/sock/branches/main/protection` (or the REST API).
+  Required checks should be the three CI jobs above.
+- After pushing, verify `git rev-parse HEAD` equals `git rev-parse origin/main`.
+
+---
+
+## 13. Senior engineering behavior
+
+Agents must not act as blind code generators. For every task:
+
+1. Execute the requested scope exactly — nothing extra.
+2. Identify risks, edge cases and better approaches.
+3. Separate implemented work from recommendations; never implement
+   recommendations without approval.
+4. Challenge unclear requirements instead of inventing business logic.
+5. Warn about over- and under-engineering, with issue / risk / alternative.
+6. Stop and explain if a request conflicts with this file or the product spec.
+7. Say when a task should be split.
+
+Report honestly: if a test fails, show the output; if a step was skipped, say so.
+Never mask failures, weaken assertions, or claim automation that is not installed.
+
+### Reporting format
 
 - Implemented
 - Changed files
 - Architecture / design decisions
-- Risks and edge cases noticed
-- Suggestions / alternatives
-- What was intentionally not implemented
+- Risks and edge cases
+- Suggestions (not implemented)
+- Intentionally not implemented
 - Assumptions
-- Build/test result
+- Build/test results (gate table with exit codes)
 
-## Golden Rule
+---
 
-Do not build a generic ERP.
+## 14. Factory zero-setup sequence (no mock data)
 
-Build Paypoq OS according to the product specification.
+1. **Database:** `prisma migrate deploy`, then
+   `bootstrap:platform-admin` (production) or `pnpm db:reset:empty` (development).
+2. **Platform Admin (`/admin/login`):** create Tenant, Factory, Tenant Owner.
+   The system auto-provisions warehouse `Asosiy ombor`, 5 zones, 10 production
+   stages, expense categories and RBAC roles.
+3. **Master data (`/settings`):** save `DAY` and `NIGHT` work shifts (they are not
+   persisted until saved), colors, materials, seasons, products, variants, prices.
+4. **Machines & quality (`/machines`):** machines, measurement specifications.
+5. **Workforce (`/employees`, `/settings`, `/machines`):** employees, mechanic
+   assignments, machine piece rates, stage salary rates.
+6. **Warehouse & counterparties:** clients, suppliers, raw-material intake.
+7. **Production (`/production`):** select the warehouse handoff stage in
+   "Smena yakuni" **before the first shift close**, start runs, receive intake,
+   move through stages, hand off to warehouse, then sales → payments → payroll.
 
-## Factory Zero-Setup & Onboarding Sequence (No Mock Data)
+Default stage chain:
+`Averlog → Dazmol → Sifat → Kiydirish → Par Dazmol → Parlash → Bezak → Etiketka → Qadoqlash → Ombor`
 
-When bootstrapping a clean factory from zero:
+---
 
-1. **Bootstrap database:** Run `empty-seed.ts` (only platform super-admin created; no tenants/factories).
-2. **Platform Admin setup (`/admin/login`):** Create Tenant, Factory, and Tenant Owner. System auto-provisions Warehouse ('Asosiy ombor'), 5 WarehouseZones, 10 ProductionStages, ExpenseCategories, and RBAC roles.
-3. **Master Data (`/settings`):** Owner/Manager creates WorkShifts (`DAY`, `NIGHT` + night bonus), Colors, Materials, Seasons, Products, ProductVariants, and ProductPrices.
-4. **Machines & Quality (`/machines`):** Register Machines, setup MeasurementSpecification per product model.
-5. **Workforce & Piece Rates (`/employees`, `/settings`, `/machines`):**
-   - Create Employees (`MACHINE_OPERATOR`, `MECHANIC`, `STAGE_WORKER`, `Shift Receiver`, `Seller`, `Warehouse Operator`, `Accountant`).
-   - Assign active Mechanic to each Machine/Shift.
-   - Set `MachinePieceRate` for Mechanic and Operator.
-   - Set `SalaryRate` for each production stage.
-6. **Warehouse & Counterparties (`/warehouse`, `/sales`, `/finance`):** Register Clients, Suppliers, and record initial Raw Material intake (`StockMovement: RECEIPT`).
-7. **Live Production Flow (`/production`):**
-   - Start `ProductionRun` on machine.
-   - Receive batch via `ProductionRunIntake` (credits first stage inventory, creates operator & mechanic worker activity).
-   - Move through stages (`StageMovement`), logging piece-rate worker activity at each stage.
-   - Final stage to 'Ombor' moves finished goods into Warehouse finished products stock.
-   - Fulfill sales orders, collect payments, manage expenses, and compute payroll periods.
+## Golden rule
 
+Do not build a generic ERP. Build Paypoq OS according to the product
+specification — and never regress §7.

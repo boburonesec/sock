@@ -11,6 +11,10 @@ platforma emas.
 **Business qabul / chuqur QA walkthrough (siz yurasiz):**
 [`docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md`](docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md)
 
+**AI agent yoki yangi dasturchi uchun birinchi fayl:** [`AGENTS.md`](AGENTS.md)
+**Relizga chiqarish / rollback / backup tartibi:**
+[`docs/RELEASE_RUNBOOK_V1.md`](docs/RELEASE_RUNBOOK_V1.md)
+
 Tizimning markaziy g‘oyasi:
 
 - ishlab chiqarishni bosqich inventari orqali ko‘rish
@@ -33,7 +37,8 @@ paypoq-os/
 │   └── web/           # Next.js App Router frontend
 ├── packages/
 │   └── shared/        # Kelajakdagi shared types/constants/schemas
-├── AGENTS.md          # AI agentlar uchun doimiy qoidalar
+├── AGENTS.md          # AI agentlar uchun kanonik qoidalar (Claude/Codex/Antigravity)
+├── CLAUDE.md          # Claude Code uchun ko‘rsatkich (AGENTS.md ga)
 ├── package.json       # Root workspace scripts
 └── pnpm-workspace.yaml
 ```
