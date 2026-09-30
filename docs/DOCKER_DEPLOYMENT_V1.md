@@ -78,7 +78,10 @@ Use long random values for:
 docker compose --env-file .env.docker build
 ```
 
-4. Start PostgreSQL:
+4. Start PostgreSQL. `POSTGRES_PASSWORD` (raw container password) and
+   `DATABASE_URL` (connection URI, password percent-encoded) are both
+   required, with no defaults — see `.env.docker.example`. The database is
+   published on `127.0.0.1` only, never on the LAN:
 
 ```bash
 docker compose --env-file .env.docker up -d postgres
@@ -183,6 +186,9 @@ Important:
 
 - Use HTTPS in front of Web/API.
 - Use strong secrets, not `.env.docker.example` defaults.
+- PostgreSQL is published on `127.0.0.1:${POSTGRES_PORT}` only and has no
+  default password. Do not change the binding to reach it from another
+  machine; use an SSH tunnel for remote maintenance.
 - Run exactly one long-polling bot instance per Telegram token.
 - Configure database backups outside Compose.
 - Add log retention/monitoring before broad rollout.

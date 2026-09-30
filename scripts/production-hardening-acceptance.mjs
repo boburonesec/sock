@@ -21,6 +21,7 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,6 +47,87 @@ function record(layer, name, passed, detail) {
 
 const read = (relPath) => fs.readFileSync(path.join(repoRoot, relPath), 'utf8');
 const exists = (relPath) => fs.existsSync(path.join(repoRoot, relPath));
+
+/**
+ * Resolves the real docker-compose.yml with `docker compose config` (no
+ * containers are started) to prove the database policy as compose applies it.
+ */
+function runComposeDatabaseConfigChecks() {
+  if (spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' }).status !== 0) {
+    console.log('[SKIP] [compose] docker compose not available; database config checks not run');
+    return;
+  }
+  const required = {
+    CORS_ORIGIN: 'https://app.example.com',
+    NEXT_PUBLIC_API_URL: 'https://api.example.com',
+    JWT_ACCESS_SECRET: STRONG_SECRET,
+    PLATFORM_JWT_ACCESS_SECRET: STRONG_SECRET,
+    TELEGRAM_LINK_TOKEN_SECRET: STRONG_SECRET,
+    BOT_INTERNAL_API_KEY: STRONG_SECRET,
+    FACTORY_TV_ACCESS_TOKEN: STRONG_SECRET,
+  };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'paypoq-compose-'));
+  const envFile = path.join(dir, 'compose.env');
+  // Values are single-quoted so the env file keeps `#`, `$` etc. literally.
+  const resolve = (extra) => {
+    const values = { ...required, ...extra };
+    fs.writeFileSync(envFile, Object.entries(values).map(([k, v]) => `${k}='${v}'`).join('\n') + '\n');
+    const env = { ...process.env };
+    for (const key of ['POSTGRES_PASSWORD', 'POSTGRES_USER', 'POSTGRES_DB', 'POSTGRES_PORT', 'DATABASE_URL']) delete env[key];
+    const run = spawnSync('docker', ['compose', '-f', 'docker-compose.yml', '--env-file', envFile, '--profile', 'migrate', '--profile', 'bootstrap', 'config', '--format', 'json'], {
+      cwd: repoRoot,
+      env,
+      encoding: 'utf8',
+    });
+    return { ...run, config: run.status === 0 ? JSON.parse(run.stdout) : { services: {} } };
+  };
+  const clientUrls = (config) => ['api', 'migrate', 'bootstrap'].map((name) => config.services[name]?.environment?.DATABASE_URL);
+
+  try {
+    const hexPassword = randomBytes(24).toString('hex');
+    const hexUrl = `postgresql://postgres:${hexPassword}@postgres:5432/paypoq_os?schema=public`;
+
+    const noPassword = resolve({ DATABASE_URL: hexUrl });
+    record('compose', 'Compose refuses to resolve without POSTGRES_PASSWORD', noPassword.status !== 0 && /POSTGRES_PASSWORD/.test(noPassword.stderr), `exit=${noPassword.status}`);
+
+    const noUrl = resolve({ POSTGRES_PASSWORD: hexPassword });
+    record('compose', 'Compose refuses to resolve without an explicit DATABASE_URL (no derived fallback)', noUrl.status !== 0 && /DATABASE_URL is required/.test(noUrl.stderr), `exit=${noUrl.status}`);
+
+    // Every URI-reserved character: raw for postgres, percent-encoded in the URI.
+    const rawPassword = `p@ss:w/rd%#?x&y=z ${randomBytes(4).toString('hex')}`;
+    const encodedUrl = `postgresql://postgres:${encodeURIComponent(rawPassword)}@postgres:5432/paypoq_os?schema=public`;
+    const reserved = resolve({ POSTGRES_PASSWORD: rawPassword, DATABASE_URL: encodedUrl });
+    const urls = clientUrls(reserved.config);
+    record(
+      'compose',
+      'Reserved-character password: postgres gets it raw, clients get the explicit URI unchanged',
+      reserved.status === 0 &&
+        reserved.config.services.postgres?.environment?.POSTGRES_PASSWORD === rawPassword &&
+        urls.every((url) => url === encodedUrl) &&
+        decodeURIComponent(new URL(encodedUrl).password) === rawPassword,
+      `exit=${reserved.status}`,
+    );
+
+    const externalUrl = 'postgresql://app_user:ext%2Fsecret@db.internal.example:6543/paypoq_prod?schema=public&sslmode=require';
+    const external = resolve({ POSTGRES_PASSWORD: hexPassword, DATABASE_URL: externalUrl });
+    record(
+      'compose',
+      'Explicit external DATABASE_URL is used verbatim by api/migrate/bootstrap',
+      external.status === 0 && clientUrls(external.config).every((url) => url === externalUrl),
+      `exit=${external.status}`,
+    );
+
+    const published = external.config.services.postgres?.ports ?? [];
+    record(
+      'compose',
+      'Resolved PostgreSQL publication is loopback-only',
+      published.length > 0 && published.every((port) => port.host_ip === '127.0.0.1'),
+      published.map((port) => `${port.host_ip ?? '*'}:${port.published}`).join(','),
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 // ----------------------------------------------------------------- static
 function runStaticChecks() {
@@ -163,6 +245,37 @@ function runStaticChecks() {
     'API trust proxy uses the TRUSTED_PROXIES function, not a blanket hop count',
     /createTrustedProxyFn\(/.test(mainTs) && !/'trust proxy',\s*(1|true)\b/.test(mainTs),
   );
+  // --- PostgreSQL exposure and credential policy ---
+  const dockerEnvExample = read('.env.docker.example');
+  record(
+    'static',
+    'Compose publishes PostgreSQL on 127.0.0.1 only',
+    /-\s*"127\.0\.0\.1:\$\{POSTGRES_PORT:-55432\}:5432"/.test(compose) &&
+      !/-\s*"\$\{POSTGRES_PORT:-55432\}:5432"/.test(compose) &&
+      !/-\s*"(0\.0\.0\.0:)?55432:5432"/.test(compose),
+  );
+  record(
+    'static',
+    'Compose has no default database password',
+    /POSTGRES_PASSWORD: \$\{POSTGRES_PASSWORD:\?/.test(compose) &&
+      !/POSTGRES_PASSWORD:-/.test(compose) &&
+      !/postgres:postgres@/.test(compose),
+  );
+  record(
+    'static',
+    '.env.docker.example ships no database password or connection URI',
+    /^POSTGRES_PASSWORD=$/m.test(dockerEnvExample) &&
+      /^DATABASE_URL=$/m.test(dockerEnvExample) &&
+      !/^[^#\n]*postgres:postgres@/m.test(dockerEnvExample),
+  );
+  record(
+    'static',
+    'Compose never builds DATABASE_URL from POSTGRES_PASSWORD; it is required explicitly',
+    (compose.match(/DATABASE_URL: \$\{DATABASE_URL:\?/g) ?? []).length === 3 &&
+      !/DATABASE_URL:.*\$\{POSTGRES_PASSWORD/.test(compose.replace(/#.*$/gm, '')),
+  );
+  runComposeDatabaseConfigChecks();
+
   record(
     'static',
     'Auth BFF forwards one validated client IP, never the raw chain or X-Real-IP',

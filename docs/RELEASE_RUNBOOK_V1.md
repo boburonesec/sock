@@ -36,6 +36,18 @@ the platform proxy's source addresses and X-Forwarded-For behaviour, and the
 web → API path, must be verified and configured explicitly — with the default
 (`loopback`) every client shares the proxy's rate-limit identity.
 
+**Database exposure and credentials.** Compose publishes PostgreSQL on
+`127.0.0.1` only. Two required values, never derived from each other:
+`POSTGRES_PASSWORD` is the **raw** password of the bundled postgres container
+(no default); `DATABASE_URL` is the **connection URI** used by api, migrate and
+bootstrap — for the bundled database
+`postgresql://<user>:<password>@postgres:5432/<db>?schema=public` with the
+password percent-encoded for a URI (a hex password, `openssl rand -hex 24`,
+needs no encoding); for an external database, its own URI. A mismatch fails
+closed (the API refuses to start; readiness 503). Host tools and a host-run API
+use `localhost`; containers use the compose network. For remote maintenance
+use an SSH tunnel, never a LAN/public binding.
+
 ---
 
 ## 2. Release contract (invariants)

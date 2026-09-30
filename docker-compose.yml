@@ -10,10 +10,16 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Raw password, consumed only by this container. No default: a known
+      # password on a published database is an open door. api/migrate/bootstrap
+      # never build a URL from it; they use the explicit DATABASE_URL.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (long random value; see .env.docker.example)}
       POSTGRES_DB: ${POSTGRES_DB:-paypoq_os}
     ports:
-      - "${POSTGRES_PORT:-55432}:5432"
+      # Loopback only: host tools (Prisma CLI, pg_dump, a host-run API/PM2)
+      # use localhost; api/migrate/bootstrap use the compose network. The
+      # database is never reachable from the LAN or the internet.
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +39,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/paypoq_os?schema=public}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required (connection URI, never derived from POSTGRES_PASSWORD; see .env.docker.example)}
     command: ["pnpm", "--filter", "@paypoq/api", "prisma:migrate:deploy"]
 
   bootstrap:
@@ -47,7 +53,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/paypoq_os?schema=public}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required (connection URI, never derived from POSTGRES_PASSWORD; see .env.docker.example)}
       # Passed through, not defaulted: the CLI itself refuses to run without
       # both values (compose interpolates every service, including inactive
       # profiles, so making these required here would break `up api web bot`).
@@ -69,7 +75,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       BUILD_SHA: ${BUILD_SHA:-unknown}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/paypoq_os?schema=public}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required (connection URI, never derived from POSTGRES_PASSWORD; see .env.docker.example)}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required (exact web origin, e.g. https://app.example.com)}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}

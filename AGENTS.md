@@ -28,7 +28,7 @@ git status --short && git log --oneline -5 && git branch --show-current
 pnpm install
 
 # 3. Database (Docker, already running in most dev setups)
-docker ps --format '{{.Names}} | {{.Ports}}'      # expect: sockai-postgres-1 | 55432->5432
+docker ps --format '{{.Names}} | {{.Ports}}'      # expect: sockai-postgres-1 | 127.0.0.1:55432->5432
 
 # 4. Dev servers (two terminals, or background)
 pnpm api:dev     # NestJS on :3001
@@ -118,7 +118,7 @@ paypoq-os/
 | Node | 22.x is the pinned target (Docker images + CI). Newer local versions usually work |
 | API | `http://localhost:3001` (NestJS) |
 | Web | `http://localhost:3000` (Next.js) |
-| Postgres | Docker container `sockai-postgres-1`, host port **55432** |
+| Postgres | Docker container `sockai-postgres-1`, host port **55432** on `127.0.0.1` only; compose requires raw `POSTGRES_PASSWORD` and an explicit `DATABASE_URL` URI (no defaults, never derived) |
 | API env | `apps/api/.env` (see `.env.example`) |
 | Web env | `apps/web/.env.local` (see `.env.example`) |
 | Browser tests | Playwright (`playwright` at repo root); Chromium **and** WebKit |
