@@ -1,8 +1,10 @@
 import { Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { NotificationDeliveryStatus, Prisma, QualityIssueStatus } from '../../prisma/client';
+import { NotificationDeliveryStatus, Prisma, QualityIssueStatus, TenantStatus } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestContext } from '../identity/request-context/request-context.types';
 import { AcknowledgeDeliveryDto } from './notification.dto';
+
+const MAX_DELIVERY_ATTEMPTS = 8;
 
 export interface CreateNotificationInput {
   tenantId: string;
@@ -70,16 +72,29 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     const leaseUntil = new Date(now.getTime() + 60_000);
     const candidates = await this.prisma.notificationDelivery.findMany({
       where: {
-        status: { in: [NotificationDeliveryStatus.PENDING, NotificationDeliveryStatus.FAILED] },
         nextAttemptAt: { lte: now },
-        OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+        // Permanent failures (bot blocked by user, chat deleted) stop retrying.
+        attemptCount: { lt: MAX_DELIVERY_ATTEMPTS },
+        // A suspended/cancelled tenant must not keep messaging its operators.
+        tenant: { status: { in: [TenantStatus.ACTIVE, TenantStatus.PILOT] }, deletedAt: null },
+        OR: [
+          {
+            status: { in: [NotificationDeliveryStatus.PENDING, NotificationDeliveryStatus.FAILED] },
+            OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+          },
+          // A bot that crashed between claim and ack left the row PROCESSING;
+          // reclaim it once the lease expires instead of stranding it forever.
+          { status: NotificationDeliveryStatus.PROCESSING, leaseUntil: { lt: now } },
+        ],
       },
       orderBy: { nextAttemptAt: 'asc' }, take: 20,
       include: {
         notification: {
           include: {
             recipient: {
-              include: { telegramAccounts: { where: { type: 'USER', status: 'ACTIVE' }, take: 1 } },
+              // A user may link several Telegram accounts (new phone); deliver to
+              // the most recently linked one instead of an arbitrary row.
+              include: { telegramAccounts: { where: { type: 'USER', status: 'ACTIVE' }, orderBy: { linkedAt: 'desc' }, take: 1 } },
             },
           },
         },

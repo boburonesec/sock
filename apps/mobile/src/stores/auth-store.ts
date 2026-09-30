@@ -84,7 +84,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializeSession: async () => {
     set({ isLoadingSession: true });
 
-    const storedSession = await loadStoredSession();
+    // Keychain/Keystore can fail (device restore, OS upgrade). Treat it as
+    // "no stored session" instead of hanging on the splash screen forever.
+    const storedSession = await loadStoredSession().catch(() => null);
 
     if (storedSession && isAccessTokenUsable(storedSession.accessTokenExpiresAt)) {
       setApiAccessToken(storedSession.accessToken);
@@ -134,6 +136,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       await authApi.logout();
+    } catch {
+      // Offline logout still ends the local session; the refresh cookie
+      // expires server-side on its own.
     } finally {
       await get().clearSession();
     }
@@ -166,9 +171,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return true;
       })
       .catch(async () => {
-        await clearStoredSession();
-        setApiAccessToken(null);
-        setApiActiveFactoryId(null);
+        // Reset the whole session, not just storage: a refresh triggered by a
+        // background 401 otherwise left isAuthenticated=true with a dead token
+        // and isLoadingSession stuck at true (disabled buttons, endless spinner).
+        await get().clearSession();
         return false;
       })
       .finally(() => {
@@ -197,7 +203,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   clearSession: async () => {
-    await clearStoredSession();
+    await clearStoredSession().catch(() => undefined);
     setApiAccessToken(null);
     setApiActiveFactoryId(null);
     clearMobileQueryCache();

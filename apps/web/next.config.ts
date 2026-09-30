@@ -30,6 +30,13 @@ const securityHeaders = [
   },
 ];
 
+// HSTS only in production builds: browsers ignore it over plain http, and the
+// pilot always terminates TLS in front of the web app. No includeSubDomains —
+// the operator's other subdomains may not be https-ready.
+if (process.env.NODE_ENV === "production") {
+  securityHeaders.push({ key: "Strict-Transport-Security", value: "max-age=31536000" });
+}
+
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,

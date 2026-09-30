@@ -25,7 +25,7 @@ export default function AdvancesScreen() {
         <ScreenHeader
           eyebrow="Avanslar"
           title="Avans tarixi"
-          subtitle="Faqat sizga tegishli advance yozuvlari."
+          subtitle="Faqat sizga tegishli avans yozuvlari."
         />
 
         {advancesQuery.isLoading ? <LoadingState /> : null}
@@ -59,7 +59,7 @@ export default function AdvancesScreen() {
 
             {advance.payrollPeriod ? (
               <Text style={styles.period}>
-                Payroll: {formatMonth(advance.payrollPeriod.month)} /{" "}
+                Oylik davri: {formatMonth(advance.payrollPeriod.month)} /{" "}
                 {formatStatus(advance.payrollPeriod.status)}
               </Text>
             ) : null}

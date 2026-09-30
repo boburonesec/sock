@@ -25,7 +25,7 @@ export default function ActivitiesScreen() {
         <ScreenHeader
           eyebrow="Ishlar"
           title="So'nggi faoliyatlar"
-          subtitle="Shift Receiver kiritgan ish yozuvlari."
+          subtitle="Smena qabulchisi kiritgan ish yozuvlari."
         />
 
         {activitiesQuery.isLoading ? <LoadingState /> : null}
@@ -56,7 +56,7 @@ export default function ActivitiesScreen() {
 
             <View style={styles.metricRow}>
               <Metric label="Miqdor" value={`${activity.quantity}`} />
-              <Metric label="Tarixiy rate" value={formatAmount(activity.salaryRateAmount)} />
+              <Metric label="Stavka" value={formatAmount(activity.salaryRateAmount)} />
             </View>
           </View>
         ))}

@@ -30,9 +30,9 @@ export default function ProductionSummaryScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="Manager"
-          title="Production Summary"
-          subtitle="Ishlab chiqarish operatsiyalari bo'yicha backend summary."
+          eyebrow="Boshqaruv"
+          title="Ishlab chiqarish"
+          subtitle="Ishlab chiqarish operatsiyalari bo'yicha ko'rsatkichlar."
         />
 
         {!canView ? <AccessDeniedState /> : null}
@@ -45,15 +45,15 @@ export default function ProductionSummaryScreen() {
           <>
             <KpiGrid
               items={[
-                { label: "Bugungi production", value: data.kpis.todayProduction },
-                { label: "In progress", value: data.kpis.totalInProgress },
-                { label: "Eng band stage", value: data.kpis.busiestStageName ?? "-" },
-                { label: "Active workers", value: data.kpis.activeWorkers },
+                { label: "Bugungi ishlab chiqarish", value: data.kpis.todayProduction },
+                { label: "Jarayonda", value: data.kpis.totalInProgress },
+                { label: "Eng band bosqich", value: data.kpis.busiestStageName ?? "-" },
+                { label: "Faol ishchilar", value: data.kpis.activeWorkers },
               ]}
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Stage totals</Text>
+              <Text style={styles.sectionTitle}>{"Bosqichlar kesimida"}</Text>
               {data.stageTotals.length ? (
                 data.stageTotals.map((stage) => (
                   <InfoCard
@@ -64,12 +64,12 @@ export default function ProductionSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Stage yo'q" description="Stage summary topilmadi." />
+                <EmptyState title="Bosqich yo'q" description="Bosqichlar bo'yicha ma'lumot topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Bottlenecks</Text>
+              <Text style={styles.sectionTitle}>{"Tiqilishlar"}</Text>
               {data.bottlenecks.length ? (
                 data.bottlenecks.map((item) => (
                   <InfoCard
@@ -80,12 +80,12 @@ export default function ProductionSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Bottleneck yo'q" description="E'tibor talab qiladigan stage topilmadi." />
+                <EmptyState title="Tiqilish yo'q" description="E'tibor talab qiladigan bosqich topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Top workers</Text>
+              <Text style={styles.sectionTitle}>{"Eng faol ishchilar"}</Text>
               {data.topWorkers.length ? (
                 data.topWorkers.map((worker) => (
                   <InfoCard
@@ -96,18 +96,18 @@ export default function ProductionSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Worker yo'q" description="Top worker ma'lumoti topilmadi." />
+                <EmptyState title="Ishchi yo'q" description="Eng faol ishchilar ma'lumoti topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Trend</Text>
+              <Text style={styles.sectionTitle}>{"Dinamika"}</Text>
               {data.trend.length ? (
                 data.trend.map((item) => (
                   <InfoCard key={item.date} title={formatDate(item.date)} right={item.quantity} />
                 ))
               ) : (
-                <EmptyState title="Trend yo'q" description="Trend ma'lumoti topilmadi." />
+                <EmptyState title="Dinamika yo'q" description="Dinamika ma'lumoti topilmadi." />
               )}
             </View>
           </>

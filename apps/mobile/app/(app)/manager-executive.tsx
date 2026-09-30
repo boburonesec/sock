@@ -8,7 +8,7 @@ import {
 import { colors, radius, spacing, typography } from "@/shared/styles/theme";
 import { AccessDeniedState, InfoCard, KpiGrid } from "@/shared/ui/dashboard";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader } from "@/shared/ui/states";
-import { formatDate, formatStatus } from "@/shared/utils/format";
+import { formatAmount, formatDate, formatStatus } from "@/shared/utils/format";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function ExecutiveSummaryScreen() {
@@ -30,8 +30,8 @@ export default function ExecutiveSummaryScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="Manager"
-          title="Executive Summary"
+          eyebrow="Boshqaruv"
+          title="Umumiy holat"
           subtitle="Umumiy biznes holati va e'tibor talab qiladigan nuqtalar."
         />
 
@@ -45,15 +45,15 @@ export default function ExecutiveSummaryScreen() {
           <>
             <KpiGrid
               items={[
-                { label: "Oylik savdo", value: data.kpis.monthlySales },
-                { label: "Oylik xarajat", value: data.kpis.monthlyExpenses },
-                { label: "Mijoz qarzi", value: data.kpis.totalClientDebt },
-                { label: "Supplier qarzi", value: data.kpis.totalSupplierDebt },
-                { label: "Active employees", value: data.kpis.activeEmployees },
-                { label: "Active orders", value: data.kpis.activeOrders },
+                { label: "Oylik savdo", value: formatAmount(data.kpis.monthlySales) },
+                { label: "Oylik xarajat", value: formatAmount(data.kpis.monthlyExpenses) },
+                { label: "Mijoz qarzi", value: formatAmount(data.kpis.totalClientDebt) },
+                { label: "Yetkazib beruvchi qarzi", value: formatAmount(data.kpis.totalSupplierDebt) },
+                { label: "Faol xodimlar", value: data.kpis.activeEmployees },
+                { label: "Faol buyurtmalar", value: data.kpis.activeOrders },
                 { label: "Mahsulotlar", value: data.kpis.totalProducts },
                 {
-                  label: "Low stock",
+                  label: "Kam qoldiq",
                   value: data.kpis.lowStockMaterials,
                   tone: "warning",
                 },
@@ -61,15 +61,15 @@ export default function ExecutiveSummaryScreen() {
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Business health</Text>
-              <InfoCard title="Production" right={formatStatus(data.businessHealth.production)} />
-              <InfoCard title="Warehouse" right={formatStatus(data.businessHealth.warehouse)} />
-              <InfoCard title="Sales" right={formatStatus(data.businessHealth.sales)} />
-              <InfoCard title="Finance" right={formatStatus(data.businessHealth.finance)} />
+              <Text style={styles.sectionTitle}>{"Biznes holati"}</Text>
+              <InfoCard title="Ishlab chiqarish" right={formatStatus(data.businessHealth.production)} />
+              <InfoCard title="Ombor" right={formatStatus(data.businessHealth.warehouse)} />
+              <InfoCard title="Savdo" right={formatStatus(data.businessHealth.sales)} />
+              <InfoCard title="Moliya" right={formatStatus(data.businessHealth.finance)} />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Top products</Text>
+              <Text style={styles.sectionTitle}>{"Asosiy mahsulotlar"}</Text>
               {data.topProducts.length ? (
                 data.topProducts.map((item) => (
                   <InfoCard
@@ -80,12 +80,12 @@ export default function ExecutiveSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Top product yo'q" description="Ma'lumot topilmadi." />
+                <EmptyState title="Mahsulot yo'q" description="Ma'lumot topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Attention</Text>
+              <Text style={styles.sectionTitle}>{"E'tibor talab"}</Text>
               {data.attentionItems.length ? (
                 data.attentionItems.map((item) => (
                   <InfoCard
@@ -101,7 +101,7 @@ export default function ExecutiveSummaryScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent activity</Text>
+              <Text style={styles.sectionTitle}>{"So'nggi faoliyat"}</Text>
               {data.recentActivity.length ? (
                 data.recentActivity.map((item) => (
                   <InfoCard
@@ -112,7 +112,7 @@ export default function ExecutiveSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Activity yo'q" description="So'nggi faoliyat topilmadi." />
+                <EmptyState title="Faoliyat yo'q" description="So'nggi faoliyat topilmadi." />
               )}
             </View>
           </>

@@ -14,6 +14,7 @@ import {
   SalesOrderStatus,
   TelegramAccountStatus,
   TelegramAccountType,
+  TenantStatus,
 } from '../../prisma/client';
 import { createHmac, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -288,6 +289,7 @@ export class TelegramService {
           targetType: { in: [TelegramAccountType.EMPLOYEE, TelegramAccountType.CLIENT, TelegramAccountType.USER] },
           usedAt: null,
           expiresAt: { gt: now },
+          tenant: { status: { in: OPERATIONAL_TENANT_STATUSES }, deletedAt: null },
         },
         select: {
           id: true,
@@ -884,6 +886,7 @@ export class TelegramService {
 
     if (
       !account ||
+      !isTenantOperational(account.tenant) ||
       account.type !== TelegramAccountType.EMPLOYEE ||
       account.status !== TelegramAccountStatus.ACTIVE ||
       !account.employeeId ||
@@ -905,7 +908,11 @@ export class TelegramService {
       select: telegramAccountSelect,
     });
 
-    if (!account || account.status !== TelegramAccountStatus.ACTIVE) {
+    if (
+      !account ||
+      !isTenantOperational(account.tenant) ||
+      account.status !== TelegramAccountStatus.ACTIVE
+    ) {
       throw new NotFoundException('Active Telegram account not found.');
     }
 
@@ -946,6 +953,7 @@ export class TelegramService {
 
     if (
       !account ||
+      !isTenantOperational(account.tenant) ||
       account.type !== TelegramAccountType.CLIENT ||
       account.status !== TelegramAccountStatus.ACTIVE ||
       !account.clientId ||
@@ -1151,6 +1159,14 @@ function assertTelegramUserId(telegramUserId: string): void {
   }
 }
 
+// Mirrors the web/mobile login rule (auth.service ALLOWED_TENANT_STATUSES):
+// a suspended or cancelled tenant loses bot access for employees and clients too.
+const OPERATIONAL_TENANT_STATUSES: TenantStatus[] = [TenantStatus.ACTIVE, TenantStatus.PILOT];
+
+function isTenantOperational(tenant: { status: TenantStatus; deletedAt: Date | null }): boolean {
+  return !tenant.deletedAt && OPERATIONAL_TENANT_STATUSES.includes(tenant.status);
+}
+
 const telegramAccountSelect = {
   id: true,
   tenantId: true,
@@ -1181,6 +1197,9 @@ const telegramAccountSelect = {
   },
   user: {
     select: { id: true, name: true, status: true, deletedAt: true },
+  },
+  tenant: {
+    select: { status: true, deletedAt: true },
   },
 } satisfies Prisma.TelegramAccountSelect;
 

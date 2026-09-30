@@ -11,36 +11,36 @@ import { useAuthStore } from "@/stores/auth-store";
 
 const managerCards = [
   {
-    title: "Executive Summary",
+    title: "Umumiy holat",
     subtitle: "Umumiy biznes holati",
     href: "/(app)/manager-executive",
     icon: "analytics-outline",
     permission: managerPermissions.executive,
   },
   {
-    title: "Production Summary",
+    title: "Ishlab chiqarish",
     subtitle: "Ishlab chiqarish ko'rsatkichlari",
     href: "/(app)/manager-production",
     icon: "construct-outline",
     permission: managerPermissions.production,
   },
   {
-    title: "Warehouse Summary",
-    subtitle: "Ombor va low stock",
+    title: "Ombor",
+    subtitle: "Ombor va kam qoldiqlar",
     href: "/(app)/manager-warehouse",
     icon: "cube-outline",
     permission: managerPermissions.warehouse,
   },
   {
-    title: "Sales Summary",
+    title: "Savdo",
     subtitle: "Savdo va mijoz qarzi",
     href: "/(app)/manager-sales",
     icon: "receipt-outline",
     permission: managerPermissions.sales,
   },
   {
-    title: "Finance Summary",
-    subtitle: "Xarajat, avans va payroll",
+    title: "Moliya",
+    subtitle: "Xarajat, avans va oylik",
     href: "/(app)/manager-finance",
     icon: "card-outline",
     permission: managerPermissions.finance,
@@ -57,9 +57,9 @@ export default function ManagerHomeScreen() {
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader
-          eyebrow="Manager"
-          title="Dashboard"
-          subtitle="Backend summary APIlaridan olingan boshqaruv ko'rsatkichlari."
+          eyebrow="Boshqaruv"
+          title="Boshqaruv paneli"
+          subtitle="Korxona bo'yicha asosiy ko'rsatkichlar."
         />
 
         {visibleCards.length === 0 ? <AccessDeniedState /> : null}

@@ -7,10 +7,39 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Prisma } from '../../prisma/client';
 import {
   defaultMessageForStatus,
   translateOperatorMessages,
 } from '../i18n/operator-error-messages';
+
+const PRISMA_ERROR_STATUS: Record<string, { status: number; error: string; message: string }> = {
+  P2002: {
+    status: HttpStatus.CONFLICT,
+    error: 'Conflict',
+    message: 'Bunday qiymat allaqachon mavjud. Kod yoki nomni tekshirib, boshqasini kiriting.',
+  },
+  P2003: {
+    status: HttpStatus.CONFLICT,
+    error: 'Conflict',
+    message: 'Bog‘langan yozuv topilmadi yoki boshqa yozuvlarda ishlatilmoqda.',
+  },
+  // Serializable transaction write conflict (two operators saving at once).
+  P2034: {
+    status: HttpStatus.CONFLICT,
+    error: 'Conflict',
+    message: 'Ma’lumot bir vaqtda o‘zgartirildi. Qayta urinib ko‘ring.',
+  },
+  P2025: {
+    status: HttpStatus.NOT_FOUND,
+    error: 'Not Found',
+    message: 'Yozuv topilmadi. Sahifani yangilab, qayta urinib ko‘ring.',
+  },
+};
+
+function isPrismaKnownError(exception: unknown): exception is Prisma.PrismaClientKnownRequestError {
+  return exception instanceof Prisma.PrismaClientKnownRequestError;
+}
 
 type ExceptionBody = string | { message?: unknown; error?: unknown; statusCode?: number };
 
@@ -30,6 +59,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let rawMessage: string | string[] = defaultMessageForStatus(statusCode);
     let errorName = 'Internal Server Error';
+    // Already operator-ready Uzbek text; the English-oriented translator
+    // would otherwise mangle it (it treats "Bunday qiymat ..." as a field error).
+    let isOperatorReady = false;
 
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
@@ -56,6 +88,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
       } else {
         rawMessage = exception.message;
       }
+    } else if (isPrismaKnownError(exception) && PRISMA_ERROR_STATUS[exception.code]) {
+      // Unique/foreign-key/not-found races (duplicate machine code, record
+      // deleted mid-request) are operator errors, not 500s. Never echo the
+      // Prisma message: it names tables and constraint columns.
+      const mapped = PRISMA_ERROR_STATUS[exception.code];
+      // Still log it: a P2025/P2003 can also mean a broken invariant in our own
+      // code, which used to surface as a logged 500.
+      this.logger.warn(
+        `Prisma ${exception.code} on ${request.method} ${request.url} mapped to ${mapped.status} (model=${String(exception.meta?.modelName ?? '-')}, target=${JSON.stringify(exception.meta?.target ?? null)})`,
+      );
+      statusCode = mapped.status;
+      errorName = mapped.error;
+      rawMessage = mapped.message;
+      isOperatorReady = true;
     } else if (exception instanceof Error) {
       this.logger.error(
         `Unhandled error on ${request.method} ${request.url}: ${exception.message}`,
@@ -69,7 +115,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       rawMessage = defaultMessageForStatus(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    const message = translateOperatorMessages(rawMessage, statusCode);
+    const message = isOperatorReady
+      ? String(rawMessage)
+      : translateOperatorMessages(rawMessage, statusCode);
 
     response.status(statusCode).json({
       statusCode,

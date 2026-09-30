@@ -205,7 +205,11 @@ async function runUserNotificationFlow() {
   const telegramChatId = `chat-${suffix}`;
   const linked = (await request('/telegram/bot/link', { method: 'POST', skipAuth: true, headers: { 'x-bot-api-key': botInternalApiKey }, body: { code: token.code, telegramUserId, telegramChatId } })).data;
   assert(linked.type === 'USER' && linked.user?.id === currentUser.user.id, 'USER Telegram link should target current user');
-  const notification = await prisma.notification.create({ data: { tenantId: currentUser.tenantId, recipientUserId: currentUser.user.id, type: 'SMOKE', title: 'Smoke notification', body: 'Outbox delivery smoke', dedupeKey: `telegram-user-smoke:${suffix}`, deliveries: { create: {} } } });
+  // The outbox is shared with every other suite (maintenance-task notifications
+  // pile up undelivered in dev), and claim takes the oldest 20 by nextAttemptAt.
+  // Make this run's delivery the oldest and uniquely titled so the assertion
+  // does not depend on how many unrelated rows exist.
+  const notification = await prisma.notification.create({ data: { tenantId: currentUser.tenantId, recipientUserId: currentUser.user.id, type: 'SMOKE', title: `Smoke notification ${suffix}`, body: 'Outbox delivery smoke', dedupeKey: `telegram-user-smoke:${suffix}`, deliveries: { create: { nextAttemptAt: new Date(0) } } } });
   const claimed = (await request('/internal/notification-deliveries/claim', { method: 'POST', skipAuth: true, headers: { 'x-bot-api-key': botInternalApiKey } })).data;
   const delivery = claimed.find((item) => item.title === notification.title);
   assert(delivery?.chatId === telegramChatId, 'outbox claim should resolve only linked USER chat');
@@ -470,6 +474,106 @@ async function runSettingsChecks() {
   pass('settings token/account list and health endpoint are safe');
 }
 
+async function runDeliveryLeaseRecoveryFlow() {
+  // A bot that crashed between claim and ack leaves a delivery PROCESSING with
+  // an expired lease; it must be reclaimed. A delivery that exhausted its
+  // attempts must never be claimed again.
+  const makeDelivery = (key, delivery) => prisma.notification.create({
+    data: {
+      tenantId: currentUser.tenantId,
+      recipientUserId: currentUser.user.id,
+      type: 'SMOKE',
+      title: `Smoke ${key} ${suffix}`,
+      body: 'Outbox lease smoke',
+      dedupeKey: `telegram-lease-smoke:${key}:${suffix}`,
+      deliveries: { create: { nextAttemptAt: new Date(0), ...delivery } },
+    },
+    include: { deliveries: true },
+  });
+  const stranded = await makeDelivery('stranded', { status: 'PROCESSING', attemptCount: 1, leaseUntil: new Date(Date.now() - 120_000) });
+  const exhausted = await makeDelivery('exhausted', { status: 'FAILED', attemptCount: 8 });
+  const claimed = (await botRequest('/internal/notification-deliveries/claim', { method: 'POST' })).data;
+  const claimedIds = new Set(claimed.map((item) => item.id));
+  const strandedId = stranded.deliveries[0].id;
+  const exhaustedId = exhausted.deliveries[0].id;
+
+  try {
+    assert(claimedIds.has(strandedId), 'PROCESSING delivery with an expired lease should be reclaimed');
+    assert(!claimedIds.has(exhaustedId), 'delivery that exhausted its attempts must not be claimed');
+  } finally {
+    if (claimedIds.has(strandedId)) {
+      await botRequest(`/internal/notification-deliveries/${strandedId}/ack`, { method: 'POST', body: { status: 'SENT' } });
+    }
+  }
+  pass('stranded delivery lease recovery and attempt cap');
+}
+
+async function platformRequest(pathname, { method = 'GET', token, body } = {}) {
+  const response = await fetch(`${baseUrl}${pathname}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await response.text();
+  assert(response.ok, `${method} ${pathname} expected 2xx, got ${response.status}: ${text}`);
+  return text ? JSON.parse(text) : null;
+}
+
+async function runSuspendedTenantFlow() {
+  // Disposable tenant: the shared demo tenant is never suspended. It is left
+  // SUSPENDED at the end, per the fixture hygiene rules.
+  const platformToken = (await platformRequest('/platform-auth/login', {
+    method: 'POST',
+    body: {
+      email: process.env.TELEGRAM_SMOKE_PLATFORM_EMAIL ?? 'platform@paypoq.local',
+      password: process.env.TELEGRAM_SMOKE_PLATFORM_PASSWORD ?? 'ChangeMe123!',
+    },
+  })).data.accessToken;
+  const tenantId = (await platformRequest('/platform-admin/tenants', {
+    method: 'POST',
+    token: platformToken,
+    body: { name: `Telegram Smoke Suspend ${suffix}`, contactName: 'Telegram smoke' },
+  })).data.id;
+  const ownerEmail = `telegram-smoke-suspend-${suffix}@paypoq.local`;
+  const ownerPassword = `Smoke-${suffix}-Aa1!`;
+
+  try {
+    await platformRequest(`/platform-admin/tenants/${tenantId}/owner-users`, {
+      method: 'POST',
+      token: platformToken,
+      body: { name: 'Telegram Smoke Owner', email: ownerEmail, password: ownerPassword },
+    });
+    const ownerToken = (await platformRequest('/auth/login', {
+      method: 'POST',
+      body: { email: ownerEmail, password: ownerPassword },
+    })).data.accessToken;
+    const issueCode = async () => (await platformRequest('/telegram/link-tokens/me', { method: 'POST', token: ownerToken })).data.code;
+    const telegramUserId = `suspend-${suffix}`;
+
+    // A new code supersedes the previous one, so issue the second only after
+    // the first is redeemed.
+    await linkTelegramAccount(await issueCode(), telegramUserId, `chat-suspend-${suffix}`);
+    const pendingCode = await issueCode();
+    await expectBotStatus(`/telegram/bot/me?telegramUserId=${telegramUserId}`, 200);
+
+    await platformRequest(`/platform-admin/tenants/${tenantId}/suspend`, { method: 'POST', token: platformToken });
+    await expectBotStatus(`/telegram/bot/me?telegramUserId=${telegramUserId}`, 404);
+    await expectBotStatus('/telegram/bot/link', 400, {
+      method: 'POST',
+      body: { code: pendingCode, telegramUserId: `suspend-2-${suffix}`, telegramChatId: `chat-suspend-2-${suffix}` },
+    });
+
+    await platformRequest(`/platform-admin/tenants/${tenantId}/activate`, { method: 'POST', token: platformToken });
+    await expectBotStatus(`/telegram/bot/me?telegramUserId=${telegramUserId}`, 200);
+  } finally {
+    await platformRequest(`/platform-admin/tenants/${tenantId}/suspend`, { method: 'POST', token: platformToken });
+  }
+  pass('suspended tenant loses bot access and link-code redemption', { tenantId });
+}
+
 async function main() {
   startServerIfNeeded();
   await waitForHealth();
@@ -479,6 +583,8 @@ async function main() {
   const { token: usedClientToken } = await runClientFlow();
   await runCodeSecurityChecks(usedClientToken);
   await runUserNotificationFlow();
+  await runDeliveryLeaseRecoveryFlow();
+  await runSuspendedTenantFlow();
   await runSettingsChecks();
 
   console.log(

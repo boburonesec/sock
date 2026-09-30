@@ -27,7 +27,7 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
     } catch (error) {
-      setErrorMessage(getUserFacingErrorMessage(error));
+      setErrorMessage(getUserFacingErrorMessage(error, "login"));
     }
   }
 
@@ -55,7 +55,7 @@ export default function LoginScreen() {
               autoComplete="email"
               keyboardType="email-address"
               onChangeText={setEmail}
-              placeholder="owner@paypoq.local"
+              placeholder="email@korxona.uz"
               placeholderTextColor={colors.textMuted}
               style={styles.input}
               textContentType="username"

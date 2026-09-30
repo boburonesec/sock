@@ -18,6 +18,7 @@ import type {
   SupplierPurchase,
 } from "@/lib/api/supplier";
 import { formatCurrency } from "@/lib/utils";
+import { todayDateInputValue } from "@/lib/format";
 
 const allocationSchema = z.object({
   purchaseId: z.string().min(1, "Xarid tanlanishi shart."),
@@ -104,7 +105,7 @@ export function SupplierPaymentDrawer({
       supplierId: "",
       amount: "",
       method: "CASH",
-      paymentDate: new Date().toISOString().slice(0, 10),
+      paymentDate: todayDateInputValue(),
       note: "",
       allocations: [{ purchaseId: "", amount: "" }],
     },
@@ -126,7 +127,7 @@ export function SupplierPaymentDrawer({
         supplierId: initialSupplierId ?? "",
         amount: "",
         method: "CASH",
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: todayDateInputValue(),
         note: "",
         allocations: [{ purchaseId: "", amount: "" }],
       });

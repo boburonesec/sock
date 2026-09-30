@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PayrollItem, PayPayrollPeriodPayload } from "@/lib/api/finance";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatCurrency } from "@/lib/utils";
+import { todayDateInputValue } from "@/lib/format";
 
 const schema = z.object({
   payrollItemId: z.string().min(1, "Xodim ish haqi qatori tanlanishi shart."),
@@ -263,7 +264,7 @@ function paymentMethodLabel(method: PayPayrollPeriodPayload["method"]): string {
 }
 
 function getTodayValue(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateInputValue();
 }
 
 function normalizeOptional(value?: string): string | null {

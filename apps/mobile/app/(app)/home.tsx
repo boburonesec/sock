@@ -3,15 +3,25 @@ import { Link } from "expo-router";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { isApiError } from "@/lib/api/errors";
 import { useEmployeeMeQuery } from "@/lib/api/mobile-employee";
 import { colors, radius, spacing, typography } from "@/shared/styles/theme";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader } from "@/shared/ui/states";
 import { formatStatus } from "@/shared/utils/format";
+import { useAuthStore } from "@/stores/auth-store";
+
+const managerPermissionKeys = [
+  "dashboard.view",
+  "production.view",
+  "warehouse.view",
+  "sales.view",
+  "finance.view",
+];
 
 const quickCards = [
   {
     title: "Oylik",
-    subtitle: "Payroll snapshotlar",
+    subtitle: "Oylik hisob-kitoblari",
     href: "/(app)/payroll",
     icon: "wallet-outline",
   },
@@ -37,6 +47,10 @@ const quickCards = [
 
 export default function HomeScreen() {
   const meQuery = useEmployeeMeQuery();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const permissions = useAuthStore((state) => state.permissions);
+  const canOpenManager = managerPermissionKeys.some((key) => permissions.includes(key));
+  const isManagerOnly = isApiError(meQuery.error, 403) && canOpenManager;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -51,14 +65,37 @@ export default function HomeScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="Employee Mobile"
+          eyebrow="Paypoq Mobile"
           title="Bosh sahifa"
           subtitle="Shaxsiy ish, oylik va profil ma'lumotlaringiz."
         />
 
         {meQuery.isLoading ? <LoadingState /> : null}
 
-        {meQuery.isError ? (
+        {isManagerOnly ? (
+          <>
+            <View style={styles.summary}>
+              <Text style={styles.name}>{currentUser?.name ?? "Foydalanuvchi"}</Text>
+              <Text style={styles.factory}>{currentUser?.email}</Text>
+            </View>
+            <Link asChild href="/(app)/manager">
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.managerCard, pressed && styles.quickCardPressed]}
+              >
+                <View style={styles.quickIcon}>
+                  <Ionicons color={colors.accent} name="speedometer-outline" size={22} />
+                </View>
+                <Text style={styles.quickTitle}>Boshqaruv paneli</Text>
+                <Text style={styles.quickSubtitle}>
+                  {"Ishlab chiqarish, ombor, savdo va moliya ko'rsatkichlari."}
+                </Text>
+              </Pressable>
+            </Link>
+          </>
+        ) : null}
+
+        {meQuery.isError && !isManagerOnly ? (
           <ErrorState error={meQuery.error} onRetry={() => void meQuery.refetch()} />
         ) : null}
 
@@ -167,6 +204,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
+    backgroundColor: colors.surfaceRaised,
+  },
+  managerCard: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     backgroundColor: colors.surfaceRaised,
   },
   quickCardPressed: {

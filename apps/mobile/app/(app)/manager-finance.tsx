@@ -5,7 +5,7 @@ import { managerPermissions, useFinanceSummaryQuery } from "@/lib/api/manager-da
 import { colors, radius, spacing, typography } from "@/shared/styles/theme";
 import { AccessDeniedState, InfoCard, KpiGrid } from "@/shared/ui/dashboard";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader } from "@/shared/ui/states";
-import { formatDate, formatMonth, formatStatus } from "@/shared/utils/format";
+import { formatAmount, formatDate, formatMonth, formatStatus } from "@/shared/utils/format";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function FinanceSummaryScreen() {
@@ -27,9 +27,9 @@ export default function FinanceSummaryScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="Manager"
-          title="Finance Summary"
-          subtitle="Xarajatlar, avanslar va payroll qoldiqlari."
+          eyebrow="Boshqaruv"
+          title="Moliya"
+          subtitle="Xarajatlar, avanslar va oylik qoldiqlari."
         />
 
         {!canView ? <AccessDeniedState /> : null}
@@ -42,42 +42,42 @@ export default function FinanceSummaryScreen() {
           <>
             <KpiGrid
               items={[
-                { label: "Oylik xarajat", value: data.kpis.monthlyExpenses },
-                { label: "Pending expenses", value: data.kpis.pendingExpenses },
-                { label: "Pending advances", value: data.kpis.pendingAdvances },
+                { label: "Oylik xarajat", value: formatAmount(data.kpis.monthlyExpenses) },
+                { label: "Kutilayotgan xarajatlar", value: formatAmount(data.kpis.pendingExpenses) },
+                { label: "Kutilayotgan avanslar", value: formatAmount(data.kpis.pendingAdvances) },
                 {
-                  label: "Payroll remaining",
-                  value: data.kpis.payrollRemaining,
+                  label: "Oylik qoldig'i",
+                  value: formatAmount(data.kpis.payrollRemaining),
                   tone: "warning",
                 },
               ]}
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent expenses</Text>
+              <Text style={styles.sectionTitle}>{"So'nggi xarajatlar"}</Text>
               {data.recentExpenses.length ? (
                 data.recentExpenses.map((expense) => (
                   <InfoCard
                     key={expense.id}
                     title={expense.category.name}
                     subtitle={`${expense.reason} / ${formatDate(expense.requestedAt)} / ${formatStatus(expense.status)}`}
-                    right={expense.amount}
+                    right={formatAmount(expense.amount)}
                   />
                 ))
               ) : (
-                <EmptyState title="Expense yo'q" description="So'nggi xarajat topilmadi." />
+                <EmptyState title="Xarajat yo'q" description="So'nggi xarajat topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent advances</Text>
+              <Text style={styles.sectionTitle}>{"So'nggi avanslar"}</Text>
               {data.recentAdvances.length ? (
                 data.recentAdvances.map((advance) => (
                   <InfoCard
                     key={advance.id}
                     title={advance.employee.name}
                     subtitle={`${advance.reason} / ${formatDate(advance.requestedAt)} / ${formatStatus(advance.status)}`}
-                    right={advance.amount}
+                    right={formatAmount(advance.amount)}
                   />
                 ))
               ) : (
@@ -86,7 +86,7 @@ export default function FinanceSummaryScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Payroll periods</Text>
+              <Text style={styles.sectionTitle}>{"Oylik davrlari"}</Text>
               {data.payrollPeriods.length ? (
                 data.payrollPeriods.map((period) => (
                   <InfoCard
@@ -97,7 +97,7 @@ export default function FinanceSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Payroll yo'q" description="Payroll period topilmadi." />
+                <EmptyState title="Oylik davri yo'q" description="Oylik davri topilmadi." />
               )}
             </View>
           </>

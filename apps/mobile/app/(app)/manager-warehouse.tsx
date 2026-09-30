@@ -30,9 +30,9 @@ export default function WarehouseSummaryScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="Manager"
-          title="Warehouse Summary"
-          subtitle="Ombor stock summary va low stock materiallar."
+          eyebrow="Boshqaruv"
+          title="Ombor"
+          subtitle="Ombor qoldiqlari va kam qolgan materiallar."
         />
 
         {!canView ? <AccessDeniedState /> : null}
@@ -45,19 +45,19 @@ export default function WarehouseSummaryScreen() {
           <>
             <KpiGrid
               items={[
-                { label: "Finished product", value: data.kpis.finishedProductQuantity },
-                { label: "Material records", value: data.kpis.materialRecordCount },
+                { label: "Tayyor mahsulot", value: data.kpis.finishedProductQuantity },
+                { label: "Material yozuvlari", value: data.kpis.materialRecordCount },
                 {
-                  label: "Low stock",
+                  label: "Kam qoldiq",
                   value: data.kpis.lowStockMaterialCount,
                   tone: "warning",
                 },
-                { label: "Warehouse zones", value: data.kpis.warehouseZoneCount },
+                { label: "Ombor zonalari", value: data.kpis.warehouseZoneCount },
               ]}
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Zones</Text>
+              <Text style={styles.sectionTitle}>{"Zonalar"}</Text>
               {data.zoneSummaries.length ? (
                 data.zoneSummaries.map((zone) => (
                   <InfoCard
@@ -68,12 +68,12 @@ export default function WarehouseSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Zone yo'q" description="Warehouse zone summary topilmadi." />
+                <EmptyState title="Zona yo'q" description="Ombor zonalari bo'yicha ma'lumot topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Low stock materials</Text>
+              <Text style={styles.sectionTitle}>{"Kam qolgan materiallar"}</Text>
               {data.lowStockMaterials.length ? (
                 data.lowStockMaterials.map((material) => (
                   <InfoCard
@@ -84,7 +84,7 @@ export default function WarehouseSummaryScreen() {
                   />
                 ))
               ) : (
-                <EmptyState title="Low stock yo'q" description="Low stock material topilmadi." />
+                <EmptyState title="Kam qoldiq yo'q" description="Kam qolgan material topilmadi." />
               )}
             </View>
           </>

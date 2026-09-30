@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Client, ClientDebt, ClientPayment, CreateClientPaymentPayload, SalesOrder } from "@/lib/api/sales";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatCurrency } from "@/lib/utils";
+import { todayDateInputValue } from "@/lib/format";
 
 const allocationSchema = z.object({
   orderId: z.string().min(1, "Buyurtma tanlanishi shart."),
@@ -99,7 +100,7 @@ export function PaymentCreateDrawer({
       clientId: "",
       amount: "",
       method: "CASH",
-      paymentDate: new Date().toISOString().slice(0, 10),
+      paymentDate: todayDateInputValue(),
       note: "",
       allocations: [{ orderId: "", amount: "" }],
     },
@@ -130,7 +131,7 @@ export function PaymentCreateDrawer({
         clientId: "",
         amount: "",
         method: "CASH",
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: todayDateInputValue(),
         note: "",
         allocations: [{ orderId: "", amount: "" }],
       });

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { isApiError } from "@/lib/api/errors";
 import { useEmployeeMeQuery } from "@/lib/api/mobile-employee";
 import { colors, radius, spacing, typography } from "@/shared/styles/theme";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader } from "@/shared/ui/states";
@@ -20,6 +21,8 @@ export default function ProfileScreen() {
   const meQuery = useEmployeeMeQuery();
   const logout = useAuthStore((state) => state.logout);
   const isLoadingSession = useAuthStore((state) => state.isLoadingSession);
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const hasNoEmployeeProfile = isApiError(meQuery.error, 403);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -41,8 +44,20 @@ export default function ProfileScreen() {
 
         {meQuery.isLoading ? <LoadingState /> : null}
 
-        {meQuery.isError ? (
+        {meQuery.isError && !hasNoEmployeeProfile ? (
           <ErrorState error={meQuery.error} onRetry={() => void meQuery.refetch()} />
+        ) : null}
+
+        {hasNoEmployeeProfile && currentUser ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Akkaunt</Text>
+              <InfoRow label="Ism" value={currentUser.name} />
+              <InfoRow label="Email" value={currentUser.email} />
+              <InfoRow label="Holat" value={formatStatus(currentUser.status)} />
+            </View>
+            <LogoutButton disabled={isLoadingSession} onPress={logout} />
+          </>
         ) : null}
 
         {meQuery.data ? (
@@ -61,9 +76,9 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Factory / Tenant</Text>
-              <InfoRow label="Factory" value={meQuery.data.factory.name} />
-              <InfoRow label="Tenant" value={meQuery.data.tenant.name} />
+              <Text style={styles.sectionTitle}>Korxona</Text>
+              <InfoRow label="Fabrika" value={meQuery.data.factory.name} />
+              <InfoRow label="Korxona" value={meQuery.data.tenant.name} />
             </View>
 
             <View style={styles.section}>
@@ -87,22 +102,7 @@ export default function ProfileScreen() {
               </Pressable>
             </Link>
 
-            <Pressable
-              accessibilityRole="button"
-              disabled={isLoadingSession}
-              onPress={logout}
-              style={({ pressed }) => [
-                styles.logoutButton,
-                pressed && !isLoadingSession && styles.buttonPressed,
-                isLoadingSession && styles.buttonDisabled,
-              ]}
-            >
-              {isLoadingSession ? (
-                <ActivityIndicator color={colors.text} />
-              ) : (
-                <Text style={styles.logoutText}>Chiqish</Text>
-              )}
-            </Pressable>
+            <LogoutButton disabled={isLoadingSession} onPress={logout} />
           </>
         ) : null}
 
@@ -114,6 +114,27 @@ export default function ProfileScreen() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function LogoutButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.logoutButton,
+        pressed && !disabled && styles.buttonPressed,
+        disabled && styles.buttonDisabled,
+      ]}
+    >
+      {disabled ? (
+        <ActivityIndicator color={colors.text} />
+      ) : (
+        <Text style={styles.logoutText}>Chiqish</Text>
+      )}
+    </Pressable>
   );
 }
 
