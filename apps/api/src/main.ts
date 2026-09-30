@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { createTrustedProxyFn } from './common/trusted-proxy';
 import { validationExceptionFactory } from './common/pipes/validation-exception.factory';
 import { checkSchemaCompatibility, loadBuildMigrations } from './health/schema-compatibility';
 import { assertSchemaReadyForStartup } from './health/startup-schema-gate';
@@ -27,12 +28,17 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Trust reverse proxy (Nginx/Caddy) so request.ip (rate limiting) and Secure cookies work.
+  // request.ip keys the auth rate limiter: X-Forwarded-For is honoured for one
+  // hop and only from a TRUSTED_PROXIES peer (default loopback), so a client
+  // that reaches the API directly cannot forge its limiter identity.
   const expressApp = app.getHttpAdapter().getInstance() as {
     set?: (key: string, value: unknown) => void;
     disable?: (key: string) => void;
   };
-  expressApp.set?.('trust proxy', 1);
+  expressApp.set?.(
+    'trust proxy',
+    createTrustedProxyFn(configService.get<string>('app.trustedProxies', 'loopback')),
+  );
   expressApp.disable?.('x-powered-by');
 
   const rawCorsOrigin = configService.get<string>('app.corsOrigin', '*');
@@ -77,7 +83,7 @@ async function bootstrap(): Promise<void> {
     throw error;
   }
 
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port, configService.get<string>('app.bindHost', '0.0.0.0'));
 }
 
 bootstrap().catch((error: unknown) => {

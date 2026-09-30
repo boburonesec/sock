@@ -19,6 +19,7 @@
     "test:demo-seed-safety": "node scripts/demo-seed-safety-test.mjs",
     "test:prisma-error-mapping": "node scripts/prisma-error-mapping-test.mjs",
     "test:startup-schema-gate": "node scripts/startup-schema-gate-test.mjs",
+    "test:trusted-proxy": "node scripts/trusted-proxy-test.mjs",
     "test:supplier-payment-integrity": "node scripts/supplier-payment-integrity-test.mjs",
     "test:payroll-payment-integrity": "node scripts/payroll-payment-integrity-test.mjs",
     "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm acceptance:seed",

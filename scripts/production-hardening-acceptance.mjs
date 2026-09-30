@@ -128,6 +128,47 @@ function runStaticChecks() {
     'Compose API healthcheck uses readiness',
     /health\/readiness/.test(compose),
   );
+
+  // --- Client-IP boundary for auth rate limiting (AGENTS.md §7.10) ---
+  const nginxExample = read('configs/nginx.paypoq.example.conf');
+  const pm2Config = read('configs/pm2.ecosystem.config.cjs');
+  const authProxySource = read('apps/web/src/lib/api/auth-proxy.ts');
+  record(
+    'static',
+    'Compose publishes api/web on 127.0.0.1 by default (no proxy bypass)',
+    /"\$\{API_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{API_PORT:-3001\}:3001"/.test(compose) &&
+      /"\$\{WEB_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{WEB_PORT:-3000\}:3000"/.test(compose) &&
+      !/-\s*"\$\{(API|WEB)_PORT:-300[01]\}:300[01]"/.test(compose),
+  );
+  record(
+    'static',
+    'Compose API trusts forwarding only from its own network and loopback',
+    /TRUSTED_PROXIES: \$\{TRUSTED_PROXIES:-loopback,uniquelocal\}/.test(compose),
+  );
+  record(
+    'static',
+    'nginx example overwrites X-Forwarded-For (never appends caller values)',
+    !/\$proxy_add_x_forwarded_for/.test(nginxExample) &&
+      (nginxExample.match(/^\s*proxy_set_header X-Forwarded-For \$remote_addr;/gm) ?? []).length >= 4,
+  );
+  record(
+    'static',
+    'PM2 binds API and web to 127.0.0.1 and trusts loopback only',
+    /API_BIND_HOST: sharedEnv\.API_BIND_HOST \|\| '127\.0\.0\.1'/.test(pm2Config) &&
+      /TRUSTED_PROXIES: sharedEnv\.TRUSTED_PROXIES \|\| 'loopback'/.test(pm2Config) &&
+      /HOSTNAME: sharedEnv\.WEB_HOSTNAME \|\| '127\.0\.0\.1'/.test(pm2Config),
+  );
+  record(
+    'static',
+    'API trust proxy uses the TRUSTED_PROXIES function, not a blanket hop count',
+    /createTrustedProxyFn\(/.test(mainTs) && !/'trust proxy',\s*(1|true)\b/.test(mainTs),
+  );
+  record(
+    'static',
+    'Auth BFF forwards one validated client IP, never the raw chain or X-Real-IP',
+    /forwardHeaders\.set\("x-forwarded-for", clientIp\)/.test(authProxySource) &&
+      !/request\.headers\.get\("x-real-ip"\)/.test(authProxySource),
+  );
   record(
     'static',
     'Compose requires an explicit CORS origin',
@@ -492,6 +533,11 @@ async function runRuntimeChecks() {
     );
     record('runtime', 'Production startup fails on a placeholder secret', !weak.alive);
     await weak.stop();
+
+    // --- Invalid TRUSTED_PROXIES must fail startup, not trust everything/nothing ---
+    const badTrust = await startApi(productionEnv(dbUrl(healthyDb), { TRUSTED_PROXIES: 'everything' }));
+    record('runtime', 'Production startup refuses an invalid TRUSTED_PROXIES value', !badTrust.alive && !badTrust.listened);
+    await badTrust.stop();
 
     // --- Operator bootstrap CLI ---
     const bootstrapEnv = { DATABASE_URL: dbUrl(healthyDb) };

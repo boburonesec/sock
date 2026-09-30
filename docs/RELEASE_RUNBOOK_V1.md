@@ -23,6 +23,19 @@ operator selects one and fills in its values.
 
 Whichever target is chosen, it must obey §3 exactly.
 
+**Client IP boundary (auth rate limiting).** The API keys login/refresh rate
+limits on the client IP it derives from X-Forwarded-For, which it accepts only
+from `TRUSTED_PROXIES` peers (one hop). The reverse proxy must be the only way
+to reach web and API, and must overwrite X-Forwarded-For with the address it
+saw (the nginx example does). Compose publishes api/web on `127.0.0.1`
+(`API_BIND_ADDRESS`/`WEB_BIND_ADDRESS`) and trusts its own network; PM2 binds
+both to `127.0.0.1` and trusts loopback. Opening :3000/:3001 to a LAN or the
+internet lets a client bypass the proxy and forge its rate-limit identity.
+`render.yaml` (example only) sets no `TRUSTED_PROXIES`: before any Render use,
+the platform proxy's source addresses and X-Forwarded-For behaviour, and the
+web → API path, must be verified and configured explicitly — with the default
+(`loopback`) every client shares the proxy's rate-limit identity.
+
 ---
 
 ## 2. Release contract (invariants)

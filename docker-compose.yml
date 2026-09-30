@@ -80,8 +80,16 @@ services:
       TELEGRAM_LINK_TOKEN_SECRET: ${TELEGRAM_LINK_TOKEN_SECRET:?TELEGRAM_LINK_TOKEN_SECRET is required}
       BOT_INTERNAL_API_KEY: ${BOT_INTERNAL_API_KEY:?BOT_INTERNAL_API_KEY is required}
       FACTORY_TV_ACCESS_TOKEN: ${FACTORY_TV_ACCESS_TOKEN:?FACTORY_TV_ACCESS_TOKEN is required}
+      # Peers allowed to supply X-Forwarded-For (auth rate-limit identity):
+      # the web/bot containers on this stack's network and the host reverse
+      # proxy (arrives via the network gateway). Safe only while api/web are
+      # published on 127.0.0.1 below — narrow this before exposing the API.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-loopback,uniquelocal}
     ports:
-      - "${API_PORT:-3001}:3001"
+      # Loopback only: clients reach the API through the host reverse proxy
+      # (configs/nginx.paypoq.example.conf). A LAN/public binding would let a
+      # client bypass the proxy and choose its rate-limit identity.
+      - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-3001}:3001"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/health/readiness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 15s
@@ -108,7 +116,9 @@ services:
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:3001}
       FACTORY_TV_ACCESS_TOKEN: ${FACTORY_TV_ACCESS_TOKEN:?FACTORY_TV_ACCESS_TOKEN is required}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      # Loopback only, for the same reason: the BFF trusts the client IP the
+      # reverse proxy puts in X-Forwarded-For.
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3000}:3000"
 
   bot:
     build:

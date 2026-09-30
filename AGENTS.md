@@ -206,6 +206,12 @@ enforces them — run it after touching anything in this section.
    is created by `pnpm --filter @paypoq/api bootstrap:platform-admin` with an
    operator-supplied email and password. UI forms must not pre-fill passwords.
 9. **Production smoke uses no demo credentials** — all inputs come from env.
+10. **Clients cannot choose their auth rate-limit IP.** The API honours
+    X-Forwarded-For for one hop and only from `TRUSTED_PROXIES` peers (default
+    `loopback`); the BFF forwards a single validated address; nginx overwrites
+    X-Forwarded-For with `$remote_addr`; compose publishes api/web on
+    `127.0.0.1` and PM2 binds them to `127.0.0.1`. Never publish api/web on a
+    LAN/public interface or widen `TRUSTED_PROXIES` beyond infrastructure.
 
 ### Financial semantics are frozen
 

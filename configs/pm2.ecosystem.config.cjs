@@ -47,7 +47,13 @@ module.exports = {
       cwd: repoRoot,
       script: pnpmBin,
       args: '--filter @paypoq/api start:prod',
-      env: sharedEnv,
+      env: {
+        ...sharedEnv,
+        // Reachable only from nginx/web on this host; X-Forwarded-For is
+        // trusted from loopback peers only (auth rate-limit identity).
+        API_BIND_HOST: sharedEnv.API_BIND_HOST || '127.0.0.1',
+        TRUSTED_PROXIES: sharedEnv.TRUSTED_PROXIES || 'loopback',
+      },
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
@@ -64,6 +70,8 @@ module.exports = {
       env: {
         ...sharedEnv,
         PORT: sharedEnv.WEB_PORT || '3000',
+        // Reachable only through nginx, whose X-Forwarded-For the BFF trusts.
+        HOSTNAME: sharedEnv.WEB_HOSTNAME || '127.0.0.1',
       },
       instances: 1,
       exec_mode: 'fork',
