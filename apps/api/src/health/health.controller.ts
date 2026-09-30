@@ -1,26 +1,10 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { checkSchemaCompatibility, loadBuildMigrations } from './schema-compatibility';
 
 type ReadinessStatus = 'ok' | 'degraded';
 type CheckStatus = 'ok' | 'failed';
-
-/**
- * Tables that must exist before this process may serve traffic. Kept small and
- * explicit: it is a deployment contract ("the release migration ran"), not a
- * full schema validator. `_prisma_migrations` is included so a database that
- * was created by hand, or whose migration history was lost, is also rejected.
- */
-const ESSENTIAL_TABLES = [
-  '_prisma_migrations',
-  'Tenant',
-  'Factory',
-  'User',
-  'UserCredential',
-  'RefreshSession',
-  'Permission',
-  'PlatformAdmin',
-] as const;
 
 /**
  * Public health surface. Deliberately limited to two read-only routes:
@@ -36,10 +20,15 @@ const ESSENTIAL_TABLES = [
  */
 @Controller('health')
 export class HealthController {
+  /** Migrations shipped with this build; fixed for the life of the process. */
+  private readonly expectedMigrations: string[] | null;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    this.expectedMigrations = loadBuildMigrations();
+  }
 
   @Get()
   getHealth(): {
@@ -104,39 +93,17 @@ export class HealthController {
   }
 
   /**
-   * True only when every essential table exists AND at least one migration is
-   * recorded as finished. A database that is reachable but empty (failed or
-   * skipped release migration) therefore fails readiness instead of serving
-   * traffic against a schema the application cannot use.
+   * True only when the schema matches this build: essential tables exist, no
+   * migration is failed/unfinished, and every migration shipped with the build
+   * is applied (shared with the production startup gate). A failed, partially
+   * applied or skipped release migration therefore fails readiness.
    *
-   * Only a boolean ever reaches the response: no table names, row counts or
-   * driver errors are exposed to an unauthenticated caller.
+   * Only a boolean ever reaches the response: no table names, migration names,
+   * row counts or driver errors are exposed to an unauthenticated caller.
    */
   private async hasEssentialSchema(): Promise<boolean> {
-    try {
-      const rows = await this.prisma.$queryRaw<Array<{ table_name: string }>>`
-        SELECT "table_name"
-        FROM "information_schema"."tables"
-        WHERE "table_schema" = current_schema()
-      `;
-      const present = new Set(rows.map((row) => row.table_name));
-
-      for (const table of ESSENTIAL_TABLES) {
-        if (!present.has(table)) {
-          return false;
-        }
-      }
-
-      const [migrations] = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*)::bigint AS count
-        FROM "_prisma_migrations"
-        WHERE "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL
-      `;
-
-      return Number(migrations?.count ?? 0) > 0;
-    } catch {
-      return false;
-    }
+    const result = await checkSchemaCompatibility(this.prisma, this.expectedMigrations);
+    return result.ok;
   }
 
   private hasSecret(configPath: string): boolean {

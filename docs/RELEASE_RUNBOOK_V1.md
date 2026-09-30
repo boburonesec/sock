@@ -82,6 +82,9 @@ PLATFORM_BOOTSTRAP_PASSWORD='<generated, stored in password manager>' \
 DATABASE_URL='<prod>' pnpm --filter @paypoq/api bootstrap:platform-admin
 
 # 3. Start/restart API with BUILD_SHA set to the release SHA.
+#    A production API refuses to start (exits non-zero, never listens) if any
+#    migration shipped with this build is missing, failed or unfinished, or the
+#    database cannot be reached to verify it. See "Failed release migration".
 # 4. Gate on readiness before sending traffic:
 curl -fsS https://api.example.com/health/readiness
 
@@ -110,6 +113,21 @@ PLATFORM_BOOTSTRAP_EMAIL=... PLATFORM_BOOTSTRAP_PASSWORD=... \
 docker compose --env-file .env.docker up -d api   # healthcheck = readiness
 docker compose --env-file .env.docker up -d web bot
 ```
+
+### 3.2.1 Failed release migration
+
+`prisma migrate deploy` exits non-zero (P3018) and records the migration as
+failed. PostgreSQL may have applied part of it: Prisma does not roll a failed
+migration back. Further deploys stop with P3009 until it is resolved, and the
+new API build refuses to start against this database.
+
+1. Do not start the new build; keep application writes stopped.
+2. Inspect the failed migration and the database state
+   (`prisma migrate status`, the `logs` column of `_prisma_migrations`).
+3. Either repair the partial change by hand and mark it
+   `prisma migrate resolve --rolled-back <migration>` then re-run
+   `prisma migrate deploy`, or restore the pre-release dump (§4).
+4. Start the API only after `prisma migrate deploy` exits 0.
 
 ### 3.3 Verify
 

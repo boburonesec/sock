@@ -18,6 +18,7 @@
     "demo:seed": "ALLOW_DEMO_SEED=true node -r ts-node/register prisma/demo-seed.ts",
     "test:demo-seed-safety": "node scripts/demo-seed-safety-test.mjs",
     "test:prisma-error-mapping": "node scripts/prisma-error-mapping-test.mjs",
+    "test:startup-schema-gate": "node scripts/startup-schema-gate-test.mjs",
     "test:supplier-payment-integrity": "node scripts/supplier-payment-integrity-test.mjs",
     "test:payroll-payment-integrity": "node scripts/payroll-payment-integrity-test.mjs",
     "demo:prepare": "pnpm demo:reset && pnpm prisma:seed && pnpm acceptance:seed",

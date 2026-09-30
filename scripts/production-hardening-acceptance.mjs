@@ -70,6 +70,13 @@ function runStaticChecks() {
     'API startup does not run migrations',
     !/runAutoMigrations|prisma-auto-migrate/.test(mainTs),
   );
+  const gateIndex = mainTs.indexOf('assertSchemaReadyForStartup(');
+  const listenIndex = mainTs.indexOf('app.listen(');
+  record(
+    'static',
+    'API startup verifies the schema (read-only) before app.listen',
+    gateIndex !== -1 && listenIndex !== -1 && gateIndex < listenIndex,
+  );
   record(
     'static',
     'Boot-time migration runner is removed from the codebase',
@@ -211,6 +218,42 @@ function dropDb(name) {
   spawnSync(bin, psqlArgs('postgres', ['-c', `DROP DATABASE IF EXISTS ${name};`]), { env: psqlEnv() });
 }
 
+/** Drops a database even while an API still holds connections to it. */
+function forceDropDb(name) {
+  const bin = USE_PSQL_CLIENT ? 'psql' : 'docker';
+  spawnSync(bin, psqlArgs('postgres', ['-c', `DROP DATABASE IF EXISTS ${name} WITH (FORCE);`]), { env: psqlEnv() });
+}
+
+/** Creates a disposable database and applies the release migration to it. */
+function createMigratedDb(name) {
+  createDb(name);
+  const migrate = spawnSync('pnpm', ['--filter', '@paypoq/api', 'prisma:migrate:deploy'], {
+    cwd: repoRoot,
+    env: { ...process.env, DATABASE_URL: dbUrl(name) },
+    encoding: 'utf8',
+  });
+  if (migrate.status !== 0) throw new Error(`migrate deploy failed for ${name}: ${migrate.stderr}`);
+}
+
+const latestMigrationName = () =>
+  fs
+    .readdirSync(path.join(repoRoot, 'apps/api/prisma/migrations'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .at(-1);
+
+/** Asserts a production API refused to start: never listened, exited non-zero, reason logged. */
+function recordRefusedStart(api, name, expectedLog) {
+  const code = api.exitCode();
+  record(
+    'runtime',
+    name,
+    !api.alive && !api.listened && typeof code === 'number' && code !== 0 && expectedLog.test(api.log()),
+    `alive=${api.alive} listened=${api.listened} exit=${code}`,
+  );
+}
+
 const dbUrl = (name) => `postgresql://postgres:postgres@${PG_HOST}:${PG_PORT}/${name}?schema=public`;
 
 function productionEnv(databaseUrl, extra = {}) {
@@ -244,13 +287,21 @@ async function startApi(env) {
   child.stderr.on('data', (d) => (log += d.toString()));
 
   let exited = false;
-  child.on('exit', () => (exited = true));
+  let exitCode = null;
+  let listened = false;
+  child.on('exit', (code) => {
+    exited = true;
+    exitCode = code;
+  });
 
   for (let i = 0; i < 20 && !exited; i += 1) {
     await sleep(700);
     try {
       const res = await fetch(`http://127.0.0.1:${API_PORT}/health`, { signal: AbortSignal.timeout(1500) });
-      if (res.ok) break;
+      if (res.ok) {
+        listened = true;
+        break;
+      }
     } catch {
       /* keep waiting */
     }
@@ -258,6 +309,8 @@ async function startApi(env) {
 
   return {
     alive: !exited,
+    listened,
+    exitCode: () => exitCode,
     log: () => log,
     stop: async () => {
       if (!exited) child.kill();
@@ -296,6 +349,9 @@ function runBootstrapCli(env) {
 async function runRuntimeChecks() {
   const healthyDb = `paypoq_hardening_${Date.now()}`;
   const driftDb = `${healthyDb}_drift`;
+  const failedDb = `${healthyDb}_failed`;
+  const pendingDb = `${healthyDb}_pending`;
+  const lostDb = `${healthyDb}_lost`;
 
   createDb(healthyDb);
   createDb(driftDb);
@@ -308,6 +364,7 @@ async function runRuntimeChecks() {
       encoding: 'utf8',
     });
     record('runtime', 'prisma migrate deploy succeeds on an empty database', migrate.status === 0, `exit=${migrate.status}`);
+    for (const name of [failedDb, pendingDb, lostDb]) createMigratedDb(name);
 
     // Drift database: migration history claims applied, but no tables exist.
     psql(
@@ -378,22 +435,56 @@ async function runRuntimeChecks() {
     );
     await healthy.stop();
 
-    // --- Schema drift: readiness must refuse traffic ---
+    // --- Schema drift: a production API must refuse to start ---
     const drift = await startApi(productionEnv(dbUrl(driftDb)));
-    const driftReadiness = await get('/health/readiness');
-    record(
-      'runtime',
-      'Readiness is 503 when the application schema is missing',
-      driftReadiness.status === 503,
-      `status=${driftReadiness.status}`,
-    );
+    recordRefusedStart(drift, 'Production startup refuses a database whose application schema is missing', /Refusing to start: .*essential tables/);
     await drift.stop();
 
-    // --- Database unreachable: readiness must refuse traffic ---
+    // --- Database unreachable: schema cannot be verified, so refuse to start ---
     const down = await startApi(productionEnv(`postgresql://postgres:postgres@${PG_HOST}:1/nope?schema=public`));
-    const downReadiness = await get('/health/readiness');
-    record('runtime', 'Readiness is 503 when the database is unreachable', downReadiness.status === 503, `status=${downReadiness.status}`);
+    recordRefusedStart(down, 'Production startup refuses when the database is unreachable', /Refusing to start: Database is unreachable/);
     await down.stop();
+
+    // --- Release migration failed (unresolved, possibly partially applied) ---
+    const latest = latestMigrationName();
+    psql(failedDb, `update "_prisma_migrations" set finished_at = null where migration_name = '${latest}';`);
+    const failedStart = await startApi(productionEnv(dbUrl(failedDb)));
+    recordRefusedStart(failedStart, 'Production startup refuses a failed/unfinished release migration', new RegExp(`Refusing to start: .*failed or unfinished migrations \\(${latest}\\)`));
+    await failedStart.stop();
+
+    // --- Release migration skipped: this build's migration was never applied ---
+    psql(pendingDb, `delete from "_prisma_migrations" where migration_name = '${latest}';`);
+    const pendingStart = await startApi(productionEnv(dbUrl(pendingDb)));
+    recordRefusedStart(pendingStart, 'Production startup refuses a database missing this build\'s migrations', new RegExp(`Refusing to start: .*missing migrations required by this build \\(${latest}\\)`));
+    await pendingStart.stop();
+
+    // --- Development keeps booting (one warning) but readiness still refuses ---
+    const devPending = await startApi(
+      productionEnv(dbUrl(pendingDb), { NODE_ENV: 'development', CORS_ORIGIN: 'http://localhost:3000' }),
+    );
+    const devReadiness = await get('/health/readiness');
+    record(
+      'runtime',
+      'Development startup continues on pending migrations with a warning; readiness is 503',
+      devPending.alive &&
+        devReadiness.status === 503 &&
+        (devPending.log().match(/Continuing because NODE_ENV=development/g) ?? []).length === 1,
+      `alive=${devPending.alive} readiness=${devReadiness.status}`,
+    );
+    await devPending.stop();
+
+    // --- Database lost after a healthy start: readiness must refuse traffic ---
+    const lost = await startApi(productionEnv(dbUrl(lostDb)));
+    const lostBefore = await get('/health/readiness');
+    forceDropDb(lostDb);
+    const lostAfter = await get('/health/readiness');
+    record(
+      'runtime',
+      'Readiness is 503 when the database becomes unreachable after startup',
+      lost.alive && lostBefore.status === 200 && lostAfter.status === 503,
+      `before=${lostBefore.status} after=${lostAfter.status}`,
+    );
+    await lost.stop();
 
     // --- Invalid secret still fails startup (regression guard) ---
     const weak = await startApi(
@@ -486,6 +577,7 @@ async function runRuntimeChecks() {
   } finally {
     dropDb(healthyDb);
     dropDb(driftDb);
+    for (const name of [failedDb, pendingDb, lostDb]) forceDropDb(name);
   }
 }
 

@@ -191,6 +191,11 @@ enforces them — run it after touching anything in this section.
 4. **Readiness proves the schema.** `/health/readiness` checks DB connectivity,
    essential tables + migration history, and production secret validity. It must
    return 503 on schema drift, and must never leak table names, SQL or secrets.
+   Migration history is compatible only when no migration is failed/unfinished
+   and every migration shipped with the build is applied (the database may be
+   ahead, for app-only rollback). A **production** API runs the same read-only
+   check before `app.listen` and exits non-zero instead of listening when it
+   fails or cannot be verified; development/test only warn.
 5. **Traffic health checks target `/health/readiness`**, not `/health`.
 6. **CORS fails closed in production.** `*`, localhost, empty and non-https
    origins are rejected at startup. Only an explicit https allowlist is valid.
