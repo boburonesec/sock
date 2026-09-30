@@ -93,6 +93,21 @@ export function rewriteSetCookie(
   return cookie.trim();
 }
 
+const PROXY_PATH_SEGMENT = /^[a-zA-Z0-9._-]+$/;
+
+/**
+ * A proxied auth path segment must use the allow-listed characters and must
+ * not be a dot segment. `.` and `..` would pass the character check, and the
+ * upstream URL is built by concatenation and then normalized by `fetch`, so an
+ * accepted `..` would escape the fixed upstream prefix (e.g. `/auth/..` → `/`).
+ * Next.js currently normalizes dot segments before routing; this is the
+ * handler's own guarantee, independent of the framework. `%` is not allowed,
+ * so encoded dots (`%2e`) cannot survive to the upstream URL either.
+ */
+export function isSafeProxyPathSegment(segment: string): boolean {
+  return segment !== "." && segment !== ".." && PROXY_PATH_SEGMENT.test(segment);
+}
+
 interface AuthProxyOptions {
   upstreamPrefix: "auth" | "platform-auth";
   cookiePath: string;
@@ -107,7 +122,7 @@ export function createAuthProxyHandler(options: AuthProxyOptions) {
       const { path = [] } = await context.params;
 
       // Validate path segments to prevent path traversal or SSRF
-      const isValidPath = path.every((seg) => /^[a-zA-Z0-9._-]+$/.test(seg));
+      const isValidPath = path.every(isSafeProxyPathSegment);
       if (!isValidPath) {
         return NextResponse.json(
           { message: "Noto‘g‘ri so‘rov manzili" },
