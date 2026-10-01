@@ -135,6 +135,64 @@ async function isReachable(locator) {
 const mutation = (page, pathPart, method = "POST") =>
   page.waitForResponse((r) => r.url().includes(pathPart) && r.request().method() === method, { timeout: 20_000 });
 
+const SUPPLIER_STAGE_TIMEOUT_MS = 30_000;
+const SERVER_POLL_INTERVAL_MS = 250;
+
+const firstLine = (error) => String(error?.message ?? error).split("\n")[0];
+
+/** Visible error/validation text, so a failed stage reports what the operator would have seen. */
+async function visibleAlerts(page) {
+  const texts = (await page.locator('[role="alert"]:visible').allInnerTexts().catch(() => [])).map((text) => text.trim()).filter(Boolean);
+  return texts.length > 0 ? `visible alerts: ${JSON.stringify(texts)}` : "no visible alerts";
+}
+
+/**
+ * Confirms a supplier mutation with a normal click on the real confirmation
+ * button and proves each stage on its own, so a failure names the stage instead
+ * of a generic response-event timeout:
+ *   1. the click made the browser send the POST;
+ *   2. the UI reported success (shown only after the API accepted the mutation).
+ * The caller then proves the durable server state with `pollServerState`.
+ */
+async function confirmSupplierMutation(page, { label, path, dialogName, confirmName, successText }) {
+  const confirm = page.getByRole("alertdialog", { name: dialogName }).getByRole("button", { name: confirmName, exact: true });
+  // Settled into a value, so a failing click cannot leave this as an unhandled rejection.
+  const requested = page
+    .waitForRequest((request) => request.method() === "POST" && new URL(request.url()).pathname.endsWith(path), { timeout: SUPPLIER_STAGE_TIMEOUT_MS })
+    .then((request) => ({ request }), (error) => ({ error }));
+
+  try {
+    await confirm.click({ timeout: SUPPLIER_STAGE_TIMEOUT_MS });
+  } catch (error) {
+    throw new Error(`${label}: the confirmation button "${confirmName}" could not be clicked — ${firstLine(error)} | ${await visibleAlerts(page)}`);
+  }
+
+  const { request, error: requestError } = await requested;
+  if (!request) {
+    throw new Error(`${label}: the confirmation click never emitted POST ${path} — ${firstLine(requestError)} | ${await visibleAlerts(page)}`);
+  }
+
+  try {
+    await page.getByText(successText, { exact: true }).waitFor({ timeout: SUPPLIER_STAGE_TIMEOUT_MS });
+  } catch (error) {
+    throw new Error(`${label}: POST ${path} was emitted but the UI never reported success — ${firstLine(error)} | request failure: ${request.failure()?.errorText ?? "none"} | ${await visibleAlerts(page)}`);
+  }
+}
+
+/**
+ * Read-only verification: re-reads server state until `isExpected` holds or the
+ * deadline passes. Never writes. Returns the last observed state either way, so
+ * the caller's exact assertion reports what the server actually held.
+ */
+async function pollServerState(read, isExpected, timeoutMs = SUPPLIER_STAGE_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const state = await read();
+    if (isExpected(state) || Date.now() >= deadline) return state;
+    await new Promise((resolve) => setTimeout(resolve, SERVER_POLL_INTERVAL_MS));
+  }
+}
+
 // ---------------------------------------------------------------- Work shifts
 async function workShiftScenario(run, browser, viewport, fx) {
   const shiftsBefore = await apiCall("/settings/work-shifts", { token: fx.ownerToken });
@@ -497,6 +555,21 @@ async function supplierScenario(run, browser, viewport, fx) {
 
   const accountant = await openAs(browser, viewport, fx.emails.accountant);
   let supplierId;
+  // Read-only snapshot of this supplier's purchases and debt as the server holds them.
+  const readSupplierState = async () => {
+    const [purchasesRes, debtsRes] = await Promise.all([
+      apiCall("/supplier/purchases", { token: accountantToken }),
+      apiCall("/supplier/debts", { token: accountantToken }),
+    ]);
+    const debt = (debtsRes.data?.data ?? []).find((d) => d.supplier.id === supplierId);
+    return {
+      purchases: (purchasesRes.data?.data ?? []).filter((p) => p.supplier.id === supplierId).map((p) => ({
+        purchaseNumber: p.purchaseNumber, totalAmount: p.totalAmount, paymentStatus: p.paymentStatus,
+        items: p.items.map((item) => ({ quantity: item.quantity, unit: item.unit, unitPrice: item.unitPrice })),
+      })),
+      debt: debt ? { totalPurchases: debt.totalPurchases, totalPaid: debt.totalPaid, debt: debt.debt } : null,
+    };
+  };
   try {
     const page = accountant.page;
     await page.goto(`${WEB}/finance/suppliers`, { waitUntil: "networkidle" });
@@ -518,16 +591,21 @@ async function supplierScenario(run, browser, viewport, fx) {
     await purchaseDrawer.locator('input[id^="purchaseUnit-"]').fill("kg");
     await purchaseDrawer.locator('input[id^="purchaseUnitPrice-"]').fill(String(UNIT_PRICE));
     await purchaseDrawer.getByRole("button", { name: "Xaridni tekshirish", exact: true }).click();
-    const purchased = mutation(page, "/supplier/purchases");
-    await page.getByRole("alertdialog", { name: "Xaridni tasdiqlash" }).getByRole("button", { name: "Xaridni tasdiqlash", exact: true }).click();
-    check(run, "Accountant records purchase 20 kg × 45 000 through UI", (await purchased).ok());
+    await confirmSupplierMutation(page, {
+      label: "Supplier purchase", path: "/supplier/purchases",
+      dialogName: "Xaridni tasdiqlash", confirmName: "Xaridni tasdiqlash",
+      successText: "Yetkazib beruvchi xaridi qayd qilindi.",
+    });
+    check(run, "Accountant records purchase 20 kg × 45 000 through UI", true, "confirmation click sent POST /supplier/purchases; UI reported success");
 
-    let purchases = (await apiCall("/supplier/purchases", { token: accountantToken })).data.data.filter((p) => p.supplier.id === supplierId);
-    let debt = (await apiCall("/supplier/debts", { token: accountantToken })).data.data.find((d) => d.supplier.id === supplierId);
-    check(run, "Server after purchase: total 900 000, UNPAID, debt 900 000",
-      purchases.length === 1 && num(purchases[0].totalAmount) === TOTAL && purchases[0].paymentStatus === "UNPAID" && num(debt.totalPurchases) === TOTAL && num(debt.totalPaid) === 0 && num(debt.debt) === TOTAL,
-      JSON.stringify({ total: purchases[0]?.totalAmount, status: purchases[0]?.paymentStatus, debt }));
-    const purchaseNumber = purchases[0].purchaseNumber;
+    const purchaseRecorded = ({ purchases, debt }) =>
+      purchases.length === 1 && purchases[0].items.length === 1 && num(purchases[0].items[0].quantity) === QTY
+      && num(purchases[0].totalAmount) === TOTAL && purchases[0].paymentStatus === "UNPAID"
+      && debt !== null && num(debt.totalPurchases) === TOTAL && num(debt.totalPaid) === 0 && num(debt.debt) === TOTAL;
+    const afterPurchase = await pollServerState(readSupplierState, purchaseRecorded);
+    check(run, "Server after purchase: quantity 20, total 900 000, UNPAID, debt 900 000", purchaseRecorded(afterPurchase),
+      `UI reported success; last observed server state ${JSON.stringify(afterPurchase)}`);
+    const purchaseNumber = afterPurchase.purchases[0].purchaseNumber;
 
     await workspace.getByRole("button", { name: "To‘lov kiritish", exact: true }).click();
     const paymentDrawer = page.getByRole("dialog", { name: "Yetkazib beruvchi to‘lovi" });
@@ -538,14 +616,19 @@ async function supplierScenario(run, browser, viewport, fx) {
     await paymentDrawer.locator('input[id^="supplierPaymentAllocation-"]').fill(String(PAYMENT));
     if (viewport.width <= 400) check(run, "Mobile supplier payment submit is reachable", await isReachable(paymentDrawer.getByRole("button", { name: "To‘lovni tekshirish", exact: true })));
     await paymentDrawer.getByRole("button", { name: "To‘lovni tekshirish", exact: true }).click();
-    const paidSupplier = mutation(page, "/supplier/payments");
-    await page.getByRole("alertdialog", { name: "Yetkazib beruvchi to‘lovini tasdiqlash" }).getByRole("button", { name: "To‘lovni tasdiqlash", exact: true }).click();
-    check(run, "Accountant records 350 000 payment allocated to the purchase through UI", (await paidSupplier).ok());
+    await confirmSupplierMutation(page, {
+      label: "Supplier payment", path: "/supplier/payments",
+      dialogName: "Yetkazib beruvchi to‘lovini tasdiqlash", confirmName: "To‘lovni tasdiqlash",
+      successText: "Yetkazib beruvchi to‘lovi qayd qilindi va xaridlarga taqsimlandi.",
+    });
+    check(run, "Accountant records 350 000 payment allocated to the purchase through UI", true, "confirmation click sent POST /supplier/payments; UI reported success");
 
-    purchases = (await apiCall("/supplier/purchases", { token: accountantToken })).data.data.filter((p) => p.supplier.id === supplierId);
-    debt = (await apiCall("/supplier/debts", { token: accountantToken })).data.data.find((d) => d.supplier.id === supplierId);
-    check(run, "Server after payment: paid 350 000, remaining debt 550 000, PARTIALLY_PAID",
-      num(debt.totalPurchases) === TOTAL && num(debt.totalPaid) === PAYMENT && num(debt.debt) === REMAINING && purchases[0].paymentStatus === "PARTIALLY_PAID", JSON.stringify(debt));
+    const paymentRecorded = ({ purchases, debt }) =>
+      purchases.length === 1 && num(purchases[0].totalAmount) === TOTAL && purchases[0].paymentStatus === "PARTIALLY_PAID"
+      && debt !== null && num(debt.totalPurchases) === TOTAL && num(debt.totalPaid) === PAYMENT && num(debt.debt) === REMAINING;
+    const afterPayment = await pollServerState(readSupplierState, paymentRecorded);
+    check(run, "Server after payment: paid 350 000, remaining debt 550 000, PARTIALLY_PAID", paymentRecorded(afterPayment),
+      `UI reported success; last observed server state ${JSON.stringify(afterPayment)}`);
 
     const debtCard = workspace.locator("article").filter({ has: page.getByRole("heading", { name: "Hozirgi qarz", exact: true }) });
     await page.waitForFunction(({ name, expected }) => {
