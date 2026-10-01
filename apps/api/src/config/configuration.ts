@@ -2,6 +2,11 @@ export default () => ({
   app: {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port: Number(process.env.PORT ?? 3001),
+    // 0.0.0.0 inside containers (published on 127.0.0.1 by compose); a
+    // host-level deployment (PM2) binds 127.0.0.1 so only nginx/web reach it.
+    bindHost: process.env.API_BIND_HOST?.trim() || '0.0.0.0',
+    // Peers allowed to supply X-Forwarded-For (auth rate-limit identity).
+    trustedProxies: process.env.TRUSTED_PROXIES?.trim() || 'loopback',
     corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
     // Injected at image build / deploy time; reported by GET /health so an
     // operator can confirm which commit is actually running.

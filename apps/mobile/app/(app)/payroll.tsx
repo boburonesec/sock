@@ -25,8 +25,8 @@ export default function PayrollScreen() {
       >
         <ScreenHeader
           eyebrow="Oylik"
-          title="Payroll snapshotlar"
-          subtitle="Backend hisoblagan va saqlagan qiymatlar."
+          title="Oylik hisob-kitoblari"
+          subtitle="Tizim hisoblagan va tasdiqlangan qiymatlar."
         />
 
         <Link asChild href="/(app)/advances">
@@ -46,8 +46,8 @@ export default function PayrollScreen() {
 
         {!payrollQuery.isLoading && !payrollQuery.isError && payrollItems.length === 0 ? (
           <EmptyState
-            title="Payroll yo'q"
-            description="Hozircha sizga tegishli payroll snapshot topilmadi."
+            title="Oylik yo'q"
+            description="Hozircha sizga tegishli oylik hisob-kitobi topilmadi."
           />
         ) : null}
 

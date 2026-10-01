@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 
+import { isApiError } from "@/lib/api/errors";
+import { useEmployeeMeQuery } from "@/lib/api/mobile-employee";
 import { LoadingScreen } from "@/shared/ui/loading-screen";
 import { colors } from "@/shared/styles/theme";
 import { useAuthStore } from "@/stores/auth-store";
@@ -20,6 +22,10 @@ export default function ProtectedLayout() {
   const canOpenManagerTab = managerPermissionKeys.some((permission) =>
     permissions.includes(permission),
   );
+  const employeeMeQuery = useEmployeeMeQuery({ enabled: isAuthenticated });
+  // Owners/managers without an employee profile get 403 from /mobile/employee/*;
+  // hide the employee-only tabs instead of showing them an error on every tab.
+  const hasEmployeeProfile = !isApiError(employeeMeQuery.error, 403);
 
   if (!hasLoadedSession) {
     return <LoadingScreen label="Sessiya tiklanmoqda" />;
@@ -53,6 +59,7 @@ export default function ProtectedLayout() {
       <Tabs.Screen
         name="activities"
         options={{
+          href: hasEmployeeProfile ? "/(app)/activities" : null,
           title: "Ishlar",
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="list-outline" size={size} />
@@ -62,6 +69,7 @@ export default function ProtectedLayout() {
       <Tabs.Screen
         name="payroll"
         options={{
+          href: hasEmployeeProfile ? "/(app)/payroll" : null,
           title: "Oylik",
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="wallet-outline" size={size} />
@@ -72,7 +80,7 @@ export default function ProtectedLayout() {
         name="manager"
         options={{
           href: canOpenManagerTab ? "/(app)/manager" : null,
-          title: "Manager",
+          title: "Boshqaruv",
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="speedometer-outline" size={size} />
           ),

@@ -23,6 +23,31 @@ operator selects one and fills in its values.
 
 Whichever target is chosen, it must obey §3 exactly.
 
+**Client IP boundary (auth rate limiting).** The API keys login/refresh rate
+limits on the client IP it derives from X-Forwarded-For, which it accepts only
+from `TRUSTED_PROXIES` peers (one hop). The reverse proxy must be the only way
+to reach web and API, and must overwrite X-Forwarded-For with the address it
+saw (the nginx example does). Compose publishes api/web on `127.0.0.1`
+(`API_BIND_ADDRESS`/`WEB_BIND_ADDRESS`) and trusts its own network; PM2 binds
+both to `127.0.0.1` and trusts loopback. Opening :3000/:3001 to a LAN or the
+internet lets a client bypass the proxy and forge its rate-limit identity.
+`render.yaml` (example only) sets no `TRUSTED_PROXIES`: before any Render use,
+the platform proxy's source addresses and X-Forwarded-For behaviour, and the
+web → API path, must be verified and configured explicitly — with the default
+(`loopback`) every client shares the proxy's rate-limit identity.
+
+**Database exposure and credentials.** Compose publishes PostgreSQL on
+`127.0.0.1` only. Two required values, never derived from each other:
+`POSTGRES_PASSWORD` is the **raw** password of the bundled postgres container
+(no default); `DATABASE_URL` is the **connection URI** used by api, migrate and
+bootstrap — for the bundled database
+`postgresql://<user>:<password>@postgres:5432/<db>?schema=public` with the
+password percent-encoded for a URI (a hex password, `openssl rand -hex 24`,
+needs no encoding); for an external database, its own URI. A mismatch fails
+closed (the API refuses to start; readiness 503). Host tools and a host-run API
+use `localhost`; containers use the compose network. For remote maintenance
+use an SSH tunnel, never a LAN/public binding.
+
 ---
 
 ## 2. Release contract (invariants)
@@ -82,6 +107,9 @@ PLATFORM_BOOTSTRAP_PASSWORD='<generated, stored in password manager>' \
 DATABASE_URL='<prod>' pnpm --filter @paypoq/api bootstrap:platform-admin
 
 # 3. Start/restart API with BUILD_SHA set to the release SHA.
+#    A production API refuses to start (exits non-zero, never listens) if any
+#    migration shipped with this build is missing, failed or unfinished, or the
+#    database cannot be reached to verify it. See "Failed release migration".
 # 4. Gate on readiness before sending traffic:
 curl -fsS https://api.example.com/health/readiness
 
@@ -110,6 +138,21 @@ PLATFORM_BOOTSTRAP_EMAIL=... PLATFORM_BOOTSTRAP_PASSWORD=... \
 docker compose --env-file .env.docker up -d api   # healthcheck = readiness
 docker compose --env-file .env.docker up -d web bot
 ```
+
+### 3.2.1 Failed release migration
+
+`prisma migrate deploy` exits non-zero (P3018) and records the migration as
+failed. PostgreSQL may have applied part of it: Prisma does not roll a failed
+migration back. Further deploys stop with P3009 until it is resolved, and the
+new API build refuses to start against this database.
+
+1. Do not start the new build; keep application writes stopped.
+2. Inspect the failed migration and the database state
+   (`prisma migrate status`, the `logs` column of `_prisma_migrations`).
+3. Either repair the partial change by hand and mark it
+   `prisma migrate resolve --rolled-back <migration>` then re-run
+   `prisma migrate deploy`, or restore the pre-release dump (§4).
+4. Start the API only after `prisma migrate deploy` exits 0.
 
 ### 3.3 Verify
 

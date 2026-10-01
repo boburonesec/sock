@@ -39,7 +39,7 @@ import {
 } from "@/lib/api/product";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { ProductVariantReference } from "@/lib/api/types";
-import { formatDateShort } from "@/lib/format";
+import { formatDateShort, todayDateInputValue } from "@/lib/format";
 import { ProductCard } from "./components/product-card";
 import { VariantCard } from "./components/variant-card";
 
@@ -700,7 +700,7 @@ function PriceFormDrawer({
   });
 
   useEffect(() => {
-    reset({ amount: "", effectiveFrom: new Date().toISOString().slice(0, 10) });
+    reset({ amount: "", effectiveFrom: todayDateInputValue() });
   }, [variant, reset]);
 
   return (

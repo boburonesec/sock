@@ -35,10 +35,16 @@ function parseEnvFile(filePath) {
 
 const fileEnv = parseEnvFile(envFile);
 const pnpmBin = process.env.PAYPOQ_PNPM_BIN || 'pnpm';
+// The API listens on 127.0.0.1 (below). The web BFF and the bot must call it
+// there directly: through the public nginx URL the proxy would overwrite
+// X-Forwarded-For with the web server's own address (every user sharing one
+// auth rate-limit identity), and the bot's default host `paypoq-api` exists
+// only on the compose network.
 const sharedEnv = {
   ...fileEnv,
   NODE_ENV: fileEnv.NODE_ENV || process.env.NODE_ENV || 'production',
 };
+const apiInternalUrl = `http://127.0.0.1:${sharedEnv.PORT || '3001'}`;
 
 module.exports = {
   apps: [
@@ -47,7 +53,13 @@ module.exports = {
       cwd: repoRoot,
       script: pnpmBin,
       args: '--filter @paypoq/api start:prod',
-      env: sharedEnv,
+      env: {
+        ...sharedEnv,
+        // Reachable only from nginx/web on this host; X-Forwarded-For is
+        // trusted from loopback peers only (auth rate-limit identity).
+        API_BIND_HOST: sharedEnv.API_BIND_HOST || '127.0.0.1',
+        TRUSTED_PROXIES: sharedEnv.TRUSTED_PROXIES || 'loopback',
+      },
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
@@ -64,6 +76,9 @@ module.exports = {
       env: {
         ...sharedEnv,
         PORT: sharedEnv.WEB_PORT || '3000',
+        // Reachable only through nginx, whose X-Forwarded-For the BFF trusts.
+        HOSTNAME: sharedEnv.WEB_HOSTNAME || '127.0.0.1',
+        API_INTERNAL_URL: sharedEnv.API_INTERNAL_URL || apiInternalUrl,
       },
       instances: 1,
       exec_mode: 'fork',
@@ -78,7 +93,10 @@ module.exports = {
       cwd: repoRoot,
       script: pnpmBin,
       args: '--filter @paypoq/bot start',
-      env: sharedEnv,
+      env: {
+        ...sharedEnv,
+        API_BASE_URL: sharedEnv.API_BASE_URL || apiInternalUrl,
+      },
       // Telegram long polling must run as a single process per bot token.
       instances: 1,
       exec_mode: 'fork',

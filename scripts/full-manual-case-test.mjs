@@ -3,12 +3,7 @@
  * Usage: node scripts/full-manual-case-test.mjs
  * Optional: API_BASE_URL=http://localhost:3001
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
 const BASE = process.env.API_BASE_URL || "http://localhost:3001";
 const PASSWORD = "ChangeMe123!";
 
@@ -27,16 +22,24 @@ function skip(name, detail = "") {
   console.log(`SKIP  ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
-function loadTvToken() {
-  const configuredToken = process.env.FACTORY_TV_ACCESS_TOKEN?.trim();
-  if (configuredToken) return configuredToken;
-
-  try {
-    const env = readFileSync(path.join(ROOT, "apps/api/.env"), "utf8");
-    return (env.match(/^FACTORY_TV_ACCESS_TOKEN=(.+)$/m) || [])[1]?.trim();
-  } catch {
-    return null;
-  }
+/**
+ * Factory TV uses a per-factory credential issued by the factory owner
+ * (Sozlamalar -> Factory TV). The legacy shared FACTORY_TV_ACCESS_TOKEN only
+ * resolves when the API is pinned to one factory, so it is not used here.
+ * Issuing rotates the factory's credential; if none existed before, the one
+ * issued here is revoked again afterwards.
+ */
+async function issueFactoryTvToken(ownerToken) {
+  const before = await req("GET", "/dashboard/factory-tv-credential", { token: ownerToken });
+  const hadCredential = Boolean(before.json?.data?.hasActiveCredential);
+  const created = await req("POST", "/dashboard/factory-tv-credential", { token: ownerToken });
+  return {
+    token: created.json?.data?.token ?? null,
+    hadCredential,
+    cleanup: async () => {
+      if (!hadCredential) await req("DELETE", "/dashboard/factory-tv-credential", { token: ownerToken });
+    },
+  };
 }
 
 async function req(method, urlPath, { token, body, headers = {} } = {}) {
@@ -183,18 +186,23 @@ async function main() {
     if (ops.status === 200) ok("Production operations summary");
     else fail("Production operations summary", String(ops.status));
 
-    const tvToken = loadTvToken();
-    if (!tvToken) fail("Factory TV token", "missing from .env");
-    else {
-      const tv = await req("GET", "/dashboard/factory-tv-summary", {
-        headers: { "x-factory-tv-token": tvToken },
-      });
-      if (tv.status === 200 && (tv.json?.data || tv.json?.factoryName)) ok("Factory TV summary");
-      else fail("Factory TV summary", JSON.stringify(tv.json).slice(0, 200));
+    const tv = await issueFactoryTvToken(owner.token);
+    try {
+      if (!tv.token) fail("Factory TV credential issued by owner");
+      else {
+        ok("Factory TV credential issued by owner");
+        const summary = await req("GET", "/dashboard/factory-tv-summary", {
+          headers: { "x-factory-tv-token": tv.token },
+        });
+        if (summary.status === 200 && (summary.json?.data || summary.json?.factoryName)) ok("Factory TV summary");
+        else fail("Factory TV summary", JSON.stringify(summary.json).slice(0, 200));
+      }
 
       const tvBad = await req("GET", "/dashboard/factory-tv-summary");
       if (tvBad.status === 401) ok("Factory TV without token rejected");
       else fail("Factory TV without token rejected", String(tvBad.status));
+    } finally {
+      await tv.cleanup();
     }
   }
 

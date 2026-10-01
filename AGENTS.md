@@ -28,7 +28,7 @@ git status --short && git log --oneline -5 && git branch --show-current
 pnpm install
 
 # 3. Database (Docker, already running in most dev setups)
-docker ps --format '{{.Names}} | {{.Ports}}'      # expect: sockai-postgres-1 | 55432->5432
+docker ps --format '{{.Names}} | {{.Ports}}'      # expect: sockai-postgres-1 | 127.0.0.1:55432->5432
 
 # 4. Dev servers (two terminals, or background)
 pnpm api:dev     # NestJS on :3001
@@ -118,7 +118,7 @@ paypoq-os/
 | Node | 22.x is the pinned target (Docker images + CI). Newer local versions usually work |
 | API | `http://localhost:3001` (NestJS) |
 | Web | `http://localhost:3000` (Next.js) |
-| Postgres | Docker container `sockai-postgres-1`, host port **55432** |
+| Postgres | Docker container `sockai-postgres-1`, host port **55432** on `127.0.0.1` only; compose requires raw `POSTGRES_PASSWORD` and an explicit `DATABASE_URL` URI (no defaults, never derived) |
 | API env | `apps/api/.env` (see `.env.example`) |
 | Web env | `apps/web/.env.local` (see `.env.example`) |
 | Browser tests | Playwright (`playwright` at repo root); Chromium **and** WebKit |
@@ -191,6 +191,11 @@ enforces them — run it after touching anything in this section.
 4. **Readiness proves the schema.** `/health/readiness` checks DB connectivity,
    essential tables + migration history, and production secret validity. It must
    return 503 on schema drift, and must never leak table names, SQL or secrets.
+   Migration history is compatible only when no migration is failed/unfinished
+   and every migration shipped with the build is applied (the database may be
+   ahead, for app-only rollback). A **production** API runs the same read-only
+   check before `app.listen` and exits non-zero instead of listening when it
+   fails or cannot be verified; development/test only warn.
 5. **Traffic health checks target `/health/readiness`**, not `/health`.
 6. **CORS fails closed in production.** `*`, localhost, empty and non-https
    origins are rejected at startup. Only an explicit https allowlist is valid.
@@ -201,6 +206,12 @@ enforces them — run it after touching anything in this section.
    is created by `pnpm --filter @paypoq/api bootstrap:platform-admin` with an
    operator-supplied email and password. UI forms must not pre-fill passwords.
 9. **Production smoke uses no demo credentials** — all inputs come from env.
+10. **Clients cannot choose their auth rate-limit IP.** The API honours
+    X-Forwarded-For for one hop and only from `TRUSTED_PROXIES` peers (default
+    `loopback`); the BFF forwards a single validated address; nginx overwrites
+    X-Forwarded-For with `$remote_addr`; compose publishes api/web on
+    `127.0.0.1` and PM2 binds them to `127.0.0.1`. Never publish api/web on a
+    LAN/public interface or widen `TRUSTED_PROXIES` beyond infrastructure.
 
 ### Financial semantics are frozen
 

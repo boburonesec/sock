@@ -19,6 +19,15 @@ export function formatLinkedAccount(account: LinkedAccount): string {
     ].join('\n');
   }
 
+  if (account.type === 'USER') {
+    return [
+      '✅ Hisob ulandi.',
+      '',
+      `Operator: ${account.user?.name ?? 'Noma’lum'}`,
+      'Endi Paypoq OS bildirishnomalari shu chatga yuboriladi.',
+    ].join('\n');
+  }
+
   return [
     '✅ Hisob ulandi.',
     '',
@@ -82,7 +91,7 @@ export function formatAdvances(advances: Advance[]): string {
     '',
     ...advances.map((advance) =>
       [
-        `${formatDate(advance.requestedAt)} — ${advance.status}`,
+        `${formatDate(advance.requestedAt)} — ${label(advanceStatusLabel, advance.status)}`,
         `Summa: ${formatAmount(advance.amount)}`,
         `Sabab: ${advance.reason}`,
         advance.paidAt ? `To‘langan sana: ${formatDate(advance.paidAt)}` : null,
@@ -103,7 +112,7 @@ export function formatPayroll(items: PayrollItem[]): string {
     '',
     ...items.map((item) =>
       [
-        `${formatMonth(item.month)} — ${item.status}`,
+        `${formatMonth(item.month)} — ${label(payrollItemStatusLabel, item.status)}`,
         `Ishlangan: ${formatAmount(item.workedAmount)}`,
         `Bonus: ${formatAmount(item.bonusAmount)}`,
         `Jarima: ${formatAmount(item.penaltyAmount)}`,
@@ -126,8 +135,8 @@ export function formatClientOrders(orders: ClientOrder[]): string {
     '',
     ...orders.map((order) =>
       [
-        `${order.orderNumber} — ${order.status}`,
-        `To‘lov holati: ${order.paymentStatus}`,
+        `${order.orderNumber} — ${label(orderStatusLabel, order.status)}`,
+        `To‘lov holati: ${label(paymentStatusLabel, order.paymentStatus)}`,
         `Summa: ${formatAmount(order.totalAmount)}`,
         order.deadline ? `Deadline: ${formatDate(order.deadline)}` : null,
         `Mahsulot qatorlari: ${order.items.length}`,
@@ -159,7 +168,7 @@ export function formatClientPayments(payments: ClientPayment[]): string {
     '',
     ...payments.map((payment) =>
       [
-        `${formatDate(payment.paymentDate)} — ${payment.method}`,
+        `${formatDate(payment.paymentDate)} — ${label(paymentMethodLabel, payment.method)}`,
         `Summa: ${formatAmount(payment.amount)}`,
         payment.note ? `Izoh: ${payment.note}` : null,
         payment.allocations.length > 0
@@ -195,12 +204,69 @@ export const helpText = [
 
 export const privateOnlyText = 'Bu bot faqat private chat’da ishlaydi. Iltimos, botga shaxsiy xabar yozing.';
 
-function formatAmount(value: string): string {
-  return `${value} so‘m`;
+const advanceStatusLabel: Record<string, string> = {
+  REQUESTED: 'So‘ralgan',
+  APPROVED: 'Tasdiqlangan',
+  REJECTED: 'Rad etilgan',
+  PAID: 'To‘langan',
+  APPLIED: 'Hisobga olingan',
+  CANCELLED: 'Bekor qilingan',
+};
+
+const payrollItemStatusLabel: Record<string, string> = {
+  CALCULATED: 'Hisoblangan',
+  PARTIALLY_PAID: 'Qisman to‘langan',
+  PAID: 'To‘langan',
+  CARRIED_FORWARD: 'Keyingi oyga o‘tkazilgan',
+};
+
+const orderStatusLabel: Record<string, string> = {
+  DRAFT: 'Qoralama',
+  CONFIRMED: 'Tasdiqlangan',
+  WAITING_PRODUCTION: 'Ishlab chiqarish kutilmoqda',
+  READY: 'Tayyor',
+  DELIVERED: 'Yetkazilgan',
+  CLOSED: 'Yopilgan',
+  CANCELLED: 'Bekor qilingan',
+};
+
+const paymentStatusLabel: Record<string, string> = {
+  UNPAID: 'To‘lanmagan',
+  PARTIALLY_PAID: 'Qisman to‘langan',
+  PAID: 'To‘langan',
+};
+
+const paymentMethodLabel: Record<string, string> = {
+  CASH: 'Naqd',
+  TRANSFER: 'O‘tkazma',
+  OTHER: 'Boshqa',
+};
+
+function label(map: Record<string, string>, value: string): string {
+  return map[value] ?? value;
 }
+
+export function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Backend sends decimal strings ("1500000.00"); only format, never recalculate.
+function formatAmount(value: string): string {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!match) return `${value} so‘m`;
+  const [, sign, whole, fraction] = match;
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const cents = fraction && /[1-9]/.test(fraction) ? `.${fraction.replace(/0+$/, '')}` : '';
+  return `${sign}${grouped}${cents} so‘m`;
+}
+
+// Factories operate in Asia/Tashkent; the bot container usually runs in UTC,
+// which shifted late-evening timestamps to the previous day.
+const FACTORY_TIME_ZONE = 'Asia/Tashkent';
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('uz-UZ', {
+    timeZone: FACTORY_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -209,6 +275,7 @@ function formatDate(value: string): string {
 
 function formatMonth(value: string): string {
   return new Intl.DateTimeFormat('uz-UZ', {
+    timeZone: FACTORY_TIME_ZONE,
     year: 'numeric',
     month: 'long',
   }).format(new Date(value));

@@ -169,7 +169,9 @@ export function extractApiErrorMessage(
     }
   }
 
-  if (typeof body === "string" && body.trim()) {
+  // Plain-text API messages only: a reverse proxy's HTML error page (502/504)
+  // must never be rendered to operators as raw markup.
+  if (typeof body === "string" && body.trim() && !looksLikeMarkup(body) && body.trim().length <= 300) {
     return body.trim();
   }
 
@@ -177,6 +179,10 @@ export function extractApiErrorMessage(
     STATUS_FALLBACK_UZ[status] ??
     `Amal bajarilmadi (${status}). Keyinroq urinib ko‘ring.`
   );
+}
+
+function looksLikeMarkup(value: string): boolean {
+  return /^\s*</.test(value);
 }
 
 function broadcastForbidden(detail: ApiForbiddenDetail): void {

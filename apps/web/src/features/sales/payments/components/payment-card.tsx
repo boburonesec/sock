@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { StatusBadge } from "@/components/data-display/status-badge";
 import type { ClientPayment } from "@/lib/api/sales";
 import { formatCurrency } from "@/lib/utils";
-import { formatDateTimeForUser } from "@/lib/format";
+import { formatDateShort } from "@/lib/format";
 
 const methodLabel: Record<string, string> = {
   CASH: "Naqd",
@@ -50,7 +50,7 @@ export function PaymentCard({
         </div>
         <p className="text-base font-semibold">{formatCurrency(payment.amount)}</p>
         <p className="truncate text-sm text-muted-foreground">
-          {methodLabel[payment.method] ?? payment.method} · {formatDateTimeForUser(payment.paymentDate)}
+          {methodLabel[payment.method] ?? payment.method} · {formatDateShort(payment.paymentDate)}
         </p>
         {allocation ? (
           <p className="truncate text-xs text-muted-foreground" title={allocation}>

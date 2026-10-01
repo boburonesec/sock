@@ -174,7 +174,9 @@ FACTORY_TV_ACCESS_TOKEN=replace-with-long-random-factory-tv-display-token
 Local development uchun misol:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:55432/paypoq_os?schema=public
+# <password> = POSTGRES_PASSWORD, URI uchun percent-encode qilingan (hex parolda o‘zgarmaydi).
+# Port faqat 127.0.0.1 da ochiq: LAN/internetdan ulanib bo‘lmaydi.
+DATABASE_URL=postgresql://postgres:<password>@localhost:55432/paypoq_os?schema=public
 ```
 
 ### Web

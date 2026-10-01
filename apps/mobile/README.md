@@ -55,6 +55,27 @@ Backend reachability depends on where the app runs:
 For real devices, the API server must listen on a network-reachable host and
 CORS/cookie settings must allow the mobile origin/runtime as needed.
 
+## Release builds (EAS)
+
+`eas.json` defines three profiles: `development` (APK / iOS simulator),
+`preview` (`APP_ENV=staging`, internal APK) and `production`
+(`APP_ENV=production`, Play Store app bundle). For `staging`/`production`,
+`app.config.ts` refuses to build unless `EXPO_PUBLIC_API_BASE_URL` is a public
+`https://` URL. Each profile loads the EAS environment of the same purpose
+(`development` / `preview` / `production`), so set the URL in each environment
+you build from. `EXPO_PUBLIC_*` values are embedded in the app bundle, so use
+plain-text visibility:
+
+```bash
+eas env:create --environment production --name EXPO_PUBLIC_API_BASE_URL --value https://api.example.uz --visibility plaintext
+eas build --platform android --profile production
+```
+
+Dependency versions are pinned to the Expo SDK 54 set (`react@19.1.0`,
+`react-native@0.81.5`); run `pnpm --filter @paypoq/mobile deps:check` after
+any dependency change. App icon and splash artwork are not yet provided — add
+`icon`/`adaptiveIcon.foregroundImage` assets before a store submission.
+
 ## Auth boundary
 
 The mobile foundation calls:
@@ -91,6 +112,10 @@ the app shows:
 ```text
 Sizning akkauntingiz xodim profiliga ulanmagan.
 ```
+
+Users without an employee profile who hold a manager permission (owners,
+managers) instead see a "Boshqaruv paneli" shortcut on the home screen, and the
+employee-only tabs (Ishlar, Oylik) are hidden for them.
 
 ## Manager Dashboard API
 

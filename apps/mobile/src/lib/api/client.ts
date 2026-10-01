@@ -6,6 +6,8 @@ export interface ApiClientOptions extends RequestInit {
   skipAuthRefresh?: boolean;
 }
 
+const REQUEST_TIMEOUT_MS = 20_000;
+
 let accessToken: string | null = null;
 let activeFactoryId: string | null = null;
 let refreshSessionHandler: (() => Promise<boolean>) | null = null;
@@ -70,21 +72,27 @@ async function performRequest<T>(
   options: ApiClientOptions,
 ): Promise<T> {
   const { skipAuth, headers, ...requestOptions } = options;
+  // Factory Wi-Fi drops mid-request; without a timeout the screen spins forever.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(buildApiUrl(path), {
       ...requestOptions,
+      signal: controller.signal,
       credentials: "include",
       headers: buildHeaders(headers, skipAuth),
     });
 
-    return parseApiResponse<T>(response);
+    return await parseApiResponse<T>(response);
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
 
     throw new ApiError(0, "Network Error", error);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

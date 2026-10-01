@@ -5,7 +5,7 @@ import { managerPermissions, useSalesSummaryQuery } from "@/lib/api/manager-dash
 import { colors, radius, spacing, typography } from "@/shared/styles/theme";
 import { AccessDeniedState, InfoCard, KpiGrid } from "@/shared/ui/dashboard";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader } from "@/shared/ui/states";
-import { formatDate, formatStatus } from "@/shared/utils/format";
+import { formatAmount, formatDate, formatStatus } from "@/shared/utils/format";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function SalesSummaryScreen() {
@@ -27,9 +27,9 @@ export default function SalesSummaryScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="Manager"
-          title="Sales Summary"
-          subtitle="Savdo KPIlari, top mijozlar va so'nggi orderlar."
+          eyebrow="Boshqaruv"
+          title="Savdo"
+          subtitle="Savdo ko'rsatkichlari, asosiy mijozlar va so'nggi buyurtmalar."
         />
 
         {!canView ? <AccessDeniedState /> : null}
@@ -42,46 +42,46 @@ export default function SalesSummaryScreen() {
           <>
             <KpiGrid
               items={[
-                { label: "Clients", value: data.kpis.clientCount },
-                { label: "Active orders", value: data.kpis.activeOrderCount },
-                { label: "Oylik savdo", value: data.kpis.monthlySales },
+                { label: "Mijozlar", value: data.kpis.clientCount },
+                { label: "Faol buyurtmalar", value: data.kpis.activeOrderCount },
+                { label: "Oylik savdo", value: formatAmount(data.kpis.monthlySales) },
                 {
-                  label: "Client debt",
-                  value: data.kpis.totalClientDebt,
+                  label: "Mijoz qarzi",
+                  value: formatAmount(data.kpis.totalClientDebt),
                   tone: "warning",
                 },
               ]}
             />
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Top clients</Text>
+              <Text style={styles.sectionTitle}>{"Asosiy mijozlar"}</Text>
               {data.topClients.length ? (
                 data.topClients.map((client) => (
                   <InfoCard
                     key={client.client.id}
                     title={client.client.name}
                     subtitle={`Paid ${client.totalPaid} / debt ${client.debt}`}
-                    right={client.totalOrders}
+                    right={formatAmount(client.totalOrders)}
                   />
                 ))
               ) : (
-                <EmptyState title="Client yo'q" description="Top client summary topilmadi." />
+                <EmptyState title="Mijoz yo'q" description="Asosiy mijozlar ma'lumoti topilmadi." />
               )}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent orders</Text>
+              <Text style={styles.sectionTitle}>{"So'nggi buyurtmalar"}</Text>
               {data.recentOrders.length ? (
                 data.recentOrders.map((order) => (
                   <InfoCard
                     key={order.id}
                     title={order.orderNumber}
                     subtitle={`${order.client.name} / ${formatDate(order.createdAt)} / ${formatStatus(order.paymentStatus)}`}
-                    right={order.totalAmount}
+                    right={formatAmount(order.totalAmount)}
                   />
                 ))
               ) : (
-                <EmptyState title="Order yo'q" description="So'nggi order topilmadi." />
+                <EmptyState title="Buyurtma yo'q" description="So'nggi buyurtma topilmadi." />
               )}
             </View>
           </>

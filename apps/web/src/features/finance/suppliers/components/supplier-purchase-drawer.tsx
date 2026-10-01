@@ -17,6 +17,7 @@ import type {
   CreateSupplierPurchasePayload,
   Supplier,
 } from "@/lib/api/supplier";
+import { todayDateInputValue } from "@/lib/format";
 
 const purchaseItemSchema = z.object({
   materialId: z.string().min(1, "Material tanlanishi shart."),
@@ -78,7 +79,7 @@ export function SupplierPurchaseDrawer({
     resolver: zodResolver(purchaseFormSchema),
     defaultValues: {
       supplierId: "",
-      purchaseDate: new Date().toISOString().slice(0, 10),
+      purchaseDate: todayDateInputValue(),
       note: "",
       items: [{ materialId: "", quantity: "", unit: "kg", unitPrice: "" }],
     },
@@ -91,7 +92,7 @@ export function SupplierPurchaseDrawer({
       setPendingPayload(null);
       reset({
         supplierId: initialSupplierId ?? "",
-        purchaseDate: new Date().toISOString().slice(0, 10),
+        purchaseDate: todayDateInputValue(),
         note: "",
         items: [{ materialId: "", quantity: "", unit: "kg", unitPrice: "" }],
       });

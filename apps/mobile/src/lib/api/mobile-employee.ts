@@ -96,10 +96,11 @@ export const mobileEmployeeApi = {
     apiClient<{ data: MobileEmployeeAdvance[] }>("/mobile/employee/advances"),
 };
 
-export function useEmployeeMeQuery() {
+export function useEmployeeMeQuery(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: mobileEmployeeQueryKeys.me(),
     queryFn: async () => (await mobileEmployeeApi.me()).data,
+    enabled: options.enabled ?? true,
   });
 }
 

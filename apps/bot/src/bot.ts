@@ -49,7 +49,12 @@ export function createEmployeeBot(input: {
           'Buyruqlar uchun /help yuboring.',
         ].join('\n'),
       );
-    } catch {
+    } catch (error) {
+      if (!(error instanceof BotApiError && error.status >= 400 && error.status < 500)) {
+        // API down/timeout: do not tell a linked user they are "not linked".
+        await ctx.reply(formatSafeError(error, ''));
+        return;
+      }
       await ctx.reply(
         [
           'Paypoq OS botiga xush kelibsiz.',

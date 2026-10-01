@@ -1,13 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { ApiError } from "@/lib/api/errors";
 import { LoadingScreen } from "@/shared/ui/loading-screen";
 import { useAuthStore } from "@/stores/auth-store";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // 4xx (not linked, no permission) will not change on retry; only retry
+      // transient network/5xx failures once.
+      retry: (failureCount, error) =>
+        failureCount < 1 && !(error instanceof ApiError && error.status >= 400 && error.status < 500),
       staleTime: 30_000,
     },
     mutations: {

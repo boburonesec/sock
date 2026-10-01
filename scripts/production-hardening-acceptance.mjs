@@ -21,6 +21,7 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,6 +48,87 @@ function record(layer, name, passed, detail) {
 const read = (relPath) => fs.readFileSync(path.join(repoRoot, relPath), 'utf8');
 const exists = (relPath) => fs.existsSync(path.join(repoRoot, relPath));
 
+/**
+ * Resolves the real docker-compose.yml with `docker compose config` (no
+ * containers are started) to prove the database policy as compose applies it.
+ */
+function runComposeDatabaseConfigChecks() {
+  if (spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' }).status !== 0) {
+    console.log('[SKIP] [compose] docker compose not available; database config checks not run');
+    return;
+  }
+  const required = {
+    CORS_ORIGIN: 'https://app.example.com',
+    NEXT_PUBLIC_API_URL: 'https://api.example.com',
+    JWT_ACCESS_SECRET: STRONG_SECRET,
+    PLATFORM_JWT_ACCESS_SECRET: STRONG_SECRET,
+    TELEGRAM_LINK_TOKEN_SECRET: STRONG_SECRET,
+    BOT_INTERNAL_API_KEY: STRONG_SECRET,
+    FACTORY_TV_ACCESS_TOKEN: STRONG_SECRET,
+  };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'paypoq-compose-'));
+  const envFile = path.join(dir, 'compose.env');
+  // Values are single-quoted so the env file keeps `#`, `$` etc. literally.
+  const resolve = (extra) => {
+    const values = { ...required, ...extra };
+    fs.writeFileSync(envFile, Object.entries(values).map(([k, v]) => `${k}='${v}'`).join('\n') + '\n');
+    const env = { ...process.env };
+    for (const key of ['POSTGRES_PASSWORD', 'POSTGRES_USER', 'POSTGRES_DB', 'POSTGRES_PORT', 'DATABASE_URL']) delete env[key];
+    const run = spawnSync('docker', ['compose', '-f', 'docker-compose.yml', '--env-file', envFile, '--profile', 'migrate', '--profile', 'bootstrap', 'config', '--format', 'json'], {
+      cwd: repoRoot,
+      env,
+      encoding: 'utf8',
+    });
+    return { ...run, config: run.status === 0 ? JSON.parse(run.stdout) : { services: {} } };
+  };
+  const clientUrls = (config) => ['api', 'migrate', 'bootstrap'].map((name) => config.services[name]?.environment?.DATABASE_URL);
+
+  try {
+    const hexPassword = randomBytes(24).toString('hex');
+    const hexUrl = `postgresql://postgres:${hexPassword}@postgres:5432/paypoq_os?schema=public`;
+
+    const noPassword = resolve({ DATABASE_URL: hexUrl });
+    record('compose', 'Compose refuses to resolve without POSTGRES_PASSWORD', noPassword.status !== 0 && /POSTGRES_PASSWORD/.test(noPassword.stderr), `exit=${noPassword.status}`);
+
+    const noUrl = resolve({ POSTGRES_PASSWORD: hexPassword });
+    record('compose', 'Compose refuses to resolve without an explicit DATABASE_URL (no derived fallback)', noUrl.status !== 0 && /DATABASE_URL is required/.test(noUrl.stderr), `exit=${noUrl.status}`);
+
+    // Every URI-reserved character: raw for postgres, percent-encoded in the URI.
+    const rawPassword = `p@ss:w/rd%#?x&y=z ${randomBytes(4).toString('hex')}`;
+    const encodedUrl = `postgresql://postgres:${encodeURIComponent(rawPassword)}@postgres:5432/paypoq_os?schema=public`;
+    const reserved = resolve({ POSTGRES_PASSWORD: rawPassword, DATABASE_URL: encodedUrl });
+    const urls = clientUrls(reserved.config);
+    record(
+      'compose',
+      'Reserved-character password: postgres gets it raw, clients get the explicit URI unchanged',
+      reserved.status === 0 &&
+        reserved.config.services.postgres?.environment?.POSTGRES_PASSWORD === rawPassword &&
+        urls.every((url) => url === encodedUrl) &&
+        decodeURIComponent(new URL(encodedUrl).password) === rawPassword,
+      `exit=${reserved.status}`,
+    );
+
+    const externalUrl = 'postgresql://app_user:ext%2Fsecret@db.internal.example:6543/paypoq_prod?schema=public&sslmode=require';
+    const external = resolve({ POSTGRES_PASSWORD: hexPassword, DATABASE_URL: externalUrl });
+    record(
+      'compose',
+      'Explicit external DATABASE_URL is used verbatim by api/migrate/bootstrap',
+      external.status === 0 && clientUrls(external.config).every((url) => url === externalUrl),
+      `exit=${external.status}`,
+    );
+
+    const published = external.config.services.postgres?.ports ?? [];
+    record(
+      'compose',
+      'Resolved PostgreSQL publication is loopback-only',
+      published.length > 0 && published.every((port) => port.host_ip === '127.0.0.1'),
+      published.map((port) => `${port.host_ip ?? '*'}:${port.published}`).join(','),
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 // ----------------------------------------------------------------- static
 function runStaticChecks() {
   const apiDockerfile = read('apps/api/Dockerfile');
@@ -69,6 +151,13 @@ function runStaticChecks() {
     'static',
     'API startup does not run migrations',
     !/runAutoMigrations|prisma-auto-migrate/.test(mainTs),
+  );
+  const gateIndex = mainTs.indexOf('assertSchemaReadyForStartup(');
+  const listenIndex = mainTs.indexOf('app.listen(');
+  record(
+    'static',
+    'API startup verifies the schema (read-only) before app.listen',
+    gateIndex !== -1 && listenIndex !== -1 && gateIndex < listenIndex,
   );
   record(
     'static',
@@ -120,6 +209,93 @@ function runStaticChecks() {
     'static',
     'Compose API healthcheck uses readiness',
     /health\/readiness/.test(compose),
+  );
+
+  // --- Client-IP boundary for auth rate limiting (AGENTS.md §7.10) ---
+  const nginxExample = read('configs/nginx.paypoq.example.conf');
+  const pm2Config = read('configs/pm2.ecosystem.config.cjs');
+  const authProxySource = read('apps/web/src/lib/api/auth-proxy.ts');
+  record(
+    'static',
+    'Compose publishes api/web on 127.0.0.1 by default (no proxy bypass)',
+    /"\$\{API_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{API_PORT:-3001\}:3001"/.test(compose) &&
+      /"\$\{WEB_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{WEB_PORT:-3000\}:3000"/.test(compose) &&
+      !/-\s*"\$\{(API|WEB)_PORT:-300[01]\}:300[01]"/.test(compose),
+  );
+  record(
+    'static',
+    'Compose API trusts forwarding only from its own network and loopback',
+    /TRUSTED_PROXIES: \$\{TRUSTED_PROXIES:-loopback,uniquelocal\}/.test(compose),
+  );
+  record(
+    'static',
+    'nginx example overwrites X-Forwarded-For (never appends caller values)',
+    !/\$proxy_add_x_forwarded_for/.test(nginxExample) &&
+      (nginxExample.match(/^\s*proxy_set_header X-Forwarded-For \$remote_addr;/gm) ?? []).length >= 4,
+  );
+  record(
+    'static',
+    'PM2 binds API and web to 127.0.0.1 and trusts loopback only',
+    /API_BIND_HOST: sharedEnv\.API_BIND_HOST \|\| '127\.0\.0\.1'/.test(pm2Config) &&
+      /TRUSTED_PROXIES: sharedEnv\.TRUSTED_PROXIES \|\| 'loopback'/.test(pm2Config) &&
+      /HOSTNAME: sharedEnv\.WEB_HOSTNAME \|\| '127\.0\.0\.1'/.test(pm2Config),
+  );
+  record(
+    'static',
+    'PM2 web BFF and bot call the API on loopback, not via the public proxy',
+    /API_INTERNAL_URL: sharedEnv\.API_INTERNAL_URL \|\| apiInternalUrl/.test(pm2Config) &&
+      /API_BASE_URL: sharedEnv\.API_BASE_URL \|\| apiInternalUrl/.test(pm2Config) &&
+      /const apiInternalUrl = `http:\/\/127\.0\.0\.1:/.test(pm2Config),
+  );
+  const nextConfig = read('apps/web/next.config.ts');
+  record(
+    'static',
+    'Production web CSP limits connect-src to self + the baked API origin',
+    /return `'self' \$\{new URL\(apiUrl\)\.origin\}`/.test(nextConfig) &&
+      /connect-src \$\{connectSrc\(\)\}/.test(nextConfig) &&
+      !/connect-src 'self' https: http: ws:;?"/.test(nextConfig),
+  );
+  record(
+    'static',
+    'API trust proxy uses the TRUSTED_PROXIES function, not a blanket hop count',
+    /createTrustedProxyFn\(/.test(mainTs) && !/'trust proxy',\s*(1|true)\b/.test(mainTs),
+  );
+  // --- PostgreSQL exposure and credential policy ---
+  const dockerEnvExample = read('.env.docker.example');
+  record(
+    'static',
+    'Compose publishes PostgreSQL on 127.0.0.1 only',
+    /-\s*"127\.0\.0\.1:\$\{POSTGRES_PORT:-55432\}:5432"/.test(compose) &&
+      !/-\s*"\$\{POSTGRES_PORT:-55432\}:5432"/.test(compose) &&
+      !/-\s*"(0\.0\.0\.0:)?55432:5432"/.test(compose),
+  );
+  record(
+    'static',
+    'Compose has no default database password',
+    /POSTGRES_PASSWORD: \$\{POSTGRES_PASSWORD:\?/.test(compose) &&
+      !/POSTGRES_PASSWORD:-/.test(compose) &&
+      !/postgres:postgres@/.test(compose),
+  );
+  record(
+    'static',
+    '.env.docker.example ships no database password or connection URI',
+    /^POSTGRES_PASSWORD=$/m.test(dockerEnvExample) &&
+      /^DATABASE_URL=$/m.test(dockerEnvExample) &&
+      !/^[^#\n]*postgres:postgres@/m.test(dockerEnvExample),
+  );
+  record(
+    'static',
+    'Compose never builds DATABASE_URL from POSTGRES_PASSWORD; it is required explicitly',
+    (compose.match(/DATABASE_URL: \$\{DATABASE_URL:\?/g) ?? []).length === 3 &&
+      !/DATABASE_URL:.*\$\{POSTGRES_PASSWORD/.test(compose.replace(/#.*$/gm, '')),
+  );
+  runComposeDatabaseConfigChecks();
+
+  record(
+    'static',
+    'Auth BFF forwards one validated client IP, never the raw chain or X-Real-IP',
+    /forwardHeaders\.set\("x-forwarded-for", clientIp\)/.test(authProxySource) &&
+      !/request\.headers\.get\("x-real-ip"\)/.test(authProxySource),
   );
   record(
     'static',
@@ -211,6 +387,42 @@ function dropDb(name) {
   spawnSync(bin, psqlArgs('postgres', ['-c', `DROP DATABASE IF EXISTS ${name};`]), { env: psqlEnv() });
 }
 
+/** Drops a database even while an API still holds connections to it. */
+function forceDropDb(name) {
+  const bin = USE_PSQL_CLIENT ? 'psql' : 'docker';
+  spawnSync(bin, psqlArgs('postgres', ['-c', `DROP DATABASE IF EXISTS ${name} WITH (FORCE);`]), { env: psqlEnv() });
+}
+
+/** Creates a disposable database and applies the release migration to it. */
+function createMigratedDb(name) {
+  createDb(name);
+  const migrate = spawnSync('pnpm', ['--filter', '@paypoq/api', 'prisma:migrate:deploy'], {
+    cwd: repoRoot,
+    env: { ...process.env, DATABASE_URL: dbUrl(name) },
+    encoding: 'utf8',
+  });
+  if (migrate.status !== 0) throw new Error(`migrate deploy failed for ${name}: ${migrate.stderr}`);
+}
+
+const latestMigrationName = () =>
+  fs
+    .readdirSync(path.join(repoRoot, 'apps/api/prisma/migrations'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .at(-1);
+
+/** Asserts a production API refused to start: never listened, exited non-zero, reason logged. */
+function recordRefusedStart(api, name, expectedLog) {
+  const code = api.exitCode();
+  record(
+    'runtime',
+    name,
+    !api.alive && !api.listened && typeof code === 'number' && code !== 0 && expectedLog.test(api.log()),
+    `alive=${api.alive} listened=${api.listened} exit=${code}`,
+  );
+}
+
 const dbUrl = (name) => `postgresql://postgres:postgres@${PG_HOST}:${PG_PORT}/${name}?schema=public`;
 
 function productionEnv(databaseUrl, extra = {}) {
@@ -244,13 +456,21 @@ async function startApi(env) {
   child.stderr.on('data', (d) => (log += d.toString()));
 
   let exited = false;
-  child.on('exit', () => (exited = true));
+  let exitCode = null;
+  let listened = false;
+  child.on('exit', (code) => {
+    exited = true;
+    exitCode = code;
+  });
 
   for (let i = 0; i < 20 && !exited; i += 1) {
     await sleep(700);
     try {
       const res = await fetch(`http://127.0.0.1:${API_PORT}/health`, { signal: AbortSignal.timeout(1500) });
-      if (res.ok) break;
+      if (res.ok) {
+        listened = true;
+        break;
+      }
     } catch {
       /* keep waiting */
     }
@@ -258,6 +478,8 @@ async function startApi(env) {
 
   return {
     alive: !exited,
+    listened,
+    exitCode: () => exitCode,
     log: () => log,
     stop: async () => {
       if (!exited) child.kill();
@@ -296,6 +518,9 @@ function runBootstrapCli(env) {
 async function runRuntimeChecks() {
   const healthyDb = `paypoq_hardening_${Date.now()}`;
   const driftDb = `${healthyDb}_drift`;
+  const failedDb = `${healthyDb}_failed`;
+  const pendingDb = `${healthyDb}_pending`;
+  const lostDb = `${healthyDb}_lost`;
 
   createDb(healthyDb);
   createDb(driftDb);
@@ -308,6 +533,7 @@ async function runRuntimeChecks() {
       encoding: 'utf8',
     });
     record('runtime', 'prisma migrate deploy succeeds on an empty database', migrate.status === 0, `exit=${migrate.status}`);
+    for (const name of [failedDb, pendingDb, lostDb]) createMigratedDb(name);
 
     // Drift database: migration history claims applied, but no tables exist.
     psql(
@@ -378,22 +604,56 @@ async function runRuntimeChecks() {
     );
     await healthy.stop();
 
-    // --- Schema drift: readiness must refuse traffic ---
+    // --- Schema drift: a production API must refuse to start ---
     const drift = await startApi(productionEnv(dbUrl(driftDb)));
-    const driftReadiness = await get('/health/readiness');
-    record(
-      'runtime',
-      'Readiness is 503 when the application schema is missing',
-      driftReadiness.status === 503,
-      `status=${driftReadiness.status}`,
-    );
+    recordRefusedStart(drift, 'Production startup refuses a database whose application schema is missing', /Refusing to start: .*essential tables/);
     await drift.stop();
 
-    // --- Database unreachable: readiness must refuse traffic ---
+    // --- Database unreachable: schema cannot be verified, so refuse to start ---
     const down = await startApi(productionEnv(`postgresql://postgres:postgres@${PG_HOST}:1/nope?schema=public`));
-    const downReadiness = await get('/health/readiness');
-    record('runtime', 'Readiness is 503 when the database is unreachable', downReadiness.status === 503, `status=${downReadiness.status}`);
+    recordRefusedStart(down, 'Production startup refuses when the database is unreachable', /Refusing to start: Database is unreachable/);
     await down.stop();
+
+    // --- Release migration failed (unresolved, possibly partially applied) ---
+    const latest = latestMigrationName();
+    psql(failedDb, `update "_prisma_migrations" set finished_at = null where migration_name = '${latest}';`);
+    const failedStart = await startApi(productionEnv(dbUrl(failedDb)));
+    recordRefusedStart(failedStart, 'Production startup refuses a failed/unfinished release migration', new RegExp(`Refusing to start: .*failed or unfinished migrations \\(${latest}\\)`));
+    await failedStart.stop();
+
+    // --- Release migration skipped: this build's migration was never applied ---
+    psql(pendingDb, `delete from "_prisma_migrations" where migration_name = '${latest}';`);
+    const pendingStart = await startApi(productionEnv(dbUrl(pendingDb)));
+    recordRefusedStart(pendingStart, 'Production startup refuses a database missing this build\'s migrations', new RegExp(`Refusing to start: .*missing migrations required by this build \\(${latest}\\)`));
+    await pendingStart.stop();
+
+    // --- Development keeps booting (one warning) but readiness still refuses ---
+    const devPending = await startApi(
+      productionEnv(dbUrl(pendingDb), { NODE_ENV: 'development', CORS_ORIGIN: 'http://localhost:3000' }),
+    );
+    const devReadiness = await get('/health/readiness');
+    record(
+      'runtime',
+      'Development startup continues on pending migrations with a warning; readiness is 503',
+      devPending.alive &&
+        devReadiness.status === 503 &&
+        (devPending.log().match(/Continuing because NODE_ENV=development/g) ?? []).length === 1,
+      `alive=${devPending.alive} readiness=${devReadiness.status}`,
+    );
+    await devPending.stop();
+
+    // --- Database lost after a healthy start: readiness must refuse traffic ---
+    const lost = await startApi(productionEnv(dbUrl(lostDb)));
+    const lostBefore = await get('/health/readiness');
+    forceDropDb(lostDb);
+    const lostAfter = await get('/health/readiness');
+    record(
+      'runtime',
+      'Readiness is 503 when the database becomes unreachable after startup',
+      lost.alive && lostBefore.status === 200 && lostAfter.status === 503,
+      `before=${lostBefore.status} after=${lostAfter.status}`,
+    );
+    await lost.stop();
 
     // --- Invalid secret still fails startup (regression guard) ---
     const weak = await startApi(
@@ -401,6 +661,11 @@ async function runRuntimeChecks() {
     );
     record('runtime', 'Production startup fails on a placeholder secret', !weak.alive);
     await weak.stop();
+
+    // --- Invalid TRUSTED_PROXIES must fail startup, not trust everything/nothing ---
+    const badTrust = await startApi(productionEnv(dbUrl(healthyDb), { TRUSTED_PROXIES: 'everything' }));
+    record('runtime', 'Production startup refuses an invalid TRUSTED_PROXIES value', !badTrust.alive && !badTrust.listened);
+    await badTrust.stop();
 
     // --- Operator bootstrap CLI ---
     const bootstrapEnv = { DATABASE_URL: dbUrl(healthyDb) };
@@ -486,6 +751,7 @@ async function runRuntimeChecks() {
   } finally {
     dropDb(healthyDb);
     dropDb(driftDb);
+    for (const name of [failedDb, pendingDb, lostDb]) forceDropDb(name);
   }
 }
 

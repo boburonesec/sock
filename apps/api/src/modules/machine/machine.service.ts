@@ -67,8 +67,12 @@ export class MachineService {
 
   async update(c: RequestContext, id: string, d: UpdateMachineDto) {
     const factoryId = requireActiveFactoryId(c);
-    await this.machineOrThrow(c.tenantId, factoryId, id);
-    return { data: await this.prisma.machine.update({ where: { id }, data: { code: d.code.trim(), name: d.name.trim(), status: d.status, note: d.note?.trim() } }) };
+    const before = await this.machineOrThrow(c.tenantId, factoryId, id);
+    return { data: await this.prisma.$transaction(async (tx) => {
+      const machine = await tx.machine.update({ where: { id }, data: { code: d.code.trim(), name: d.name.trim(), status: d.status, note: d.note?.trim() } });
+      await this.audit.createWithTransaction(tx, { tenantId: c.tenantId, factoryId, userId: c.userId, action: 'MACHINE_UPDATED', entityType: 'Machine', entityId: machine.id, before, after: machine });
+      return machine;
+    }) };
   }
 
   async listAssignments(c: RequestContext) {
@@ -145,7 +149,11 @@ export class MachineService {
     if (!task) throw new NotFoundException('Task topilmadi.');
     if (c.roles.includes('Mechanic') && task.assignee.user?.id !== c.userId) throw new NotFoundException('Task topilmadi.');
     if (d.status === MaintenanceTaskStatus.COMPLETED && !d.resolution?.trim()) throw new BadRequestException('Yakunlash uchun resolution majburiy.');
-    return { data: await this.prisma.maintenanceTask.update({ where: { id }, data: { status: d.status, resolution: d.resolution?.trim(), completedAt: d.status === 'COMPLETED' ? new Date() : null, completedByUserId: d.status === 'COMPLETED' ? c.userId : null } }) };
+    return { data: await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.maintenanceTask.update({ where: { id }, data: { status: d.status, resolution: d.resolution?.trim(), completedAt: d.status === 'COMPLETED' ? new Date() : null, completedByUserId: d.status === 'COMPLETED' ? c.userId : null } });
+      await this.audit.createWithTransaction(tx, { tenantId: c.tenantId, factoryId, userId: c.userId, action: 'MAINTENANCE_TASK_UPDATED', entityType: 'MaintenanceTask', entityId: id, before: { status: task.status, resolution: task.resolution }, after: { status: updated.status, resolution: updated.resolution } });
+      return updated;
+    }) };
   }
 
   async createSpecification(c: RequestContext, productId: string, d: CreateMeasurementSpecificationDto) {

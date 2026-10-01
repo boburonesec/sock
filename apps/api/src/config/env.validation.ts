@@ -1,3 +1,4 @@
+import { parseTrustedProxies } from '../common/trusted-proxy';
 import * as Joi from 'joi';
 
 /**
@@ -45,6 +46,14 @@ const environmentSchema = Joi.object({
     .valid('development', 'test', 'production')
     .default('development'),
   PORT: Joi.number().port().default(3001),
+  API_BIND_HOST: Joi.string().ip({ cidr: 'forbidden' }).optional(),
+  // Invalid entries fail startup instead of silently trusting nothing/everything.
+  TRUSTED_PROXIES: Joi.string()
+    .optional()
+    .custom((value: string) => {
+      parseTrustedProxies(value);
+      return value;
+    }),
   DATABASE_URL: Joi.string().when('NODE_ENV', {
     is: 'production',
     then: Joi.string().uri({ scheme: ['postgres', 'postgresql'] }).required(),

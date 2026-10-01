@@ -202,8 +202,10 @@ export class BotApiClient {
     path: string,
     init: RequestInit = {},
   ): Promise<T> {
+    // A hung API must not freeze command handlers or the delivery worker loop.
     const response = await fetch(`${this.config.apiBaseUrl}${path}`, {
       ...init,
+      signal: AbortSignal.timeout(this.config.apiRequestTimeoutMs),
       headers: {
         'content-type': 'application/json',
         'x-bot-api-key': this.config.botInternalApiKey,
@@ -212,13 +214,24 @@ export class BotApiClient {
     });
 
     const text = await response.text();
-    const payload = text ? JSON.parse(text) : null;
+    const payload = parseJson(text);
 
     if (!response.ok) {
-      throw new BotApiError(response.status, payload?.message ?? 'API request failed.');
+      const message = typeof payload?.message === 'string' ? payload.message : 'API request failed.';
+      throw new BotApiError(response.status, message);
     }
 
     return payload as T;
+  }
+}
+
+// Proxies return HTML error pages (502/504); never let that surface as a SyntaxError.
+function parseJson(text: string): { message?: unknown } | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as { message?: unknown };
+  } catch {
+    return null;
   }
 }
 

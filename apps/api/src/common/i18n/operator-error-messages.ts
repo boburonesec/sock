@@ -19,6 +19,9 @@ const STATUS_DEFAULTS: Record<number, string> = {
 
 /** Exact English (or mixed) message → Uzbek */
 const EXACT: Record<string, string> = {
+  // Mobile employee self-service
+  'Authenticated user is not linked to exactly one active employee.':
+    'Sizning akkauntingiz xodim profiliga ulanmagan.',
   // Auth / guards
   'Missing access token.': 'Kirish tokeni yo‘q. Qayta kiring.',
   'Invalid access token.': 'Kirish tokeni yaroqsiz. Qayta kiring.',

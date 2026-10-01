@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -93,6 +94,42 @@ export function rewriteSetCookie(
   return cookie.trim();
 }
 
+const PROXY_PATH_SEGMENT = /^[a-zA-Z0-9._-]+$/;
+
+/**
+ * A proxied auth path segment must use the allow-listed characters and must
+ * not be a dot segment. `.` and `..` would pass the character check, and the
+ * upstream URL is built by concatenation and then normalized by `fetch`, so an
+ * accepted `..` would escape the fixed upstream prefix (e.g. `/auth/..` → `/`).
+ * Next.js currently normalizes dot segments before routing; this is the
+ * handler's own guarantee, independent of the framework. `%` is not allowed,
+ * so encoded dots (`%2e`) cannot survive to the upstream URL either.
+ */
+export function isSafeProxyPathSegment(segment: string): boolean {
+  return segment !== "." && segment !== ".." && PROXY_PATH_SEGMENT.test(segment);
+}
+
+/**
+ * The client IP to hand to the API, which keys its auth rate limiter on it.
+ *
+ * Incoming forwarding headers are untrusted input. The value is usable only
+ * because of the deployment boundary: the web tier is reachable solely through
+ * the reverse proxy (compose publishes it on 127.0.0.1, PM2 binds 127.0.0.1),
+ * and that proxy overwrites X-Forwarded-For with the socket address it saw
+ * (nginx example: `X-Forwarded-For $remote_addr`). With no header, Next.js
+ * sets it from its own socket. Only the rightmost entry is taken, so a proxy
+ * that appends instead of overwriting still yields the address it added;
+ * earlier entries are never forwarded. Other topologies must verify these
+ * properties before relying on this value.
+ * X-Real-IP is deliberately ignored: not every proxy overwrites it. Values
+ * that are not an IP address are dropped.
+ */
+export function resolveForwardedClientIp(headers: Headers): string | null {
+  const candidate = headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
+
+  return candidate && isIP(candidate) ? candidate : null;
+}
+
 interface AuthProxyOptions {
   upstreamPrefix: "auth" | "platform-auth";
   cookiePath: string;
@@ -107,7 +144,7 @@ export function createAuthProxyHandler(options: AuthProxyOptions) {
       const { path = [] } = await context.params;
 
       // Validate path segments to prevent path traversal or SSRF
-      const isValidPath = path.every((seg) => /^[a-zA-Z0-9._-]+$/.test(seg));
+      const isValidPath = path.every(isSafeProxyPathSegment);
       if (!isValidPath) {
         return NextResponse.json(
           { message: "Noto‘g‘ri so‘rov manzili" },
@@ -138,10 +175,8 @@ export function createAuthProxyHandler(options: AuthProxyOptions) {
       const userAgent = request.headers.get("user-agent");
       if (userAgent) forwardHeaders.set("user-agent", userAgent);
 
-      const forwardedFor =
-        request.headers.get("x-forwarded-for") ||
-        request.headers.get("x-real-ip");
-      if (forwardedFor) forwardHeaders.set("x-forwarded-for", forwardedFor);
+      const clientIp = resolveForwardedClientIp(request.headers);
+      if (clientIp) forwardHeaders.set("x-forwarded-for", clientIp);
 
       const method = request.method.toUpperCase();
       let body: string | undefined = undefined;

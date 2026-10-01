@@ -30,8 +30,9 @@ async function bootstrap(): Promise<void> {
 
   if (config.mode === 'disabled' || !config.telegramBotToken) {
     const shutdown = waitForShutdown();
+    const reason = config.telegramBotToken ? 'BOT_MODE=disabled' : 'no TELEGRAM_BOT_TOKEN';
     console.log(
-      'Paypoq OS Telegram bot running in standby mode (no TELEGRAM_BOT_TOKEN). Health listener active.',
+      `Paypoq OS Telegram bot running in standby mode, external polling disabled (${reason}). Health listener active.`,
     );
     await shutdown;
     healthServer.close();
@@ -47,19 +48,39 @@ async function bootstrap(): Promise<void> {
     console.error('Telegram bot handler failed.', error);
   });
 
-  await bot.launch();
+  // Validate the token up front so a bad token fails the process immediately.
+  bot.botInfo = await bot.telegram.getMe();
+
+  // Telegraf 4.16 `launch()` resolves only when long polling stops, so it must
+  // not be awaited here — otherwise the notification worker and the signal
+  // handlers below would never be registered.
+  const polling = bot.launch();
   const stopWorker = startNotificationDeliveryWorker(bot, apiClient);
   let stopping = false;
-  const stop = (signal: 'SIGINT' | 'SIGTERM') => {
+  const stop = (reason: string) => {
     if (stopping) return;
     stopping = true;
+    console.log(`Paypoq OS Telegram bot stopping (${reason}).`);
     stopWorker();
     healthServer.close();
-    bot.stop(signal);
+    try {
+      bot.stop(reason);
+    } catch {
+      // Polling already ended (e.g. after a fatal polling error).
+    }
   };
   process.once('SIGINT', () => stop('SIGINT'));
   process.once('SIGTERM', () => stop('SIGTERM'));
-  console.log('Paypoq OS Telegram bot started.');
+
+  polling.catch((error: unknown) => {
+    // Fatal polling errors (revoked token, 409 conflict with another instance)
+    // must end the process so the supervisor restarts it visibly.
+    console.error('Telegram long polling stopped with an error.', error);
+    process.exitCode = 1;
+    stop('polling-error');
+  });
+
+  console.log(`Paypoq OS Telegram bot started as @${bot.botInfo.username}.`);
 }
 
 function waitForShutdown(): Promise<void> {
@@ -80,6 +101,5 @@ function waitForShutdown(): Promise<void> {
 
 bootstrap().catch((error) => {
   console.error('Paypoq OS Telegram bot failed to start.', error);
-  process.exitCode = 1;
+  process.exit(1);
 });
-

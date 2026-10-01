@@ -402,7 +402,6 @@ async function runProductionChain({
   product,
   dayShift,
 }) {
-  const workerActivitiesBefore = (await request('/production/worker-activities')).data.length;
   const machine = (await request('/machines', {
     method: 'POST',
     body: { code: `SM-${suffix}`, name: `Smoke Machine ${suffix}` },
@@ -416,9 +415,14 @@ async function runProductionChain({
   const intake = (await request(`/production/runs/${run.id}/intakes`, { method: 'POST', body: { quantity: 30, idempotencyKey } })).data;
   const replay = (await request(`/production/runs/${run.id}/intakes`, { method: 'POST', body: { quantity: 30, idempotencyKey } })).data;
   assert(replay.id === intake.id, 'intake retry should return the original record');
-  const workerActivitiesAfter = (await request('/production/worker-activities')).data.length;
+  // Asserted on the intake's own activities: GET /production/worker-activities
+  // returns only the most recent records, so a length delta breaks on any
+  // database that already holds more than that limit.
+  const intakeActivityEmployees = (intake.activities ?? []).map((activity) => activity.employeeId).sort();
   assert(
-    workerActivitiesAfter === workerActivitiesBefore + 2,
+    intakeActivityEmployees.length === 2 &&
+      intakeActivityEmployees.join(',') === [mechanic.id, machineOperator.id].sort().join(',') &&
+      intake.activities.every((activity) => activity.productionRunIntakeId === intake.id),
     'run intake should create exactly mechanic and operator activity',
   );
 
@@ -557,6 +561,11 @@ async function runProductionChain({
   assert(handoffAfterReceipt === 0, `configured handoff stage should decrement by exactly 5 units, got ${handoffAfterReceipt}`);
 
   pass('production run, idempotent intake, quality recheck, notification, next-stage guard, stage movement, and finished receipt');
+
+  // Fixture hygiene (AGENTS.md §11): leave no RUNNING run or IN_PROGRESS task
+  // behind, so the suite can run against a shared database repeatedly.
+  await request(`/machines/tasks/${task.id}`, { method: 'PATCH', body: { status: 'COMPLETED', resolution: `Smoke cleanup ${suffix}` } });
+  await request(`/production/runs/${run.id}/status`, { method: 'PATCH', body: { status: 'COMPLETED' } });
 
   return { workerActivity };
 }
