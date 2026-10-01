@@ -43,6 +43,12 @@ Create an env file outside git:
 
 PM2 reads `.env.production` by default.
 
+PM2 binds the API and web to `127.0.0.1` (nginx is the only public entry
+point) and points the web BFF (`API_INTERNAL_URL`) and the bot
+(`API_BASE_URL`) at `http://127.0.0.1:${PORT:-3001}` unless the env file sets
+them. Keep it that way: routing the BFF through the public nginx URL makes
+every user share one auth rate-limit identity.
+
 Alternative:
 
 ```bash

@@ -242,6 +242,21 @@ function runStaticChecks() {
   );
   record(
     'static',
+    'PM2 web BFF and bot call the API on loopback, not via the public proxy',
+    /API_INTERNAL_URL: sharedEnv\.API_INTERNAL_URL \|\| apiInternalUrl/.test(pm2Config) &&
+      /API_BASE_URL: sharedEnv\.API_BASE_URL \|\| apiInternalUrl/.test(pm2Config) &&
+      /const apiInternalUrl = `http:\/\/127\.0\.0\.1:/.test(pm2Config),
+  );
+  const nextConfig = read('apps/web/next.config.ts');
+  record(
+    'static',
+    'Production web CSP limits connect-src to self + the baked API origin',
+    /return `'self' \$\{new URL\(apiUrl\)\.origin\}`/.test(nextConfig) &&
+      /connect-src \$\{connectSrc\(\)\}/.test(nextConfig) &&
+      !/connect-src 'self' https: http: ws:;?"/.test(nextConfig),
+  );
+  record(
+    'static',
     'API trust proxy uses the TRUSTED_PROXIES function, not a blanket hop count',
     /createTrustedProxyFn\(/.test(mainTs) && !/'trust proxy',\s*(1|true)\b/.test(mainTs),
   );

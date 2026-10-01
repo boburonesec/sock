@@ -78,6 +78,20 @@ jobs:
       - name: Build Bot
         run: pnpm bot:build
 
+      - name: Static regression tests
+        run: |
+          pnpm --filter @paypoq/api test:prisma-error-mapping
+          pnpm --filter @paypoq/api test:startup-schema-gate
+          pnpm --filter @paypoq/api test:trusted-proxy
+          pnpm --filter @paypoq/web test:pilot-scope
+          pnpm --filter @paypoq/web test:guide-role
+          pnpm --filter @paypoq/web test:stage-movement-quantity
+          pnpm --filter @paypoq/web test:auth-proxy-path
+          pnpm --filter @paypoq/web test:auth-proxy-forwarding
+          pnpm test:factory-tv-secret
+          pnpm test:notification-contract
+          pnpm --filter @paypoq/bot test:shutdown
+
       - name: Mobile typecheck
         run: pnpm mobile:typecheck
 

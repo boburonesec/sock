@@ -7,12 +7,7 @@
  *   node scripts/business-rules-deep-test.mjs
  *   API_BASE_URL=http://localhost:3001 node scripts/business-rules-deep-test.mjs
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
 const BASE = process.env.API_BASE_URL || "http://localhost:3001";
 const PASSWORD = "ChangeMe123!";
 
@@ -656,32 +651,35 @@ async function main() {
   }
 
   // ---------- BR-06 Factory TV auth ----------
+  // Per-factory credential issued by the owner (the legacy shared env token
+  // only resolves when the API is pinned to one factory). Issuing rotates the
+  // factory's credential; if none existed, it is revoked again afterwards.
   {
-    let tvToken = process.env.FACTORY_TV_ACCESS_TOKEN?.trim() || null;
-    try {
-      if (!tvToken) {
-        const env = readFileSync(path.join(ROOT, "apps/api/.env"), "utf8");
-        tvToken = (env.match(/^FACTORY_TV_ACCESS_TOKEN=(.+)$/m) || [])[1]?.trim();
-      }
-    } catch {
-      /* ignore */
-    }
     const noTok = await raw("GET", "/dashboard/factory-tv-summary");
     if (noTok.status === 401) pass("BR-06 TV requires token", "401");
     else fail("BR-06 TV requires token", String(noTok.status));
 
-    if (tvToken) {
-      const bad = await raw("GET", "/dashboard/factory-tv-summary", {
-        headers: { "x-factory-tv-token": "wrong-token-value" },
-      });
-      if (bad.status === 401) pass("BR-06 TV rejects wrong token", "401");
-      else fail("BR-06 TV rejects wrong token", String(bad.status));
+    const before = await raw("GET", "/dashboard/factory-tv-credential", { token: owner.token });
+    const hadCredential = Boolean(dataOf(before.json)?.hasActiveCredential);
+    const created = await raw("POST", "/dashboard/factory-tv-credential", { token: owner.token });
+    const tvToken = dataOf(created.json)?.token;
+    try {
+      if (!tvToken) fail("BR-06 owner issues a Factory TV credential", String(created.status));
+      else {
+        const bad = await raw("GET", "/dashboard/factory-tv-summary", {
+          headers: { "x-factory-tv-token": "wrong-token-value" },
+        });
+        if (bad.status === 401) pass("BR-06 TV rejects wrong token", "401");
+        else fail("BR-06 TV rejects wrong token", String(bad.status));
 
-      const good = await raw("GET", "/dashboard/factory-tv-summary", {
-        headers: { "x-factory-tv-token": tvToken },
-      });
-      if (good.ok) pass("BR-06 TV accepts correct token");
-      else fail("BR-06 TV accepts correct token", String(good.status));
+        const good = await raw("GET", "/dashboard/factory-tv-summary", {
+          headers: { "x-factory-tv-token": tvToken },
+        });
+        if (good.ok) pass("BR-06 TV accepts correct token");
+        else fail("BR-06 TV accepts correct token", String(good.status));
+      }
+    } finally {
+      if (!hadCredential) await raw("DELETE", "/dashboard/factory-tv-credential", { token: owner.token });
     }
   }
 
