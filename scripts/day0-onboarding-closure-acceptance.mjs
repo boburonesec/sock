@@ -565,7 +565,7 @@ async function supplierScenario(run, browser, viewport, fx) {
     return {
       purchases: (purchasesRes.data?.data ?? []).filter((p) => p.supplier.id === supplierId).map((p) => ({
         purchaseNumber: p.purchaseNumber, totalAmount: p.totalAmount, paymentStatus: p.paymentStatus,
-        items: p.items.map((item) => ({ quantity: item.quantity, unit: item.unit, unitPrice: item.unitPrice })),
+        items: p.items.map((item) => ({ materialId: item.material.id, quantity: item.quantity, unit: item.unit, unitPrice: item.unitPrice })),
       })),
       debt: debt ? { totalPurchases: debt.totalPurchases, totalPaid: debt.totalPaid, debt: debt.debt } : null,
     };
@@ -586,11 +586,28 @@ async function supplierScenario(run, browser, viewport, fx) {
     await workspace.waitFor();
     await workspace.getByRole("button", { name: "Yangi xarid", exact: true }).click();
     const purchaseDrawer = page.getByRole("dialog", { name: "Xarid qayd qilish" });
-    await purchaseDrawer.locator('select[id^="purchaseMaterial-"]').selectOption({ label: materialName });
+    // Opening resets RHF and replaces the field-array row. selectOption only
+    // waits for an enabled select, so it can select the row awaiting replacement.
+    // This banner appears in the render with the reset supplier and new row.
+    await purchaseDrawer.getByText("Tanlangan yetkazib beruvchi", { exact: true }).waitFor();
+    check(run, "Purchase drawer has initialized the selected supplier",
+      await purchaseDrawer.locator("#purchaseSupplier").inputValue() === supplierId);
+    const materialSelect = purchaseDrawer.locator('select[id^="purchaseMaterial-"]');
+    const materialId = material.data.data.id;
+    await materialSelect.selectOption({ label: materialName });
+    check(run, "Purchase material selection matches the fixture immediately after selection",
+      await materialSelect.inputValue() === materialId);
     await purchaseDrawer.locator('input[id^="purchaseQuantity-"]').fill(String(QTY));
     await purchaseDrawer.locator('input[id^="purchaseUnit-"]').fill("kg");
     await purchaseDrawer.locator('input[id^="purchaseUnitPrice-"]').fill(String(UNIT_PRICE));
+    check(run, "Purchase material selection survives filling the remaining fields before submit",
+      await materialSelect.inputValue() === materialId);
     await purchaseDrawer.getByRole("button", { name: "Xaridni tekshirish", exact: true }).click();
+    try {
+      await page.getByRole("alertdialog", { name: "Xaridni tasdiqlash" }).waitFor({ timeout: SUPPLIER_STAGE_TIMEOUT_MS });
+    } catch (error) {
+      throw new Error(`Supplier purchase: form did not open confirmation — ${firstLine(error)} | material value: ${JSON.stringify(await materialSelect.inputValue())} | ${await visibleAlerts(page)}`);
+    }
     await confirmSupplierMutation(page, {
       label: "Supplier purchase", path: "/supplier/purchases",
       dialogName: "Xaridni tasdiqlash", confirmName: "Xaridni tasdiqlash",
@@ -600,6 +617,7 @@ async function supplierScenario(run, browser, viewport, fx) {
 
     const purchaseRecorded = ({ purchases, debt }) =>
       purchases.length === 1 && purchases[0].items.length === 1 && num(purchases[0].items[0].quantity) === QTY
+      && purchases[0].items[0].materialId === materialId && purchases[0].items[0].unit === "kg" && num(purchases[0].items[0].unitPrice) === UNIT_PRICE
       && num(purchases[0].totalAmount) === TOTAL && purchases[0].paymentStatus === "UNPAID"
       && debt !== null && num(debt.totalPurchases) === TOTAL && num(debt.totalPaid) === 0 && num(debt.debt) === TOTAL;
     const afterPurchase = await pollServerState(readSupplierState, purchaseRecorded);
