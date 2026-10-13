@@ -1,18 +1,16 @@
 import { create } from "zustand";
+import type { AuthContext, AuthFactory, AuthUser, NativeAuthSession } from "@paypoq/shared";
 
-import { clearMobileQueryCache } from "@/providers/app-providers";
-import { authApi, type AuthContext, type AuthFactory, type AuthUser } from "@/lib/api/auth";
+import { clearMobileQueryCache } from "@/providers/query-cache";
+import { authApi } from "@/lib/api/auth";
+import { ApiError, SessionStorageError, getUserFacingErrorMessage } from "@/lib/api/errors";
 import {
-  setApiAccessToken,
-  setApiActiveFactoryId,
-  setApiAuthRefreshHandler,
+  advanceApiSessionGeneration, getApiSessionGeneration,
+  setApiAccessToken, setApiActiveFactoryId, setApiAuthRefreshHandler, setApiAuthFailureHandler,
 } from "@/lib/api/client";
 import {
-  clearStoredSession,
-  getAccessTokenExpiresAt,
-  isAccessTokenUsable,
-  loadStoredSession,
-  saveStoredSession,
+  clearStoredSession, getAccessTokenExpiresAt, isAccessTokenUsable,
+  loadStoredSession, saveStoredSession,
 } from "@/lib/auth/session-storage";
 
 interface AuthState {
@@ -20,6 +18,7 @@ interface AuthState {
   accessTokenExpiresAt: number | null;
   currentUser: AuthUser | null;
   tenantId: string | null;
+  branchMode: AuthContext["branchMode"] | null;
   activeFactoryId: string | null;
   accessibleFactories: AuthFactory[];
   roles: string[];
@@ -27,225 +26,219 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoadingSession: boolean;
   hasLoadedSession: boolean;
+  sessionError: string | null;
   initializeSession: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   loadMe: () => Promise<boolean>;
   clearSession: () => Promise<void>;
-  /** Switches the factory every request is scoped to (multi-factory users). */
   setActiveFactory: (factoryId: string) => void;
 }
 
-let refreshPromise: Promise<boolean> | null = null;
+const signedOut = {
+  accessToken: null, accessTokenExpiresAt: null, currentUser: null, tenantId: null,
+  branchMode: null, activeFactoryId: null, accessibleFactories: [], roles: [], permissions: [],
+  isAuthenticated: false, isLoadingSession: false, hasLoadedSession: true, sessionError: null,
+};
 
-/**
- * The API answers /auth/me and /auth/refresh with the user's default factory.
- * A factory the user picked on this device is kept while it is still
- * accessible, so a background token refresh does not silently move a
- * multi-factory operator back to another factory mid-task.
- */
-function withPreferredFactory(context: AuthContext, preferredFactoryId: string | null): AuthContext {
-  const isStillAccessible =
-    preferredFactoryId !== null &&
-    context.accessibleFactories.some((factory) => factory.id === preferredFactoryId);
-
-  return isStillAccessible ? { ...context, activeFactoryId: preferredFactoryId } : context;
+function withPreferredFactory(context: AuthContext, preferred: string | null): AuthContext {
+  return preferred && context.accessibleFactories.some((factory) => factory.id === preferred)
+    ? { ...context, activeFactoryId: preferred } : context;
 }
 
-function applyApiContext(context: AuthContext): void {
-  setApiActiveFactoryId(context.activeFactoryId);
+function terminal(error: unknown): boolean {
+  // This classification applies to auth/me and native refresh, not domain 403s.
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-async function persistAccessToken(accessToken: string, expiresInSeconds: number) {
-  const accessTokenExpiresAt = getAccessTokenExpiresAt(expiresInSeconds);
+const defaultStorage = { clearStoredSession, loadStoredSession, saveStoredSession };
 
-  await saveStoredSession({ accessToken, accessTokenExpiresAt });
-
-  return accessTokenExpiresAt;
-}
-
-function buildAuthenticatedState(
-  context: AuthContext,
-  accessToken: string | null,
-  accessTokenExpiresAt: number | null,
-): Partial<AuthState> {
-  return {
-    accessToken,
-    accessTokenExpiresAt,
-    currentUser: context.user,
-    tenantId: context.tenantId,
-    activeFactoryId: context.activeFactoryId,
-    accessibleFactories: context.accessibleFactories,
-    roles: context.roles,
-    permissions: context.permissions,
-    isAuthenticated: true,
-    isLoadingSession: false,
-    hasLoadedSession: true,
+/** Real Zustand session store, with only the OS storage adapter substitutable in tests. */
+export function createAuthStore(storage = defaultStorage) {
+  let generation = getApiSessionGeneration();
+  let refreshToken: string | null = null;
+  let refreshPromise: Promise<boolean> | null = null;
+  let initialization: Promise<void> | null = null;
+  const current = (captured: number) => generation === captured && getApiSessionGeneration() === captured;
+  const revoke = async (token: string | null) => {
+    if (token) await authApi.logout(token).catch(() => undefined);
   };
-}
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: null,
-  accessTokenExpiresAt: null,
-  currentUser: null,
-  tenantId: null,
-  activeFactoryId: null,
-  accessibleFactories: [],
-  roles: [],
-  permissions: [],
-  isAuthenticated: false,
-  isLoadingSession: false,
-  hasLoadedSession: false,
-  initializeSession: async () => {
-    set({ isLoadingSession: true });
+  const store = create<AuthState>((set, get) => {
+    function endLocalSession() {
+      generation = advanceApiSessionGeneration();
+      refreshPromise = null;
+      initialization = null;
+      refreshToken = null;
+      setApiAccessToken(null);
+      setApiActiveFactoryId(null);
+      clearMobileQueryCache();
+      set(signedOut);
+      return generation;
+    }
 
-    // Keychain/Keystore can fail (device restore, OS upgrade). Treat it as
-    // "no stored session" instead of hanging on the splash screen forever.
-    const storedSession = await loadStoredSession().catch(() => null);
-
-    if (storedSession && isAccessTokenUsable(storedSession.accessTokenExpiresAt)) {
-      setApiAccessToken(storedSession.accessToken);
-
+    async function clearPersistence(captured: number) {
       try {
-        const response = await authApi.me();
-        applyApiContext(response.data);
-        set(
-          buildAuthenticatedState(
-            response.data,
-            storedSession.accessToken,
-            storedSession.accessTokenExpiresAt,
-          ),
-        );
-        return;
-      } catch {
-        setApiAccessToken(null);
+        await storage.clearStoredSession();
+      } catch (error) {
+        if (current(captured)) set({ sessionError: getUserFacingErrorMessage(error) });
+        throw error;
       }
     }
 
-    const didRefresh = await get().refreshSession();
-
-    if (!didRefresh) {
-      await get().clearSession();
-    }
-  },
-  login: async (email, password) => {
-    set({ isLoadingSession: true });
-
-    try {
-      const response = await authApi.login({ email, password });
-      const accessTokenExpiresAt = await persistAccessToken(
-        response.data.accessToken,
-        response.data.accessTokenExpiresInSeconds,
-      );
-
-      setApiAccessToken(response.data.accessToken);
-      applyApiContext(response.data);
-      set(buildAuthenticatedState(response.data, response.data.accessToken, accessTokenExpiresAt));
-    } catch (error) {
-      await get().clearSession();
-      throw error;
-    }
-  },
-  logout: async () => {
-    set({ isLoadingSession: true });
-
-    try {
-      await authApi.logout();
-    } catch {
-      // Offline logout still ends the local session; the refresh cookie
-      // expires server-side on its own.
-    } finally {
-      await get().clearSession();
-    }
-  },
-  refreshSession: async () => {
-    if (refreshPromise) {
-      return refreshPromise;
-    }
-
-    set({ isLoadingSession: true });
-
-    refreshPromise = authApi
-      .refresh()
-      .then(async (response) => {
-        const accessTokenExpiresAt = await persistAccessToken(
-          response.data.accessToken,
-          response.data.accessTokenExpiresInSeconds,
-        );
-        const context = withPreferredFactory(response.data, get().activeFactoryId);
-
-        setApiAccessToken(response.data.accessToken);
-        applyApiContext(context);
-        set(buildAuthenticatedState(context, response.data.accessToken, accessTokenExpiresAt));
-
-        return true;
-      })
-      .catch(async () => {
-        // Reset the whole session, not just storage: a refresh triggered by a
-        // background 401 otherwise left isAuthenticated=true with a dead token
-        // and isLoadingSession stuck at true (disabled buttons, endless spinner).
-        await get().clearSession();
-        return false;
-      })
-      .finally(() => {
-        refreshPromise = null;
+    function apply(context: AuthContext, token: string, expiresAt: number) {
+      setApiAccessToken(token);
+      setApiActiveFactoryId(context.activeFactoryId);
+      set({
+        accessToken: token, accessTokenExpiresAt: expiresAt, currentUser: context.user,
+        tenantId: context.tenantId, branchMode: context.branchMode, activeFactoryId: context.activeFactoryId,
+        accessibleFactories: context.accessibleFactories, roles: context.roles, permissions: context.permissions,
+        isAuthenticated: true, isLoadingSession: false, hasLoadedSession: true, sessionError: null,
       });
-
-    return refreshPromise;
-  },
-  loadMe: async () => {
-    const accessToken = get().accessToken;
-
-    if (!accessToken) {
-      return get().refreshSession();
     }
 
-    set({ isLoadingSession: true });
-
-    try {
-      const response = await authApi.me();
-      const context = withPreferredFactory(response.data, get().activeFactoryId);
-      applyApiContext(context);
-      set(buildAuthenticatedState(context, accessToken, get().accessTokenExpiresAt));
+    async function accept(session: NativeAuthSession, captured: number, preserveFactory = false) {
+      if (!current(captured)) { await revoke(session.refreshToken); return false; }
+      const expiresAt = getAccessTokenExpiresAt(session.accessTokenExpiresInSeconds);
+      try {
+        await storage.saveStoredSession({
+          accessToken: session.accessToken, accessTokenExpiresAt: expiresAt, refreshToken: session.refreshToken,
+        }, () => current(captured));
+      } catch (error) {
+        // Rotation has consumed the previous credential. Never keep a session
+        // whose successor could not be persisted, or silently use the old token.
+        if (current(captured)) {
+          const next = endLocalSession();
+          await clearPersistence(next).catch(() => undefined);
+          if (current(next)) set({ sessionError: getUserFacingErrorMessage(error) });
+        }
+        await revoke(session.refreshToken);
+        throw error;
+      }
+      if (!current(captured)) { await revoke(session.refreshToken); return false; }
+      refreshToken = session.refreshToken;
+      apply(withPreferredFactory(session, preserveFactory ? get().activeFactoryId : null), session.accessToken, expiresAt);
       return true;
-    } catch {
-      await get().clearSession();
-      return false;
-    }
-  },
-  setActiveFactory: (factoryId) => {
-    if (
-      factoryId === get().activeFactoryId ||
-      !get().accessibleFactories.some((factory) => factory.id === factoryId)
-    ) {
-      return;
     }
 
-    setApiActiveFactoryId(factoryId);
-    // Every cached list belongs to the previous factory.
-    clearMobileQueryCache();
-    set({ activeFactoryId: factoryId });
-  },
-  clearSession: async () => {
-    await clearStoredSession().catch(() => undefined);
-    setApiAccessToken(null);
-    setApiActiveFactoryId(null);
-    clearMobileQueryCache();
-    set({
-      accessToken: null,
-      accessTokenExpiresAt: null,
-      currentUser: null,
-      tenantId: null,
-      activeFactoryId: null,
-      accessibleFactories: [],
-      roles: [],
-      permissions: [],
-      isAuthenticated: false,
-      isLoadingSession: false,
-      hasLoadedSession: true,
-    });
-  },
-}));
+    return {
+      ...signedOut, hasLoadedSession: false,
+      initializeSession: () => {
+        if (initialization) return initialization;
+        const captured = generation;
+        set({ isLoadingSession: true, sessionError: null });
+        const pending = (async () => {
+          try {
+            const stored = await storage.loadStoredSession();
+            if (!current(captured)) return;
+            if (!stored) { set({ ...signedOut }); return; }
+            refreshToken = stored.refreshToken;
+            if (isAccessTokenUsable(stored.accessTokenExpiresAt)) {
+              setApiAccessToken(stored.accessToken);
+              try {
+                const response = await authApi.me();
+                if (current(captured)) apply(response.data, stored.accessToken, stored.accessTokenExpiresAt);
+                return;
+              } catch (error) {
+                if (!current(captured)) return;
+                if (!terminal(error)) throw error;
+                setApiAccessToken(null);
+              }
+            }
+            await get().refreshSession();
+          } catch (error) {
+            if (current(captured)) {
+              setApiAccessToken(null);
+              set({ sessionError: getUserFacingErrorMessage(error) });
+            }
+          } finally {
+            if (current(captured)) set({ isLoadingSession: false, hasLoadedSession: true });
+          }
+        })().finally(() => {
+          if (initialization === pending) initialization = null;
+        });
+        initialization = pending;
+        return pending;
+      },
+      login: async (email, password) => {
+        const previousToken = refreshToken;
+        const captured = endLocalSession();
+        set({ isLoadingSession: true });
+        void revoke(previousToken);
+        try {
+          // An unsuccessful account switch must not restore the previous account on restart.
+          await clearPersistence(captured);
+          if (!current(captured)) return;
+          const response = await authApi.login({ email, password });
+          await accept(response.data, captured);
+        } catch (error) {
+          if (current(captured)) set({
+            isLoadingSession: false,
+            sessionError: error instanceof SessionStorageError ? getUserFacingErrorMessage(error) : null,
+          });
+          throw error;
+        }
+      },
+      logout: async () => {
+        const token = refreshToken;
+        // Fence immediately, before either network or storage awaits.
+        const captured = endLocalSession();
+        // Best effort server revocation; local logout never waits on connectivity.
+        void revoke(token);
+        await clearPersistence(captured).catch(() => undefined);
+      },
+      refreshSession: () => {
+        if (refreshPromise) return refreshPromise;
+        const captured = generation;
+        const token = refreshToken;
+        if (!token) return Promise.resolve(false);
+        const pending = authApi.refresh(token).then((response) => accept(response.data, captured, true))
+          .catch(async (error) => {
+            if (!current(captured)) return false;
+            if (terminal(error)) {
+              await get().clearSession();
+              return false;
+            }
+            // Offline, 429 and 5xx retain credentials and allow an explicit retry.
+            set({ sessionError: getUserFacingErrorMessage(error) });
+            throw error;
+          }).finally(() => {
+            if (refreshPromise === pending) refreshPromise = null;
+          });
+        refreshPromise = pending;
+        return pending;
+      },
+      loadMe: async () => {
+        if (!get().accessToken) return get().refreshSession();
+        const captured = generation;
+        try {
+          const response = await authApi.me();
+          if (!current(captured)) return false;
+          apply(withPreferredFactory(response.data, get().activeFactoryId), get().accessToken!, get().accessTokenExpiresAt!);
+          return true;
+        } catch (error) {
+          if (!current(captured)) return false;
+          if (terminal(error)) return get().refreshSession();
+          set({ sessionError: getUserFacingErrorMessage(error) });
+          throw error;
+        }
+      },
+      setActiveFactory: (factoryId) => {
+        if (factoryId === get().activeFactoryId || !get().accessibleFactories.some((f) => f.id === factoryId)) return;
+        setApiActiveFactoryId(factoryId);
+        clearMobileQueryCache();
+        set({ activeFactoryId: factoryId });
+      },
+      clearSession: async () => {
+        const captured = endLocalSession();
+        await clearPersistence(captured).catch(() => undefined);
+      },
+    };
+  });
+  setApiAuthRefreshHandler(() => store.getState().refreshSession());
+  setApiAuthFailureHandler(() => store.getState().clearSession());
+  return store;
+}
 
-setApiAuthRefreshHandler(() => useAuthStore.getState().refreshSession());
+export const useAuthStore = createAuthStore();

@@ -16,6 +16,9 @@ import { useAuthStore } from "@/stores/auth-store";
 
 export default function LoginScreen() {
   const login = useAuthStore((state) => state.login);
+  const sessionError = useAuthStore((state) => state.sessionError);
+  const initializeSession = useAuthStore((state) => state.initializeSession);
+  const clearSession = useAuthStore((state) => state.clearSession);
   const isLoadingSession = useAuthStore((state) => state.isLoadingSession);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,6 +50,17 @@ export default function LoginScreen() {
           </Text>
         </View>
 
+        {sessionError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{sessionError}</Text>
+            <Pressable accessibilityRole="button" disabled={isLoadingSession} onPress={() => void initializeSession()} style={styles.button}>
+              <Text style={styles.buttonText}>Sessiyani qayta tekshirish</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => void clearSession()} style={styles.button}>
+              <Text style={styles.buttonText}>Saqlangan sessiyadan chiqish</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>

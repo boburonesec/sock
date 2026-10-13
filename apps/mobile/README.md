@@ -32,9 +32,10 @@ pnpm mobile:test
 pnpm --filter @paypoq/mobile export:android
 ```
 
-`pnpm mobile:test` runs the device-free tests (`scripts/unit-test.mjs`): API
-error messages, idempotency, formatting, route integrity and deep-route guard
-coverage.
+`pnpm mobile:test` runs device-free helper/route checks and
+`scripts/session-integration-test.mjs`. The latter executes the real Zustand
+store, native auth API client and serialized storage with mocked HTTP and OS
+storage. It proves session races and failure handling, not native device behavior.
 
 ## Environment
 
@@ -48,10 +49,11 @@ Backend reachability depends on where the app runs:
 
 - iOS simulator on the same Mac: `http://localhost:3001`
 - Android emulator: `http://10.0.2.2:3001`
-- Real device: `http://YOUR_COMPUTER_LAN_IP:3001`
+- Real device/release: an explicit HTTPS API URL through the configured proxy.
 
-For real devices, the API server must listen on a network-reachable host and
-CORS/cookie settings must allow the mobile origin/runtime as needed.
+Keep the API bound to loopback and the trusted-proxy boundary described in
+`AGENTS.md` §7. Do not expose the API directly on the LAN for device tests.
+Native session requests use JSON credentials and omit cookies.
 
 `EXPO_PUBLIC_PILOT_SCOPE_MODE=false` disables the pilot role scope (mirrors
 Web's `NEXT_PUBLIC_PILOT_SCOPE_MODE`). Leave it unset for the pilot.
@@ -112,17 +114,53 @@ apps/mobile/
 | Numbers | Whole pieces via `parsePositiveInteger`; decimals stay strings via `normalizeDecimalInput`. No client-side business totals. |
 | Lists | Cards with search/filter, pull-to-refresh, explicit empty state. No horizontally scrolling tables. |
 
-## Auth boundary
+## Auth boundary — PR 01
 
-- `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`
+Native uses `POST /auth/native/login`, `/auth/native/refresh`,
+`/auth/native/logout` and the existing `GET /auth/me`. The additive JSON
+transport delegates to the same AuthService, hashed RefreshSession records,
+atomic rotation, expiry, tenant/user validation and rate limiter as Web.
+It grants no trust based on platform headers or user agents. Web keeps its
+existing HttpOnly cookie routes and BFF.
 
-The backend uses a JWT access token plus an HttpOnly refresh cookie. Mobile
-stores access-token session metadata in SecureStore and relies on the
-backend-managed refresh cookie for refresh. The backend contract is unchanged.
+The access token, expiry and opaque refresh credential live in one versioned
+SecureStore envelope using `WHEN_UNLOCKED_THIS_DEVICE_ONLY`. Native requests
+omit cookies. The old access-only keys are ignored, so upgrading requires a
+fresh login; there is no cookie-only cold-launch fallback.
 
-Users with access to more than one factory switch the active factory in
-**Yana → Profil**; the choice is kept across token refreshes and every cached
-list is dropped on switch.
+Concurrent expired requests share one refresh and replay at most once. A
+request keeps its originating session generation and factory header. Logout
+and new logins fence old responses; a late token is revoked best effort.
+Network/429/5xx failures preserve credentials and expose recovery. Auth 401/403
+ends the session. A failed rotated-token write signs out and revokes the
+successor best effort. Mutations never retry after network/5xx ambiguity.
+
+Logout clears memory immediately and writes a signed-out tombstone before
+attempting deletion. A successful overwrite **or** deletion prevents restart
+restoration after local logout completes, even offline. Server revocation needs
+connectivity; a lost refresh response can leave an unknown successor until its
+server expiry. If the OS rejects both clearing operations, the app shows a
+storage warning: disk erasure/restart logout cannot be guaranteed. Clear app
+credentials/data before relying on logout in that state. Storage calls finish
+for the UI after 5 seconds; underlying operations stay serialized so late saves
+cannot overwrite a queued logout. A permanently hung OS operation blocks later
+storage work until process restart; failures remain visible, not an endless
+splash screen. Killing the process before local persistence completes needs
+runtime validation and cannot be claimed safe merely from an in-memory reset.
+
+Optional employee-profile failures do not hide account/factory/logout controls.
+Account switches clear the query cache. The selected factory remains in memory
+through refresh, but persisted factory choice, complete cache/draft isolation
+and operational context acceptance are PR 02.
+
+PR 01 source and local tests are implemented. Native iOS/Android runtime and
+physical-device acceptance remain pending; see the parity document for evidence.
+For live native API + built Web authentication checks, build API/Web and run
+`node scripts/native-session-acceptance.mjs` (Chromium and WebKit installed).
+Its Web test uses port 3100 and API 3997; build with
+`NEXT_PUBLIC_API_URL=http://127.0.0.1:3997 pnpm --filter @paypoq/web build`.
+The runner owns/suspends a disposable tenant and drops its database, and requires
+the local Docker PostgreSQL container. Restore the normal Web build afterwards.
 
 ## Delivered capability
 

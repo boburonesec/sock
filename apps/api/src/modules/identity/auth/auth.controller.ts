@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Header,
   Param,
   Post,
   Req,
@@ -13,7 +14,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { ChangePasswordDto, LoginDto } from './login.dto';
+import { ChangePasswordDto, LoginDto, NativeRefreshDto } from './login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentContext } from '../request-context/current-context.decorator';
 import { RequestContext } from '../request-context/request-context.types';
@@ -24,6 +25,44 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
+
+  @Post('native/login')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async nativeLogin(@Body() dto: LoginDto, @Req() request: Request) {
+    const result = await this.authService.login(
+      dto.email, dto.password, request.header('user-agent'), request.ip,
+    );
+    return { data: {
+      ...result.me,
+      accessToken: result.accessToken,
+      accessTokenExpiresInSeconds: this.authService.getAccessTokenTtlSeconds(),
+      refreshToken: result.refreshToken,
+    } };
+  }
+
+  @Post('native/refresh')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async nativeRefresh(@Body() dto: NativeRefreshDto, @Req() request: Request) {
+    const result = await this.authService.refresh(
+      dto.refreshToken, request.header('user-agent'), request.ip,
+    );
+    return { data: {
+      ...result.me,
+      accessToken: result.accessToken,
+      accessTokenExpiresInSeconds: this.authService.getAccessTokenTtlSeconds(),
+      refreshToken: result.refreshToken,
+    } };
+  }
+
+  @Post('native/logout')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async nativeLogout(@Body() dto: NativeRefreshDto) {
+    await this.authService.logout(dto.refreshToken);
+    return { data: { status: 'ok' } };
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

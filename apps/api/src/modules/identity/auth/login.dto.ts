@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+
+/** Body transport only; the credential has exactly the same trust as a cookie. */
+export class NativeRefreshDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(512)
+  refreshToken!: string;
+}
 
 export class LoginDto {
   @IsEmail()

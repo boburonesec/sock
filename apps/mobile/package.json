@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "deps:check": "expo install --check",
-    "test": "node --no-warnings --experimental-strip-types scripts/unit-test.mjs"
+    "test": "node --no-warnings --experimental-strip-types scripts/unit-test.mjs && node --no-warnings --experimental-strip-types scripts/session-integration-test.mjs"
   },
   "dependencies": {
     "@paypoq/shared": "workspace:*",

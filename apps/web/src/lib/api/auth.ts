@@ -1,31 +1,7 @@
 import { apiClient } from "./client";
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-}
-
-export interface AuthFactory {
-  id: string;
-  name: string;
-}
-
-export interface AuthContext {
-  user: AuthUser;
-  tenantId: string;
-  branchMode: "SINGLE" | "MULTI";
-  activeFactoryId: string | null;
-  accessibleFactories: AuthFactory[];
-  roles: string[];
-  permissions: string[];
-}
-
-export interface AuthSession extends AuthContext {
-  accessToken: string;
-  accessTokenExpiresInSeconds: number;
-}
+import type { AuthContext, AuthSession } from "@paypoq/shared";
+export type { AuthContext, AuthFactory, AuthSession, AuthUser } from "@paypoq/shared";
 
 export const authApi = {
   login: (payload: { email: string; password: string }) =>

@@ -22,7 +22,7 @@ import { useAuthStore } from "@/stores/auth-store";
 export default function ProfileScreen() {
   const meQuery = useEmployeeMeQuery();
   const logout = useAuthStore((state) => state.logout);
-  const isLoadingSession = useAuthStore((state) => state.isLoadingSession);
+  const sessionError = useAuthStore((state) => state.sessionError);
   const currentUser = useAuthStore((state) => state.currentUser);
   const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
   const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
@@ -81,18 +81,17 @@ export default function ProfileScreen() {
           <ErrorState error={meQuery.error} onRetry={() => void meQuery.refetch()} />
         ) : null}
 
-        {hasNoEmployeeProfile && currentUser ? (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Akkaunt</Text>
-              <InfoRow label="Ism" value={currentUser.name} />
-              <InfoRow label="Email" value={currentUser.email} />
-              <InfoRow label="Holat" value={formatStatus(currentUser.status)} />
-            </View>
-            {factorySwitcher}
-            <LogoutButton disabled={isLoadingSession} onPress={logout} />
-          </>
+        {currentUser ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Akkaunt</Text>
+            <InfoRow label="Ism" value={currentUser.name} />
+            <InfoRow label="Email" value={currentUser.email} />
+            <InfoRow label="Holat" value={formatStatus(currentUser.status)} />
+          </View>
         ) : null}
+        {factorySwitcher}
+        {sessionError ? <Text style={styles.rowValue}>{sessionError}</Text> : null}
+        <LogoutButton disabled={false} onPress={logout} />
 
         {meQuery.data ? (
           <>
@@ -115,13 +114,6 @@ export default function ProfileScreen() {
               <InfoRow label="Korxona" value={meQuery.data.tenant.name} />
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Akkaunt</Text>
-              <InfoRow label="Ism" value={meQuery.data.user.name} />
-              <InfoRow label="Email" value={meQuery.data.user.email} />
-              <InfoRow label="Holat" value={formatStatus(meQuery.data.user.status)} />
-            </View>
-
             <Link asChild href={routes.advances}>
               <Pressable
                 accessibilityRole="button"
@@ -136,8 +128,6 @@ export default function ProfileScreen() {
               </Pressable>
             </Link>
 
-            {factorySwitcher}
-            <LogoutButton disabled={isLoadingSession} onPress={logout} />
           </>
         ) : null}
 

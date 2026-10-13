@@ -4,6 +4,7 @@ export * from "./endpoints.ts";
 export * from "./labels.ts";
 export * from "./quantity.ts";
 export * from "./contracts/common.ts";
+export * from "./contracts/auth.ts";
 export * from "./contracts/production.ts";
 export * from "./contracts/warehouse.ts";
 export * from "./contracts/machines.ts";
