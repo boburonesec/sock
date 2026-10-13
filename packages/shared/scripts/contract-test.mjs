@@ -38,6 +38,7 @@ import {
   parsePositiveInteger,
   readApiErrorMessage,
   resolveAreaAccess,
+  resolveSessionFactory,
 } from "../src/index.ts";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -184,6 +185,17 @@ function parseController(path) {
 const apiRoutes = Object.assign({}, ...WAVE1_CONTROLLERS.map(parseController));
 const catalogRoutes = parseController(CATALOG_CONTROLLER);
 const productionServiceSource = read("apps/api/src/modules/production/production.service.ts");
+
+check("factory preferences are identity-bound and revalidated against API access", () => {
+  const context = { tenantId: "tenant", user: { id: "user" }, branchMode: "MULTI", activeFactoryId: "A", accessibleFactories: [{ id: "A" }, { id: "B" }] };
+  const preference = { tenantId: "tenant", userId: "user", factoryId: "B" };
+  assert.equal(resolveSessionFactory(context, preference), "B");
+  assert.equal(resolveSessionFactory(context, { ...preference, tenantId: "other" }), "A");
+  assert.equal(resolveSessionFactory(context, { ...preference, userId: "other" }), "A");
+  assert.equal(resolveSessionFactory({ ...context, accessibleFactories: [{ id: "A" }] }, preference), "A");
+  assert.equal(resolveSessionFactory({ ...context, branchMode: "SINGLE", accessibleFactories: [{ id: "A" }] }, preference), "A");
+  assert.equal(resolveSessionFactory({ ...context, activeFactoryId: null, accessibleFactories: [] }, preference), null);
+});
 
 check("native session transports match the API routes and shared context", () => {
   const authPath = "apps/api/src/modules/identity/auth/auth.controller.ts";

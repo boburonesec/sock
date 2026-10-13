@@ -4,45 +4,45 @@ import type {
   CorrectionRequest,
   CreateCorrectionRequestPayload,
 } from "@paypoq/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useContextQuery } from "@/shared/hooks/use-context-query";
 
-import { apiClient, jsonBody } from "@/lib/api/client";
+import { apiClient, jsonBody, type ApiClientOptions } from "@/lib/api/client";
 import { invalidationGroups, queryKeys } from "@/lib/api/query-keys";
 import { useGuardedMutation } from "@/shared/hooks/use-guarded-mutation";
 
 export const recoveryApi = {
-  getCorrectionRequests: () =>
-    apiClient<ApiCollection<CorrectionRequest>>("/recovery/correction-requests"),
-  createCorrectionRequest: (payload: CreateCorrectionRequestPayload) =>
-    apiClient<ApiItem<CorrectionRequest>>("/recovery/correction-requests", jsonBody("POST", payload)),
-  resolveCorrectionRequest: ({ id, resolutionNote }: { id: string; resolutionNote: string }) =>
+  getCorrectionRequests: (options?: ApiClientOptions) =>
+    apiClient<ApiCollection<CorrectionRequest>>("/recovery/correction-requests", options),
+  createCorrectionRequest: (payload: CreateCorrectionRequestPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<CorrectionRequest>>("/recovery/correction-requests", jsonBody("POST", payload, options)),
+  resolveCorrectionRequest: ({ id, resolutionNote }: { id: string; resolutionNote: string }, options?: ApiClientOptions) =>
     apiClient<ApiItem<CorrectionRequest>>(
       `/recovery/correction-requests/${encodeURIComponent(id)}/resolve`,
-      jsonBody("POST", { resolutionNote }),
+      jsonBody("POST", { resolutionNote }, options),
     ),
 };
 
 export function useCorrectionRequestsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.recovery.correctionRequests(),
-    queryFn: async () => (await recoveryApi.getCorrectionRequests()).data,
+    queryFn: async (options) => (await recoveryApi.getCorrectionRequests(options)).data,
   });
 }
 
 /** Open movement corrections block shift close, so production readiness refetches too. */
 export function useCreateCorrectionRequest() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateCorrectionRequestPayload) =>
-      (await recoveryApi.createCorrectionRequest(payload)).data,
+    mutationFn: async (payload: CreateCorrectionRequestPayload, options: ApiClientOptions) =>
+      (await recoveryApi.createCorrectionRequest(payload, options)).data,
     invalidate: invalidationGroups.productionAndRecovery,
   });
 }
 
 export function useResolveCorrectionRequest() {
   return useGuardedMutation({
-    mutationFn: async (variables: { id: string; resolutionNote: string }) =>
-      (await recoveryApi.resolveCorrectionRequest(variables)).data,
+    mutationFn: async (variables: { id: string; resolutionNote: string }, options: ApiClientOptions) =>
+      (await recoveryApi.resolveCorrectionRequest(variables, options)).data,
     invalidate: invalidationGroups.productionAndRecovery,
   });
 }

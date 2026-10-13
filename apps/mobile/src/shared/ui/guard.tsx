@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 
 import { useAccess } from "@/lib/access/use-access";
 import { AccessDenied, SkeletonList } from "@/shared/ui/feedback";
+import { useOperationalContextReady } from "@/shared/ui/session-context-boundary";
 import { Screen } from "@/shared/ui/screen";
 import { ErrorState } from "@/shared/ui/states";
 
@@ -25,6 +26,8 @@ interface AreaGuardProps {
 export function AreaGuard({ area, endpoint, title, backTo, children }: AreaGuardProps) {
   const access = useAccess();
   const decision = access.area(area);
+  const contextReady = useOperationalContextReady();
+  if (!contextReady) return <Screen backTo={backTo} title={title}><SkeletonList /></Screen>;
 
   if (!decision.allowed) {
     return (

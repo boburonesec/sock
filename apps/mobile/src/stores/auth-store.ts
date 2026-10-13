@@ -1,17 +1,20 @@
 import { create } from "zustand";
-import type { AuthContext, AuthFactory, AuthUser, NativeAuthSession } from "@paypoq/shared";
+import { resolveSessionFactory, type FactoryPreference, type AuthContext, type AuthFactory, type AuthUser, type NativeAuthSession } from "@paypoq/shared";
 
-import { clearMobileQueryCache } from "@/providers/query-cache";
+import { cancelFactoryQueries, clearMobileQueryCache } from "@/providers/query-cache";
 import { authApi } from "@/lib/api/auth";
 import { ApiError, SessionStorageError, getUserFacingErrorMessage } from "@/lib/api/errors";
 import {
   advanceApiSessionGeneration, getApiSessionGeneration,
-  setApiAccessToken, setApiActiveFactoryId, setApiAuthRefreshHandler, setApiAuthFailureHandler,
+  setApiAccessToken, setApiSessionContext, setApiAuthRefreshHandler, setApiAuthFailureHandler,
 } from "@/lib/api/client";
 import {
   clearStoredSession, getAccessTokenExpiresAt, isAccessTokenUsable,
-  loadStoredSession, saveStoredSession,
+  loadStoredSession, saveStoredSession, updateFactoryPreference,
 } from "@/lib/auth/session-storage";
+
+import { getRequestContext } from "@/lib/auth/request-context";
+import { useUiStore } from "@/stores/ui-store";
 
 interface AuthState {
   accessToken: string | null;
@@ -27,24 +30,28 @@ interface AuthState {
   isLoadingSession: boolean;
   hasLoadedSession: boolean;
   sessionError: string | null;
+  factoryPreferenceError: string | null;
   initializeSession: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   loadMe: () => Promise<boolean>;
   clearSession: () => Promise<void>;
-  setActiveFactory: (factoryId: string) => void;
+  setActiveFactory: (factoryId: string) => Promise<boolean>;
 }
 
 const signedOut = {
   accessToken: null, accessTokenExpiresAt: null, currentUser: null, tenantId: null,
   branchMode: null, activeFactoryId: null, accessibleFactories: [], roles: [], permissions: [],
-  isAuthenticated: false, isLoadingSession: false, hasLoadedSession: true, sessionError: null,
+  isAuthenticated: false, isLoadingSession: false, hasLoadedSession: true, sessionError: null, factoryPreferenceError: null,
 };
 
-function withPreferredFactory(context: AuthContext, preferred: string | null): AuthContext {
-  return preferred && context.accessibleFactories.some((factory) => factory.id === preferred)
-    ? { ...context, activeFactoryId: preferred } : context;
+function preferenceFor(context: AuthContext): FactoryPreference {
+  return { tenantId: context.tenantId, userId: context.user.id, factoryId: context.activeFactoryId };
+}
+
+function withPreference(context: AuthContext, preference?: FactoryPreference | null): AuthContext {
+  return { ...context, activeFactoryId: resolveSessionFactory(context, preference) };
 }
 
 function terminal(error: unknown): boolean {
@@ -52,12 +59,13 @@ function terminal(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-const defaultStorage = { clearStoredSession, loadStoredSession, saveStoredSession };
+const defaultStorage = { clearStoredSession, loadStoredSession, saveStoredSession, updateFactoryPreference };
 
 /** Real Zustand session store, with only the OS storage adapter substitutable in tests. */
 export function createAuthStore(storage = defaultStorage) {
   let generation = getApiSessionGeneration();
   let refreshToken: string | null = null;
+  let restoredPreference: FactoryPreference | null = null;
   let refreshPromise: Promise<boolean> | null = null;
   let initialization: Promise<void> | null = null;
   const current = (captured: number) => generation === captured && getApiSessionGeneration() === captured;
@@ -71,8 +79,9 @@ export function createAuthStore(storage = defaultStorage) {
       refreshPromise = null;
       initialization = null;
       refreshToken = null;
+      restoredPreference = null;
       setApiAccessToken(null);
-      setApiActiveFactoryId(null);
+      useUiStore.getState().clearContextFeedback();
       clearMobileQueryCache();
       set(signedOut);
       return generation;
@@ -89,21 +98,58 @@ export function createAuthStore(storage = defaultStorage) {
 
     function apply(context: AuthContext, token: string, expiresAt: number) {
       setApiAccessToken(token);
-      setApiActiveFactoryId(context.activeFactoryId);
+      const previous = getRequestContext();
+      if (previous.userId === context.user.id && previous.tenantId === context.tenantId && previous.factoryId !== context.activeFactoryId) {
+        void cancelFactoryQueries(previous);
+      }
+      const next = setApiSessionContext(context);
+      if (previous.userId !== null && previous.sessionGeneration === next.sessionGeneration && previous.userId === next.userId && previous.revision !== next.revision) {
+        useUiStore.getState().showContextNotice(`${next.factoryName ?? "Korxona"}: korxona yoki kirish ruxsatlari o'zgardi. Ochilgan shakllar va tasdiqlashlar bekor qilindi. Ma'lumotlarni qayta kiriting.`);
+      }
       set({
         accessToken: token, accessTokenExpiresAt: expiresAt, currentUser: context.user,
         tenantId: context.tenantId, branchMode: context.branchMode, activeFactoryId: context.activeFactoryId,
         accessibleFactories: context.accessibleFactories, roles: context.roles, permissions: context.permissions,
-        isAuthenticated: true, isLoadingSession: false, hasLoadedSession: true, sessionError: null,
+        isAuthenticated: true, isLoadingSession: false, hasLoadedSession: true, sessionError: null, factoryPreferenceError: null,
       });
+    }
+
+    function preferred(context: AuthContext): FactoryPreference | null {
+      const state = get();
+      return state.currentUser?.id === context.user.id && state.tenantId === context.tenantId
+        ? { tenantId: context.tenantId, userId: context.user.id, factoryId: state.activeFactoryId }
+        : restoredPreference;
+    }
+
+    async function persistPreference(context: AuthContext, captured: number) {
+      try {
+        await storage.updateFactoryPreference(preferenceFor(context), () => current(captured) &&
+          get().currentUser?.id === context.user.id && get().tenantId === context.tenantId &&
+          get().activeFactoryId === context.activeFactoryId);
+      } catch {
+        // Preference-only failure must not destroy a securely stored rotated token.
+        if (current(captured)) {
+          const message = `${context.accessibleFactories.find((f) => f.id === context.activeFactoryId)?.name ?? "Tanlangan korxona"}: tanlov qurilmada saqlanmadi. Profil orqali korxonani qayta tanlang.`;
+          set({ factoryPreferenceError: message });
+          useUiStore.getState().showContextNotice(message, "storage");
+        }
+        return false;
+      }
+      if (current(captured) && get().activeFactoryId === context.activeFactoryId) {
+        set({ factoryPreferenceError: null });
+        useUiStore.getState().clearFactoryPersistenceNotice();
+      }
+      return true;
     }
 
     async function accept(session: NativeAuthSession, captured: number, preserveFactory = false) {
       if (!current(captured)) { await revoke(session.refreshToken); return false; }
       const expiresAt = getAccessTokenExpiresAt(session.accessTokenExpiresInSeconds);
+      const initialContext = withPreference(session, preserveFactory ? preferred(session) : null);
       try {
         await storage.saveStoredSession({
           accessToken: session.accessToken, accessTokenExpiresAt: expiresAt, refreshToken: session.refreshToken,
+          factoryPreference: preferenceFor(initialContext),
         }, () => current(captured));
       } catch (error) {
         // Rotation has consumed the previous credential. Never keep a session
@@ -118,7 +164,11 @@ export function createAuthStore(storage = defaultStorage) {
       }
       if (!current(captured)) { await revoke(session.refreshToken); return false; }
       refreshToken = session.refreshToken;
-      apply(withPreferredFactory(session, preserveFactory ? get().activeFactoryId : null), session.accessToken, expiresAt);
+      const context = withPreference(session, preserveFactory ? preferred(session) : null);
+      restoredPreference = null;
+      apply(context, session.accessToken, expiresAt);
+      if (context.activeFactoryId !== initialContext.activeFactoryId) await persistPreference(context, captured);
+      else useUiStore.getState().clearFactoryPersistenceNotice();
       return true;
     }
 
@@ -134,11 +184,17 @@ export function createAuthStore(storage = defaultStorage) {
             if (!current(captured)) return;
             if (!stored) { set({ ...signedOut }); return; }
             refreshToken = stored.refreshToken;
+            restoredPreference = stored.factoryPreference ?? null;
             if (isAccessTokenUsable(stored.accessTokenExpiresAt)) {
               setApiAccessToken(stored.accessToken);
               try {
                 const response = await authApi.me();
-                if (current(captured)) apply(response.data, stored.accessToken, stored.accessTokenExpiresAt);
+                if (current(captured)) {
+                  const context = withPreference(response.data, restoredPreference);
+                  restoredPreference = null;
+                  apply(context, stored.accessToken, stored.accessTokenExpiresAt);
+                  await persistPreference(context, captured);
+                }
                 return;
               } catch (error) {
                 if (!current(captured)) return;
@@ -215,7 +271,9 @@ export function createAuthStore(storage = defaultStorage) {
         try {
           const response = await authApi.me();
           if (!current(captured)) return false;
-          apply(withPreferredFactory(response.data, get().activeFactoryId), get().accessToken!, get().accessTokenExpiresAt!);
+          const context = withPreference(response.data, preferred(response.data));
+          apply(context, get().accessToken!, get().accessTokenExpiresAt!);
+          await persistPreference(context, captured);
           return true;
         } catch (error) {
           if (!current(captured)) return false;
@@ -224,11 +282,20 @@ export function createAuthStore(storage = defaultStorage) {
           throw error;
         }
       },
-      setActiveFactory: (factoryId) => {
-        if (factoryId === get().activeFactoryId || !get().accessibleFactories.some((f) => f.id === factoryId)) return;
-        setApiActiveFactoryId(factoryId);
-        clearMobileQueryCache();
-        set({ activeFactoryId: factoryId });
+      setActiveFactory: async (factoryId) => {
+        const state = get();
+        if (!state.isAuthenticated || !state.currentUser || !state.tenantId || !state.branchMode ||
+            !state.accessibleFactories.some((factory) => factory.id === factoryId)) {
+          set({ sessionError: "Bu fabrikaga ruxsatingiz yo'q." });
+          return false;
+        }
+        const context: AuthContext = {
+          user: state.currentUser, tenantId: state.tenantId, branchMode: state.branchMode,
+          activeFactoryId: factoryId, accessibleFactories: state.accessibleFactories,
+          roles: state.roles, permissions: state.permissions,
+        };
+        if (factoryId !== state.activeFactoryId) apply(context, state.accessToken!, state.accessTokenExpiresAt!);
+        return persistPreference(context, generation);
       },
       clearSession: async () => {
         const captured = endLocalSession();

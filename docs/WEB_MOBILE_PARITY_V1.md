@@ -34,7 +34,7 @@ tenant Web capability to match, or excluded by product decision.
 
 | Domain | Groups | COMPLETE | PARTIAL | MISSING | N/A |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Identity / common | 6 | 2 | 2 | 1 | 1 |
+| Identity / common | 6 | 1 | 3 | 1 | 1 |
 | Dashboards | 2 | 2 | 0 | 0 | 0 |
 | Attendance | 1 | 0 | 0 | 1 | 0 |
 | Employees | 5 | 0 | 0 | 5 | 0 |
@@ -46,11 +46,11 @@ tenant Web capability to match, or excluded by product decision.
 | Reports / Audit | 2 | 0 | 0 | 2 | 0 |
 | Settings | 13 | 0 | 0 | 13 | 0 |
 | Excluded surfaces | 4 | 0 | 0 | 0 | 4 |
-| **Total** | **89** | **38** | **2** | **42** | **7** |
+| **Total** | **89** | **37** | **3** | **42** | **7** |
 
 The original source baseline counted 6 `COMPLETE` groups (login/session, navigation, two
 dashboards, sales and finance overviews) and every Production, Warehouse and
-Machines/Mechanic group was `MISSING` or a read-only summary. Login/session is
+Machines/Mechanic group was `MISSING` or a read-only summary. Login/session and active-factory continuity are
 now conservatively `PARTIAL` until native runtime acceptance is recorded.
 
 ## Matrix
@@ -64,7 +64,7 @@ effective API permission (`packages/shared/src/endpoints.ts` for Wave 1).
 | --- | --- | --- | --- | --- | --- |
 | Login, logout, session refresh/restore | `/login`, `stores/auth-store.ts` | Web: cookie `/auth/*`; Native: `POST /auth/native/login`, `/auth/native/refresh`, `/auth/native/logout`; shared `GET /auth/me` | credential/session validated by AuthService | PARTIAL | PR 01 source + local gates implemented; native OS/device acceptance pending |
 | Permission-aware navigation + deep-route guard | `lib/access-control.ts`, `lib/pilot-scope.ts` | `GET /auth/me` | per area | COMPLETE | Rules shared via `@paypoq/shared` (`access.ts`) |
-| Active factory switch | sidebar, topbar, `/profile` | `X-Factory-Id` header | accessible factory | COMPLETE | `more/profile` |
+| Active factory switch | sidebar, topbar, `/profile` | fresh `GET /auth/me`, origin-bound `X-Factory-Id` | accessible factory | PARTIAL | PR 02 source + local integration implemented; native runtime acceptance pending |
 | Profile | `/profile` | `GET /auth/me`, `POST /telegram/link-tokens/me` | authenticated | PARTIAL | Wave 4: personal Telegram link code |
 | Notifications | `/notifications` | `GET /notifications`, `PATCH /notifications/:id/read` | authenticated | MISSING | Wave 4 |
 | Employee self-service (own work, payroll, advances) | — (Telegram bot) | `GET /mobile/employee/*` | linked employee | NOT APPLICABLE | Mobile-only capability; no Web screen to match |
@@ -281,7 +281,96 @@ logout cannot be guaranteed; the recovery warning makes this explicit. See
 login requirement.
 
 **PR 01:** implementation and local evidence complete; strict runtime Definition
-of Done remains open. **PR 02:** source work can begin on this foundation;
-factory persistence, session/factory query identities, stale drafts and native
-context acceptance must still be implemented and verified before release.
-PR 03 and new business-feature waves were not implemented in this change.
+of Done remains open. The original PR 02 pending-source statement is superseded
+by the PR 02 evidence below. PR 03 and new business-feature waves remain outside
+this change.
+
+
+## PR 02 context readiness — 13 October 2026 (Asia/Tashkent)
+
+PR 02 implements factory/session continuity on the existing uncommitted PR 01
+and Wave 1 foundation. It introduces no API endpoint, permission, business-rule,
+migration, tab or operational feature. Web cookie/BFF source is unchanged.
+
+Confirmed issues corrected: the factory choice was lost across restart, domain
+keys lacked identity/factory isolation, 401 replay could outlive a factory
+switch, and drafts/confirmations and
+late write callbacks could survive into the next factory. The secure preference
+is tenant/user-bound and checked against fresh API access, never used as proof of
+authorization. Invalid selections fall back to the authorized API default/order;
+SINGLE remains restricted by the API. Preference patches serialize with rotation
+without writing a captured old credential; failures remain visible separately
+from authentication errors.
+
+PR 01 already composed caller cancellation with the request deadline; PR 02
+preserves that behavior and tests both independently, adding context cancellation.
+Requests capture immutable generation/tenant/user/factory/access identity.
+Superseded reads are canceled and rejected after response; A → 401 → refresh → B
+and A → B → A cannot replay. Dispatched writes may already have committed:
+late receipts report their original factory and suppress new-view callbacks and
+factory invalidation. Compound workflows stop subsequent requests when context
+changes; a preceding acknowledged step may still exist. No ambiguous write is
+automatically retried and no offline mutation queue was added.
+
+Query keys retain domain prefixes and isolate tenant/user/generation/access,
+adding factory only for factory data. Products/materials and product-variant
+lookups are tenant-wide; operational reads, self-service and summaries are
+factory-scoped. Drafts, confirmation sheets and local retry keys reset on context
+change; old operational route parameters are blocked before navigation to Home.
+Resume revalidates access: unchanged context retains drafts, changed access
+resets them. Logout/account switching clear cache and feedback.
+
+Local validation (Node 24.18.0 / pnpm 11.7.0; pinned Node 22 and CI unverified):
+
+| Gate | Exit | Evidence |
+| --- | ---: | --- |
+| Shared contracts | 0 | 14 checks including authorized identity-bound fallback |
+| Mobile tests | 0 | 79: 15 existing + 36 PR 01 + 28 PR 02 integration |
+| Mobile TypeScript / ESLint | 0 / 0 | Real client/store/query/UI sources; final lint has no warnings |
+| API TypeScript / build | 0 / 0 | Shared-contract compatibility; no PR 02 API source changes |
+| Web TypeScript / lint / build | 0 / 0 / 0 | Shared source resolves in built Web |
+| Web auth proxy path / forwarding | 0 / 0 | 35 / 13 checks |
+| Native API + built Web auth | 0 | 15 checks, Chromium + WebKit; existing PR 01 suite |
+| PR 02 real API/RBAC context | 0 | 11 checks, repeated with disposable fixtures |
+| Production hardening | 0 | 70 checks, disposable DB |
+| Android / iOS Metro export | 0 / 0 | Module/bundle validation only |
+| Expo dependency compatibility | 1 | Existing Expo 54.0.35 / Constants 18.0.13; checker recommends ~54.0.37 / ~18.0.14 |
+| iOS simulator / Android emulator | NOT TESTED | No usable simctl or adb tooling |
+| Physical devices / signed native builds | NOT TESTED | No hardware or publication validation |
+
+The 28 context checks run real React, Zustand, transport, storage queue,
+QueryClient and guarded mutation logic. They include the actual stock-correction
+component with populated inputs and an open confirmation; changing context
+clears it and prevents captured old callbacks from dispatching. Native host,
+router, SecureStore and HTTP are mocked. Query notifications use a deterministic
+microtask scheduler for Node React `act`. The deprecated react-test-renderer
+warning is nonblocking; this adapter is not native runtime acceptance.
+
+The 11 live checks use supported API fixture operations in owned MULTI/SINGLE
+tenants, two users and roles, and distinguishable factory stock (A=5, B=20).
+A held real receipt commits A=7 while B=20 remains unchanged; native refresh held
+across a switch never replays that mutation. Live checks also cover restart
+preference validation, removed access, foreign factory denial, Seller write
+denial and account cache isolation. Tenants are suspended and databases dropped;
+shared demo data is not used. Early compile/harness failures were classified and
+fixed without relaxing assertions, increasing deadlines or arbitrary sleeps.
+
+Native release acceptance is still blocked on both iOS and Android: SecureStore
+restart/rotation/failed preference persistence, actual route-stack/modal reset,
+factory switch during reads/writes/401, background access removal, logout/account
+switch with pending work, and one real operational mutation with distinguishable
+server data. PR 01's OS failure/offline logout cases above remain pending too.
+The optional Expo compatibility check reports pre-existing patch-version drift;
+these upgrades were not included in PR 02. No full regression or CI result is
+claimed. PR 03 can be planned separately after
+review; execute these native session/context cases before claiming operational
+acceptance. PR 03 is not started.
+
+Git evidence is a snapshot-relative PR 02 delta, not the full HEAD diff, because
+the index and working tree already contain parity and PR 01 work. Local HEAD
+remains `270e111cf2c26691ed5b28d284d16c0398e00d06`. Read-only comparison found
+remote main at `934d2bd29343e594c1de1c9758e59f6865e1b5a0`, ahead by one commit
+changing only `scripts/day0-onboarding-closure-acceptance.mjs`; it was not merged
+or modified. Stage the separate layers only in a separately authorized clean
+integration checkout, preserving that remote change. No commit/push/PR/deployment
+is part of this implementation.

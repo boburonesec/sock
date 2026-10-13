@@ -1,3 +1,4 @@
+import type { FactoryPreference } from "@paypoq/shared";
 import * as SecureStore from "expo-secure-store";
 import { SessionStorageError } from "@/lib/api/errors";
 export { SessionStorageError } from "@/lib/api/errors";
@@ -9,6 +10,7 @@ export interface StoredSession {
   accessToken: string;
   accessTokenExpiresAt: number;
   refreshToken: string;
+  factoryPreference?: FactoryPreference;
 }
 
 export interface SecureSessionAdapter {
@@ -55,10 +57,24 @@ export function createSessionStorage(adapter: SecureSessionAdapter, timeoutMs = 
             typeof value.accessTokenExpiresAt !== "number" || !Number.isFinite(value.accessTokenExpiresAt)) {
           throw new SessionStorageError();
         }
-        return { accessToken: value.accessToken, refreshToken: value.refreshToken, accessTokenExpiresAt: value.accessTokenExpiresAt };
+        const preference = value.factoryPreference;
+        const factoryPreference = preference && typeof preference.tenantId === "string" && typeof preference.userId === "string" &&
+          (typeof preference.factoryId === "string" || preference.factoryId === null) ? preference as FactoryPreference : undefined;
+        return { accessToken: value.accessToken, refreshToken: value.refreshToken, accessTokenExpiresAt: value.accessTokenExpiresAt, ...(factoryPreference ? { factoryPreference } : {}) };
       } catch {
         throw new SessionStorageError();
       }
+    }),
+    // Patch the current envelope inside the same queue as rotation. A factory
+    // switch never writes a captured, potentially consumed refresh credential.
+    updateFactoryPreference: (preference: FactoryPreference, isCurrent: () => boolean) => run(async () => {
+      if (!isCurrent()) return;
+      const raw = await adapter.getItemAsync(SESSION_KEY);
+      if (!isCurrent()) return;
+      if (!raw) throw new SessionStorageError();
+      const record = JSON.parse(raw);
+      if (record.version !== 2 || !record.refreshToken || record.signedOut) throw new SessionStorageError();
+      await adapter.setItemAsync(SESSION_KEY, JSON.stringify({ ...record, factoryPreference: preference }));
     }),
     clearStoredSession: () => run(async () => {
       // Either successful overwrite or delete prevents restoration after restart.
@@ -83,7 +99,7 @@ const storage = createSessionStorage({
   }),
   deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),
 });
-export const { saveStoredSession, loadStoredSession, clearStoredSession } = storage;
+export const { saveStoredSession, loadStoredSession, clearStoredSession, updateFactoryPreference } = storage;
 
 export function getAccessTokenExpiresAt(expiresInSeconds: number): number {
   return Date.now() + expiresInSeconds * 1000;

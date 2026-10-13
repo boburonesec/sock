@@ -6,6 +6,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getUserFacingErrorMessage } from "@/lib/api/errors";
 import { colors, radius, spacing, typography } from "@/shared/styles/theme";
 import { Button } from "@/shared/ui/controls";
+import { isContextCurrent, sameSession } from "@/lib/auth/request-context";
+import { useSessionContext } from "@/lib/auth/use-session-context";
 import { useUiStore } from "@/stores/ui-store";
 
 type Tone = "success" | "error" | "warning" | "info";
@@ -158,7 +160,10 @@ const FLASH_DURATION_MS = 6000;
 
 /** Shows the one-shot success message left by the previous (form) screen. */
 export function FlashBanner() {
+  useSessionContext();
   const flash = useUiStore((state) => state.flash);
+  const notices = useUiStore((state) => state.contextNotices);
+  const clearNotices = useUiStore((state) => state.clearContextNotice);
   const clearFlash = useUiStore((state) => state.clearFlash);
 
   useEffect(() => {
@@ -170,11 +175,15 @@ export function FlashBanner() {
     return () => clearTimeout(timeout);
   }, [clearFlash, flash]);
 
-  if (!flash) {
-    return null;
-  }
-
-  return <Banner message={flash.message} tone="success" />;
+  const currentNotices = notices.filter((notice) => sameSession(notice.origin));
+  if (!currentNotices.length && (!flash || !isContextCurrent(flash.origin))) return null;
+  return (
+    <View style={{ gap: spacing.sm }}>
+      {currentNotices.map((notice) => <Banner key={notice.id} message={notice.message} tone="warning" />)}
+      {currentNotices.length ? <Button label="Xabarlarni yopish" onPress={clearNotices} variant="secondary" /> : null}
+      {flash && isContextCurrent(flash.origin) ? <Banner message={flash.message} tone="success" /> : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

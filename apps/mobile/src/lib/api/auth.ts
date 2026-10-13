@@ -19,5 +19,5 @@ export const authApi = {
       skipAuth: true, skipAuthRefresh: true,
     }),
   // The store decides whether a failed identity check should renew the session.
-  me: () => apiClient<{ data: AuthContext }>("/auth/me", { skipAuthRefresh: true }),
+  me: () => apiClient<{ data: AuthContext }>("/auth/me", { skipAuthRefresh: true, contextScope: "session", omitFactory: true }),
 };

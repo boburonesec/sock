@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useContextQuery } from "@/shared/hooks/use-context-query";
 
-import { apiClient } from "@/lib/api/client";
+import { apiClient, type ApiClientOptions } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 
 export interface ExecutiveSummary {
@@ -125,32 +125,32 @@ export interface FinanceSummary {
 }
 
 export const managerDashboardApi = {
-  executive: () =>
-    apiClient<{ data: ExecutiveSummary }>("/dashboard/executive-summary"),
-  sales: () => apiClient<{ data: SalesSummary }>("/sales/summary"),
-  finance: () => apiClient<{ data: FinanceSummary }>("/finance/summary"),
+  executive: (options?: ApiClientOptions) =>
+    apiClient<{ data: ExecutiveSummary }>("/dashboard/executive-summary", options),
+  sales: (options?: ApiClientOptions) => apiClient<{ data: SalesSummary }>("/sales/summary", options),
+  finance: (options?: ApiClientOptions) => apiClient<{ data: FinanceSummary }>("/finance/summary", options),
 };
 
 export function useExecutiveSummaryQuery(enabled: boolean) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.dashboard.executiveSummary(),
-    queryFn: async () => (await managerDashboardApi.executive()).data,
+    queryFn: async (options) => (await managerDashboardApi.executive(options)).data,
   });
 }
 
 export function useSalesSummaryQuery(enabled: boolean) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.sales.summary(),
-    queryFn: async () => (await managerDashboardApi.sales()).data,
+    queryFn: async (options) => (await managerDashboardApi.sales(options)).data,
   });
 }
 
 export function useFinanceSummaryQuery(enabled: boolean) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.finance.summary(),
-    queryFn: async () => (await managerDashboardApi.finance()).data,
+    queryFn: async (options) => (await managerDashboardApi.finance(options)).data,
   });
 }
