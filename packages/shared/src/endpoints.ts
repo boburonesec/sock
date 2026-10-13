@@ -113,3 +113,10 @@ export function canUseEndpoint(
 
   return true;
 }
+
+/** Possession-based session transport; no operational permission grants. */
+export const NATIVE_SESSION_ENDPOINTS = {
+  login: { method: "POST", path: "/auth/native/login" },
+  refresh: { method: "POST", path: "/auth/native/refresh" },
+  logout: { method: "POST", path: "/auth/native/logout" },
+} as const;

@@ -34,7 +34,7 @@ tenant Web capability to match, or excluded by product decision.
 
 | Domain | Groups | COMPLETE | PARTIAL | MISSING | N/A |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Identity / common | 6 | 3 | 1 | 1 | 1 |
+| Identity / common | 6 | 2 | 2 | 1 | 1 |
 | Dashboards | 2 | 2 | 0 | 0 | 0 |
 | Attendance | 1 | 0 | 0 | 1 | 0 |
 | Employees | 5 | 0 | 0 | 5 | 0 |
@@ -46,11 +46,12 @@ tenant Web capability to match, or excluded by product decision.
 | Reports / Audit | 2 | 0 | 0 | 2 | 0 |
 | Settings | 13 | 0 | 0 | 13 | 0 |
 | Excluded surfaces | 4 | 0 | 0 | 0 | 4 |
-| **Total** | **89** | **39** | **1** | **42** | **7** |
+| **Total** | **89** | **38** | **2** | **42** | **7** |
 
-Before this wave Mobile had 6 `COMPLETE` groups (login/session, navigation, two
+The original source baseline counted 6 `COMPLETE` groups (login/session, navigation, two
 dashboards, sales and finance overviews) and every Production, Warehouse and
-Machines/Mechanic group was `MISSING` or a read-only summary.
+Machines/Mechanic group was `MISSING` or a read-only summary. Login/session is
+now conservatively `PARTIAL` until native runtime acceptance is recorded.
 
 ## Matrix
 
@@ -61,7 +62,7 @@ effective API permission (`packages/shared/src/endpoints.ts` for Wave 1).
 
 | Capability | Web route / component | API | Permission | Mobile | Parity action |
 | --- | --- | --- | --- | --- | --- |
-| Login, logout, session refresh/restore | `/login`, `stores/auth-store.ts` | `POST /auth/login`, `/auth/refresh`, `/auth/logout`, `GET /auth/me` | authenticated | COMPLETE | — |
+| Login, logout, session refresh/restore | `/login`, `stores/auth-store.ts` | Web: cookie `/auth/*`; Native: `POST /auth/native/login`, `/auth/native/refresh`, `/auth/native/logout`; shared `GET /auth/me` | credential/session validated by AuthService | PARTIAL | PR 01 source + local gates implemented; native OS/device acceptance pending |
 | Permission-aware navigation + deep-route guard | `lib/access-control.ts`, `lib/pilot-scope.ts` | `GET /auth/me` | per area | COMPLETE | Rules shared via `@paypoq/shared` (`access.ts`) |
 | Active factory switch | sidebar, topbar, `/profile` | `X-Factory-Id` header | accessible factory | COMPLETE | `more/profile` |
 | Profile | `/profile` | `GET /auth/me`, `POST /telegram/link-tokens/me` | authenticated | PARTIAL | Wave 4: personal Telegram link code |
@@ -238,3 +239,49 @@ effective API permission (`packages/shared/src/endpoints.ts` for Wave 1).
 5. This matrix updated (state + route).
 6. Gates: `pnpm test:shared-contracts`, `pnpm mobile:typecheck`, `pnpm mobile:lint`,
    `pnpm mobile:test`, plus the Web gates the change affects.
+
+## PR 01 session readiness — 12 October 2026 (Asia/Tashkent)
+
+This section describes the uncommitted working tree on
+`feature/mobile-parity-wave1`, based on HEAD
+`270e111cf2c26691ed5b28d284d16c0398e00d06`; HEAD alone does not identify the
+implementation. Other matrix classifications describe source capabilities,
+not native release/device acceptance.
+
+Verified source failures were unconditional logout on refresh network/5xx,
+unfenced late login/refresh responses, account-unsafe request replay and
+employee-profile-dependent logout UI. Native cookie persistence was unverified,
+not proven broken. The native JSON adapter makes refresh persistence explicit
+in SecureStore while preserving the Web cookie controller/BFF behavior.
+Shared auth context includes `branchMode`; no schema or business-rule changes.
+
+Local evidence: 36 production store/client/storage integration checks plus 15
+existing Mobile checks, 13 shared-contract checks, API types/build, Mobile
+types/lint, Web types/lint/build/proxy checks, Android Metro export, 70 production
+hardening checks, and disposable-database native API + production-built Web
+Chromium/WebKit auth acceptance. The live suite passes twice consecutively;
+tenants are suspended and databases dropped. These are local checks under Node
+24.18.0 / pnpm 11.7.0, not CI or Node 22 results. Early harness failures were
+classified and corrected (ambiguous logout locator; suspended refresh expects
+403); assertions were not relaxed and timeouts were not increased.
+
+Pending native acceptance on **both** iOS and Android: HTTPS login, access expiry,
+background renewal, process kill/relaunch, rotated credential persistence,
+network loss/5xx recovery, concurrent 401, logout during login/refresh, offline
+logout followed by restart, OS storage rejection/lock, and account switching
+with pending writes. No usable Xcode simulator tooling or Android SDK/adb was
+available for this session. No physical-device test or signed release build is
+claimed. An Android Metro export proves module resolution only.
+
+Offline logout cannot guarantee server revocation. Lost rotation responses may
+require fresh login; the server successor expires under the existing policy.
+If every OS persistence operation fails, local memory is cleared but durable
+logout cannot be guaranteed; the recovery warning makes this explicit. See
+`apps/mobile/README.md` for the storage timeout/late-write behavior and upgrade
+login requirement.
+
+**PR 01:** implementation and local evidence complete; strict runtime Definition
+of Done remains open. **PR 02:** source work can begin on this foundation;
+factory persistence, session/factory query identities, stale drafts and native
+context acceptance must still be implemented and verified before release.
+PR 03 and new business-feature waves were not implemented in this change.

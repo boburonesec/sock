@@ -16,6 +16,7 @@ import {
   EMPLOYEE_WORK_PROFILES,
   INSPECTION_ROUND_STATUSES,
   MACHINE_STATUSES,
+  NATIVE_SESSION_ENDPOINTS,
   MACHINE_WORK_ROLES,
   MAINTENANCE_TASK_PRIORITIES,
   MAINTENANCE_TASK_STATUSES,
@@ -183,6 +184,29 @@ function parseController(path) {
 const apiRoutes = Object.assign({}, ...WAVE1_CONTROLLERS.map(parseController));
 const catalogRoutes = parseController(CATALOG_CONTROLLER);
 const productionServiceSource = read("apps/api/src/modules/production/production.service.ts");
+
+check("native session transports match the API routes and shared context", () => {
+  const authPath = "apps/api/src/modules/identity/auth/auth.controller.ts";
+  const authRoutes = parseController(authPath);
+  for (const endpoint of Object.values(NATIVE_SESSION_ENDPOINTS)) {
+    assert.ok(authRoutes[`${endpoint.method} ${endpoint.path}`]);
+  }
+  const nativeRoutes = new Set(Object.values(NATIVE_SESSION_ENDPOINTS).map((e) => `${e.method} ${e.path}`));
+  const existingAuthRoutes = new Set([
+    "POST /auth/login", "POST /auth/refresh", "POST /auth/logout", // Web cookie transport
+    "GET /auth/me", // common bearer identity context
+    "POST /auth/users/:userId/password", // existing password administration, outside PR 01
+  ]);
+  for (const route of Object.keys(authRoutes)) {
+    assert.ok(nativeRoutes.has(route) || existingAuthRoutes.has(route), `${route}: classify new auth transport`);
+  }
+  const authTypes = read("apps/api/src/modules/identity/auth/auth.types.ts");
+  const shared = read("packages/shared/src/contracts/auth.ts");
+  assert.match(authTypes, /branchMode: 'SINGLE' \| 'MULTI'/);
+  assert.match(shared, /branchMode: "SINGLE" \| "MULTI"/);
+  // Auth routes live outside the operational permission registry: login and
+  // refresh validate credentials in AuthService; native logout is possession-based.
+});
 
 check("Wave 1 endpoint permissions match the API controllers", () => {
   for (const [key, contract] of Object.entries(WAVE1_ENDPOINTS)) {

@@ -1,5 +1,12 @@
 import { readApiErrorMessage } from "@paypoq/shared";
 
+export class SessionStorageError extends Error {
+  constructor() {
+    super("Sessiyani qurilmada saqlab bo'lmadi. Qayta urining. Chiqish saqlanmagan bo'lsa, ilova ma'lumotlarini tozalang.");
+    this.name = "SessionStorageError";
+  }
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly statusText: string;
@@ -30,6 +37,7 @@ export function getUserFacingErrorMessage(
   error: unknown,
   context: ErrorContext = "data",
 ): string {
+  if (error instanceof SessionStorageError) return error.message;
   if (error instanceof ApiError) {
     if (error.status === 0) {
       return context === "action"

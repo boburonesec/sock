@@ -1,53 +1,23 @@
-import { apiClient } from "@/lib/api/client";
+import { NATIVE_SESSION_ENDPOINTS, type AuthContext, type NativeAuthSession, type NativeRefreshRequest } from "@paypoq/shared";
+import { apiClient, jsonBody } from "@/lib/api/client";
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-}
-
-export interface AuthFactory {
-  id: string;
-  name: string;
-}
-
-export interface AuthContext {
-  user: AuthUser;
-  tenantId: string;
-  activeFactoryId: string | null;
-  accessibleFactories: AuthFactory[];
-  roles: string[];
-  permissions: string[];
-}
-
-export interface AuthSession extends AuthContext {
-  accessToken: string;
-  accessTokenExpiresInSeconds: number;
-}
+export type { AuthContext, AuthFactory, AuthUser } from "@paypoq/shared";
 
 export const authApi = {
   login: (payload: { email: string; password: string }) =>
-    apiClient<{ data: AuthSession }>("/auth/login", {
-      method: "POST",
-      skipAuth: true,
-      skipAuthRefresh: true,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+    apiClient<{ data: NativeAuthSession }>(NATIVE_SESSION_ENDPOINTS.login.path, {
+      ...jsonBody("POST", payload), skipAuth: true, skipAuthRefresh: true,
     }),
-  refresh: () =>
-    apiClient<{ data: AuthSession }>("/auth/refresh", {
-      method: "POST",
-      skipAuth: true,
-      skipAuthRefresh: true,
+  refresh: (refreshToken: string) =>
+    apiClient<{ data: NativeAuthSession }>(NATIVE_SESSION_ENDPOINTS.refresh.path, {
+      ...jsonBody("POST", { refreshToken } satisfies NativeRefreshRequest),
+      skipAuth: true, skipAuthRefresh: true,
     }),
-  logout: () =>
-    apiClient<{ data: { status: "ok" } }>("/auth/logout", {
-      method: "POST",
-      skipAuthRefresh: true,
+  logout: (refreshToken: string) =>
+    apiClient<{ data: { status: "ok" } }>(NATIVE_SESSION_ENDPOINTS.logout.path, {
+      ...jsonBody("POST", { refreshToken } satisfies NativeRefreshRequest),
+      skipAuth: true, skipAuthRefresh: true,
     }),
-  me: () => apiClient<{ data: AuthContext }>("/auth/me"),
+  // The store decides whether a failed identity check should renew the session.
+  me: () => apiClient<{ data: AuthContext }>("/auth/me", { skipAuthRefresh: true }),
 };
-
