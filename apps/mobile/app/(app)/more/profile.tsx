@@ -23,6 +23,7 @@ export default function ProfileScreen() {
   const meQuery = useEmployeeMeQuery();
   const logout = useAuthStore((state) => state.logout);
   const sessionError = useAuthStore((state) => state.sessionError);
+  const factoryPreferenceError = useAuthStore((state) => state.factoryPreferenceError);
   const currentUser = useAuthStore((state) => state.currentUser);
   const activeFactoryId = useAuthStore((state) => state.activeFactoryId);
   const accessibleFactories = useAuthStore((state) => state.accessibleFactories);
@@ -90,7 +91,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
         {factorySwitcher}
-        {sessionError ? <Text style={styles.rowValue}>{sessionError}</Text> : null}
+        {factoryPreferenceError || sessionError ? <Text style={styles.rowValue}>{factoryPreferenceError ?? sessionError}</Text> : null}
         <LogoutButton disabled={false} onPress={logout} />
 
         {meQuery.data ? (

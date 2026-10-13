@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 
 import { OPERATIONS_AREAS, useAccess } from "@/lib/access/use-access";
+import { SessionContextBoundary } from "@/shared/ui/session-context-boundary";
 import { LoadingScreen } from "@/shared/ui/loading-screen";
 import { colors } from "@/shared/styles/theme";
 import { useAuthStore } from "@/stores/auth-store";
@@ -30,6 +31,7 @@ export default function ProtectedLayout() {
   const canOpenFinance = access.area("finance").allowed;
 
   return (
+    <SessionContextBoundary>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -90,5 +92,6 @@ export default function ProtectedLayout() {
         }}
       />
     </Tabs>
+    </SessionContextBoundary>
   );
 }

@@ -1,3 +1,4 @@
+import type { RequestContextSnapshot } from "@/lib/auth/request-context";
 import { readApiErrorMessage } from "@paypoq/shared";
 
 export class SessionStorageError extends Error {
@@ -18,6 +19,21 @@ export class ApiError extends Error {
     this.status = status;
     this.statusText = statusText;
     this.body = body;
+  }
+}
+
+export type MutationOutcome = "succeeded" | "failed" | "unknown";
+
+export class ContextChangedError extends ApiError {
+  readonly origin: RequestContextSnapshot;
+  readonly outcome: MutationOutcome;
+
+  constructor(origin: RequestContextSnapshot, outcome: MutationOutcome = "unknown") {
+    const name = origin.factoryName ?? "Oldingi korxona";
+    const result = outcome === "succeeded" ? "So'rov bajarildi." : outcome === "failed" ? "So'rov bajarilmadi." : "Amal bajarilgan bo'lishi mumkin.";
+    super(409, "Context Changed", { message: `${name}: ${result} Korxona yoki akkaunt o'zgardi. Natijani o'sha korxonada tekshiring.` });
+    this.origin = origin;
+    this.outcome = outcome;
   }
 }
 

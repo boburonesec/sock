@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useContextQuery } from "@/shared/hooks/use-context-query";
 
-import { apiClient } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
+import { apiClient, type ApiClientOptions } from "@/lib/api/client";
 
 export interface MobileEmployeeMe {
   employee: {
@@ -78,49 +79,41 @@ export interface MobileEmployeeAdvance {
   } | null;
 }
 
-const mobileEmployeeQueryKeys = {
-  all: ["mobile-employee"] as const,
-  me: () => [...mobileEmployeeQueryKeys.all, "me"] as const,
-  activities: () => [...mobileEmployeeQueryKeys.all, "activities"] as const,
-  payroll: () => [...mobileEmployeeQueryKeys.all, "payroll"] as const,
-  advances: () => [...mobileEmployeeQueryKeys.all, "advances"] as const,
-};
-
 export const mobileEmployeeApi = {
-  me: () => apiClient<{ data: MobileEmployeeMe }>("/mobile/employee/me"),
-  activities: () =>
-    apiClient<{ data: MobileEmployeeActivity[] }>("/mobile/employee/activities"),
-  payroll: () =>
-    apiClient<{ data: MobileEmployeePayrollItem[] }>("/mobile/employee/payroll"),
-  advances: () =>
-    apiClient<{ data: MobileEmployeeAdvance[] }>("/mobile/employee/advances"),
+  me: (options?: ApiClientOptions) => apiClient<{ data: MobileEmployeeMe }>("/mobile/employee/me", options),
+  activities: (options?: ApiClientOptions) =>
+    apiClient<{ data: MobileEmployeeActivity[] }>("/mobile/employee/activities", options),
+  payroll: (options?: ApiClientOptions) =>
+    apiClient<{ data: MobileEmployeePayrollItem[] }>("/mobile/employee/payroll", options),
+  advances: (options?: ApiClientOptions) =>
+    apiClient<{ data: MobileEmployeeAdvance[] }>("/mobile/employee/advances", options),
 };
 
 export function useEmployeeMeQuery(options: { enabled?: boolean } = {}) {
-  return useQuery({
-    queryKey: mobileEmployeeQueryKeys.me(),
-    queryFn: async () => (await mobileEmployeeApi.me()).data,
+  return useContextQuery({
+    queryKey: queryKeys.employee.me(),
+    queryFn: async (options) => (await mobileEmployeeApi.me(options)).data,
     enabled: options.enabled ?? true,
   });
 }
 
 export function useEmployeeActivitiesQuery() {
-  return useQuery({
-    queryKey: mobileEmployeeQueryKeys.activities(),
-    queryFn: async () => (await mobileEmployeeApi.activities()).data,
+  return useContextQuery({
+    queryKey: queryKeys.employee.activities(),
+    queryFn: async (options) => (await mobileEmployeeApi.activities(options)).data,
   });
 }
 
 export function useEmployeePayrollQuery() {
-  return useQuery({
-    queryKey: mobileEmployeeQueryKeys.payroll(),
-    queryFn: async () => (await mobileEmployeeApi.payroll()).data,
+  return useContextQuery({
+    queryKey: queryKeys.employee.payroll(),
+    queryFn: async (options) => (await mobileEmployeeApi.payroll(options)).data,
   });
 }
 
 export function useEmployeeAdvancesQuery() {
-  return useQuery({
-    queryKey: mobileEmployeeQueryKeys.advances(),
-    queryFn: async () => (await mobileEmployeeApi.advances()).data,
+  return useContextQuery({
+    queryKey: queryKeys.employee.advances(),
+    queryFn: async (options) => (await mobileEmployeeApi.advances(options)).data,
   });
 }

@@ -25,171 +25,173 @@ import type {
   WorkerActivity,
   WorkShiftReference,
 } from "@paypoq/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useContextQuery } from "@/shared/hooks/use-context-query";
 
-import { apiClient, jsonBody } from "@/lib/api/client";
+import { apiClient, jsonBody, type ApiClientOptions } from "@/lib/api/client";
 import { invalidationGroups, queryKeys } from "@/lib/api/query-keys";
 import { useGuardedMutation } from "@/shared/hooks/use-guarded-mutation";
 
 export const productionApi = {
-  getOperationsSummary: () =>
-    apiClient<ApiItem<ProductionOperationsSummary>>("/production/operations-summary"),
-  getStageInventory: () => apiClient<ApiCollection<StageInventory>>("/production/stage-inventory"),
-  getRecentMovements: () => apiClient<ApiCollection<StageMovement>>("/production/recent-movements"),
-  getWorkerActivities: () => apiClient<ApiCollection<WorkerActivity>>("/production/worker-activities"),
-  getLookupEmployees: () =>
-    apiClient<ApiCollection<ProductionLookupEmployee>>("/production/lookups/employees"),
-  getLookupVariants: () =>
-    apiClient<ApiCollection<ProductionLookupVariant>>("/production/lookups/product-variants"),
-  getLookupWorkShifts: () =>
-    apiClient<ApiCollection<WorkShiftReference>>("/production/lookups/work-shifts"),
-  createStageMovement: (payload: CreateStageMovementPayload) =>
-    apiClient<ApiItem<StageMovementCreation>>("/production/stage-movements", jsonBody("POST", payload)),
-  createWorkerActivity: (payload: CreateWorkerActivityPayload) =>
-    apiClient<ApiItem<WorkerActivity>>("/production/worker-activities", jsonBody("POST", payload)),
-  createDefect: (payload: CreateDefectPayload) =>
-    apiClient<ApiItem<Defect>>("/production/defects", jsonBody("POST", payload)),
+  getOperationsSummary: (options?: ApiClientOptions) =>
+    apiClient<ApiItem<ProductionOperationsSummary>>("/production/operations-summary", options),
+  getStageInventory: (options?: ApiClientOptions) => apiClient<ApiCollection<StageInventory>>("/production/stage-inventory", options),
+  getRecentMovements: (options?: ApiClientOptions) => apiClient<ApiCollection<StageMovement>>("/production/recent-movements", options),
+  getWorkerActivities: (options?: ApiClientOptions) => apiClient<ApiCollection<WorkerActivity>>("/production/worker-activities", options),
+  getLookupEmployees: (options?: ApiClientOptions) =>
+    apiClient<ApiCollection<ProductionLookupEmployee>>("/production/lookups/employees", options),
+  getLookupVariants: (options?: ApiClientOptions) =>
+    apiClient<ApiCollection<ProductionLookupVariant>>("/production/lookups/product-variants", options),
+  getLookupWorkShifts: (options?: ApiClientOptions) =>
+    apiClient<ApiCollection<WorkShiftReference>>("/production/lookups/work-shifts", options),
+  createStageMovement: (payload: CreateStageMovementPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<StageMovementCreation>>("/production/stage-movements", jsonBody("POST", payload, options)),
+  createWorkerActivity: (payload: CreateWorkerActivityPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<WorkerActivity>>("/production/worker-activities", jsonBody("POST", payload, options)),
+  createDefect: (payload: CreateDefectPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<Defect>>("/production/defects", jsonBody("POST", payload, options)),
 
-  getRuns: () => apiClient<ApiCollection<ProductionRun>>("/production/runs"),
-  createRun: (payload: CreateProductionRunPayload) =>
-    apiClient<ApiItem<ProductionRun>>("/production/runs", jsonBody("POST", payload)),
-  changeRunStatus: ({ id, status }: { id: string; status: ProductionRunStatus }) =>
+  getRuns: (options?: ApiClientOptions) => apiClient<ApiCollection<ProductionRun>>("/production/runs", options),
+  createRun: (payload: CreateProductionRunPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<ProductionRun>>("/production/runs", jsonBody("POST", payload, options)),
+  changeRunStatus: ({ id, status }: { id: string; status: ProductionRunStatus }, options?: ApiClientOptions) =>
     apiClient<ApiItem<ProductionRun>>(
       `/production/runs/${encodeURIComponent(id)}/status`,
-      jsonBody("PATCH", { status }),
+      jsonBody("PATCH", { status }, options),
     ),
-  createRunIntake: ({ id, ...payload }: CreateProductionRunIntakePayload & { id: string }) =>
+  createRunIntake: ({ id, ...payload }: CreateProductionRunIntakePayload & { id: string }, options?: ApiClientOptions) =>
     apiClient<ApiItem<ProductionRunIntake>>(
       `/production/runs/${encodeURIComponent(id)}/intakes`,
-      jsonBody("POST", payload),
+      jsonBody("POST", payload, options),
     ),
 
-  getShiftReconciliations: () =>
-    apiClient<ApiCollection<ShiftReconciliation>>("/production/shift-reconciliations"),
-  getShiftReadiness: (workShiftId: string, workDate: string) =>
+  getShiftReconciliations: (options?: ApiClientOptions) =>
+    apiClient<ApiCollection<ShiftReconciliation>>("/production/shift-reconciliations", options),
+  getShiftReadiness: (workShiftId: string, workDate: string, options?: ApiClientOptions) =>
     apiClient<ApiItem<ShiftReadiness>>(
       `/production/shift-reconciliations/readiness?workShiftId=${encodeURIComponent(workShiftId)}&workDate=${encodeURIComponent(workDate)}`,
+      options,
     ),
-  getShiftContext: () => apiClient<ApiItem<ShiftContext>>("/production/shift-context"),
-  submitShift: (payload: ShiftReconciliationPayload) =>
+  getShiftContext: (options?: ApiClientOptions) => apiClient<ApiItem<ShiftContext>>("/production/shift-context", options),
+  submitShift: (payload: ShiftReconciliationPayload, options?: ApiClientOptions) =>
     apiClient<ApiItem<ShiftReconciliation>>(
       "/production/shift-reconciliations/submit",
-      jsonBody("POST", payload),
+      jsonBody("POST", payload, options),
     ),
-  returnShift: (payload: ShiftReconciliationReasonPayload) =>
+  returnShift: (payload: ShiftReconciliationReasonPayload, options?: ApiClientOptions) =>
     apiClient<ApiItem<ShiftReconciliation>>(
       "/production/shift-reconciliations/return",
-      jsonBody("POST", payload),
+      jsonBody("POST", payload, options),
     ),
-  acceptShift: (payload: ShiftReconciliationReasonPayload) =>
+  acceptShift: (payload: ShiftReconciliationReasonPayload, options?: ApiClientOptions) =>
     apiClient<ApiItem<ShiftReconciliation>>(
       "/production/shift-reconciliations/accept",
-      jsonBody("POST", payload),
+      jsonBody("POST", payload, options),
     ),
-  getWarehouseHandoffStage: () =>
-    apiClient<ApiItem<ProductionStageReference | null>>("/production/warehouse-handoff-stage"),
-  configureWarehouseHandoffStage: (productionStageId: string) =>
+  getWarehouseHandoffStage: (options?: ApiClientOptions) =>
+    apiClient<ApiItem<ProductionStageReference | null>>("/production/warehouse-handoff-stage", options),
+  configureWarehouseHandoffStage: (productionStageId: string, options?: ApiClientOptions) =>
     apiClient<ApiItem<ProductionStageReference>>(
       "/production/warehouse-handoff-stage",
-      jsonBody("PATCH", { productionStageId }),
+      jsonBody("PATCH", { productionStageId }, options),
     ),
 };
 
 // --- Queries ---------------------------------------------------------------
 
 export function useOperationsSummaryQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.operationsSummary(),
-    queryFn: async () => (await productionApi.getOperationsSummary()).data,
+    queryFn: async (options) => (await productionApi.getOperationsSummary(options)).data,
   });
 }
 
 export function useStageInventoryQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.stageInventory(),
-    queryFn: async () => (await productionApi.getStageInventory()).data,
+    queryFn: async (options) => (await productionApi.getStageInventory(options)).data,
   });
 }
 
 export function useRecentMovementsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.recentMovements(),
-    queryFn: async () => (await productionApi.getRecentMovements()).data,
+    queryFn: async (options) => (await productionApi.getRecentMovements(options)).data,
   });
 }
 
 export function useWorkerActivitiesQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.workerActivities(),
-    queryFn: async () => (await productionApi.getWorkerActivities()).data,
+    queryFn: async (options) => (await productionApi.getWorkerActivities(options)).data,
   });
 }
 
 export function useLookupEmployeesQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.lookupEmployees(),
-    queryFn: async () => (await productionApi.getLookupEmployees()).data,
+    queryFn: async (options) => (await productionApi.getLookupEmployees(options)).data,
   });
 }
 
 export function useLookupVariantsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.lookupVariants(),
-    queryFn: async () => (await productionApi.getLookupVariants()).data,
+    contextScope: "tenant",
+    queryFn: async (options) => (await productionApi.getLookupVariants(options)).data,
   });
 }
 
 export function useLookupWorkShiftsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.lookupWorkShifts(),
-    queryFn: async () => (await productionApi.getLookupWorkShifts()).data,
+    queryFn: async (options) => (await productionApi.getLookupWorkShifts(options)).data,
   });
 }
 
 export function useProductionRunsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.runs(),
-    queryFn: async () => (await productionApi.getRuns()).data,
+    queryFn: async (options) => (await productionApi.getRuns(options)).data,
   });
 }
 
 export function useShiftReconciliationsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.shiftReconciliations(),
-    queryFn: async () => (await productionApi.getShiftReconciliations()).data,
+    queryFn: async (options) => (await productionApi.getShiftReconciliations(options)).data,
   });
 }
 
 export function useShiftReadinessQuery(workShiftId: string, workDate: string, enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled: enabled && Boolean(workShiftId),
     queryKey: queryKeys.production.shiftReadiness(workShiftId, workDate),
-    queryFn: async () => (await productionApi.getShiftReadiness(workShiftId, workDate)).data,
+    queryFn: async (options) => (await productionApi.getShiftReadiness(workShiftId, workDate, options)).data,
   });
 }
 
 export function useShiftContextQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.shiftContext(),
-    queryFn: async () => (await productionApi.getShiftContext()).data,
+    queryFn: async (options) => (await productionApi.getShiftContext(options)).data,
   });
 }
 
 export function useWarehouseHandoffStageQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.production.warehouseHandoffStage(),
-    queryFn: async () => (await productionApi.getWarehouseHandoffStage()).data,
+    queryFn: async (options) => (await productionApi.getWarehouseHandoffStage(options)).data,
   });
 }
 
@@ -197,24 +199,24 @@ export function useWarehouseHandoffStageQuery(enabled = true) {
 
 export function useCreateStageMovement() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateStageMovementPayload) =>
-      (await productionApi.createStageMovement(payload)).data,
+    mutationFn: async (payload: CreateStageMovementPayload, options: ApiClientOptions) =>
+      (await productionApi.createStageMovement(payload, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
 
 export function useCreateWorkerActivity() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateWorkerActivityPayload) =>
-      (await productionApi.createWorkerActivity(payload)).data,
+    mutationFn: async (payload: CreateWorkerActivityPayload, options: ApiClientOptions) =>
+      (await productionApi.createWorkerActivity(payload, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
 
 export function useCreateDefect() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateDefectPayload) =>
-      (await productionApi.createDefect(payload)).data,
+    mutationFn: async (payload: CreateDefectPayload, options: ApiClientOptions) =>
+      (await productionApi.createDefect(payload, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
@@ -222,56 +224,56 @@ export function useCreateDefect() {
 /** A run occupies a machine and schedules its inspection rounds, so machines refetch too. */
 export function useCreateProductionRun() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateProductionRunPayload) =>
-      (await productionApi.createRun(payload)).data,
+    mutationFn: async (payload: CreateProductionRunPayload, options: ApiClientOptions) =>
+      (await productionApi.createRun(payload, options)).data,
     invalidate: invalidationGroups.productionAndMachines,
   });
 }
 
 export function useChangeRunStatus() {
   return useGuardedMutation({
-    mutationFn: async (variables: { id: string; status: ProductionRunStatus }) =>
-      (await productionApi.changeRunStatus(variables)).data,
+    mutationFn: async (variables: { id: string; status: ProductionRunStatus }, options: ApiClientOptions) =>
+      (await productionApi.changeRunStatus(variables, options)).data,
     invalidate: invalidationGroups.productionAndMachines,
   });
 }
 
 export function useCreateRunIntake() {
   return useGuardedMutation({
-    mutationFn: async (variables: CreateProductionRunIntakePayload & { id: string }) =>
-      (await productionApi.createRunIntake(variables)).data,
+    mutationFn: async (variables: CreateProductionRunIntakePayload & { id: string }, options: ApiClientOptions) =>
+      (await productionApi.createRunIntake(variables, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
 
 export function useSubmitShift() {
   return useGuardedMutation({
-    mutationFn: async (payload: ShiftReconciliationPayload) =>
-      (await productionApi.submitShift(payload)).data,
+    mutationFn: async (payload: ShiftReconciliationPayload, options: ApiClientOptions) =>
+      (await productionApi.submitShift(payload, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
 
 export function useReturnShift() {
   return useGuardedMutation({
-    mutationFn: async (payload: ShiftReconciliationReasonPayload) =>
-      (await productionApi.returnShift(payload)).data,
+    mutationFn: async (payload: ShiftReconciliationReasonPayload, options: ApiClientOptions) =>
+      (await productionApi.returnShift(payload, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
 
 export function useAcceptShift() {
   return useGuardedMutation({
-    mutationFn: async (payload: ShiftReconciliationReasonPayload) =>
-      (await productionApi.acceptShift(payload)).data,
+    mutationFn: async (payload: ShiftReconciliationReasonPayload, options: ApiClientOptions) =>
+      (await productionApi.acceptShift(payload, options)).data,
     invalidate: invalidationGroups.production,
   });
 }
 
 export function useConfigureWarehouseHandoffStage() {
   return useGuardedMutation({
-    mutationFn: async (productionStageId: string) =>
-      (await productionApi.configureWarehouseHandoffStage(productionStageId)).data,
+    mutationFn: async (productionStageId: string, options: ApiClientOptions) =>
+      (await productionApi.configureWarehouseHandoffStage(productionStageId, options)).data,
     invalidate: invalidationGroups.production,
   });
 }

@@ -1,9 +1,18 @@
+import type { ContextScope, RequestContextSnapshot } from "@/lib/auth/request-context";
+
 /**
  * Central query keys. Every key starts with its domain so a mutation can
  * invalidate the whole domain (`queryKeys.production.all`) and every dependent
  * screen refetches, instead of each screen tracking its own keys.
  */
 export const queryKeys = {
+  employee: {
+    all: ["mobile-employee"] as const,
+    me: () => ["mobile-employee", "me"] as const,
+    activities: () => ["mobile-employee", "activities"] as const,
+    payroll: () => ["mobile-employee", "payroll"] as const,
+    advances: () => ["mobile-employee", "advances"] as const,
+  },
   dashboard: {
     all: ["dashboard"] as const,
     executiveSummary: () => ["dashboard", "executive-summary"] as const,
@@ -73,3 +82,31 @@ export const invalidationGroups = {
   warehouse: [queryKeys.warehouse.all, queryKeys.dashboard.all],
   machines: [queryKeys.machines.all],
 } as const satisfies Record<string, readonly DomainKey[]>;
+
+/** No credentials in query identity; keep the domain prefix for invalidation. */
+export function scopedQueryKey(
+  base: readonly unknown[],
+  origin: RequestContextSnapshot,
+  scope: ContextScope,
+) {
+  return [...base, {
+    scope, tenantId: origin.tenantId, userId: origin.userId,
+    sessionGeneration: origin.sessionGeneration, authorizationVersion: origin.authorizationVersion,
+    ...(scope === "factory" ? { factoryId: origin.factoryId } : {}),
+  }] as const;
+}
+
+export interface ScopedQueryIdentity {
+  scope: ContextScope;
+  tenantId: string | null;
+  userId: string | null;
+  sessionGeneration: number;
+  authorizationVersion: number;
+  factoryId?: string | null;
+}
+
+export function queryIdentity(key: readonly unknown[]): ScopedQueryIdentity | null {
+  const value = key[key.length - 1];
+  if (typeof value !== "object" || value === null || !("scope" in value)) return null;
+  return value as ScopedQueryIdentity;
+}

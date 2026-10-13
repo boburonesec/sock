@@ -16,142 +16,142 @@ import type {
   QualityIssue,
   UpdateMaintenanceTaskPayload,
 } from "@paypoq/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useContextQuery } from "@/shared/hooks/use-context-query";
 
-import { apiClient, jsonBody } from "@/lib/api/client";
+import { apiClient, jsonBody, type ApiClientOptions } from "@/lib/api/client";
 import { invalidationGroups, queryKeys } from "@/lib/api/query-keys";
 import { useGuardedMutation } from "@/shared/hooks/use-guarded-mutation";
 
 const id = encodeURIComponent;
 
 export const machinesApi = {
-  lookups: () => apiClient<ApiItem<MachineLookups>>("/machines/lookups"),
-  list: () => apiClient<ApiCollection<Machine>>("/machines"),
-  create: (payload: CreateMachinePayload) =>
-    apiClient<ApiItem<Machine>>("/machines", jsonBody("POST", payload)),
-  assign: (payload: CreateMachineAssignmentPayload) =>
-    apiClient<ApiItem<unknown>>("/machines/assignments", jsonBody("POST", payload)),
-  createPieceRate: (payload: CreateMachinePieceRatePayload) =>
-    apiClient<ApiItem<unknown>>("/machines/piece-rates", jsonBody("POST", payload)),
-  tasks: () => apiClient<ApiCollection<MaintenanceTask>>("/machines/tasks"),
-  createTask: (payload: CreateMaintenanceTaskPayload) =>
-    apiClient<ApiItem<MaintenanceTask>>("/machines/tasks", jsonBody("POST", payload)),
-  updateTask: ({ taskId, ...payload }: UpdateMaintenanceTaskPayload & { taskId: string }) =>
-    apiClient<ApiItem<MaintenanceTask>>(`/machines/tasks/${id(taskId)}`, jsonBody("PATCH", payload)),
-  createSpecification: (productId: string, metrics: MeasurementMetricPayload[]) =>
+  lookups: (options?: ApiClientOptions) => apiClient<ApiItem<MachineLookups>>("/machines/lookups", options),
+  list: (options?: ApiClientOptions) => apiClient<ApiCollection<Machine>>("/machines", options),
+  create: (payload: CreateMachinePayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<Machine>>("/machines", jsonBody("POST", payload, options)),
+  assign: (payload: CreateMachineAssignmentPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<unknown>>("/machines/assignments", jsonBody("POST", payload, options)),
+  createPieceRate: (payload: CreateMachinePieceRatePayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<unknown>>("/machines/piece-rates", jsonBody("POST", payload, options)),
+  tasks: (options?: ApiClientOptions) => apiClient<ApiCollection<MaintenanceTask>>("/machines/tasks", options),
+  createTask: (payload: CreateMaintenanceTaskPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<MaintenanceTask>>("/machines/tasks", jsonBody("POST", payload, options)),
+  updateTask: ({ taskId, ...payload }: UpdateMaintenanceTaskPayload & { taskId: string }, options?: ApiClientOptions) =>
+    apiClient<ApiItem<MaintenanceTask>>(`/machines/tasks/${id(taskId)}`, jsonBody("PATCH", payload, options)),
+  createSpecification: (productId: string, metrics: MeasurementMetricPayload[], options?: ApiClientOptions) =>
     apiClient<ApiItem<{ id: string }>>(
       `/machines/products/${id(productId)}/specifications`,
-      jsonBody("POST", { metrics }),
+      jsonBody("POST", { metrics }, options),
     ),
-  activateSpecification: (specificationId: string) =>
+  activateSpecification: (specificationId: string, options?: ApiClientOptions) =>
     apiClient<ApiItem<unknown>>(
       `/machines/specifications/${id(specificationId)}/activate`,
-      jsonBody("POST"),
+      jsonBody("POST", undefined, options),
     ),
-  configureInspectionSlots: (payload: ConfigureInspectionSlotsPayload) =>
-    apiClient<ApiItem<InspectionScheduleSlot[]>>("/machines/inspection-slots", jsonBody("POST", payload)),
-  inspectionRounds: () => apiClient<ApiCollection<InspectionRound>>("/machines/inspection-rounds/mine"),
-  submitMeasurements: (roundId: string, measurements: MeasurementValuePayload[]) =>
+  configureInspectionSlots: (payload: ConfigureInspectionSlotsPayload, options?: ApiClientOptions) =>
+    apiClient<ApiItem<InspectionScheduleSlot[]>>("/machines/inspection-slots", jsonBody("POST", payload, options)),
+  inspectionRounds: (options?: ApiClientOptions) => apiClient<ApiCollection<InspectionRound>>("/machines/inspection-rounds/mine", options),
+  submitMeasurements: (roundId: string, measurements: MeasurementValuePayload[], options?: ApiClientOptions) =>
     apiClient<ApiItem<{ roundId: string; status: string }>>(
       `/machines/inspection-rounds/${id(roundId)}/measurements`,
-      jsonBody("POST", { measurements }),
+      jsonBody("POST", { measurements }, options),
     ),
-  qualityIssues: () => apiClient<ApiCollection<QualityIssue>>("/machines/quality-issues"),
-  recheckIssue: (issueId: string, measurements: MeasurementValuePayload[]) =>
+  qualityIssues: (options?: ApiClientOptions) => apiClient<ApiCollection<QualityIssue>>("/machines/quality-issues", options),
+  recheckIssue: (issueId: string, measurements: MeasurementValuePayload[], options?: ApiClientOptions) =>
     apiClient<ApiItem<{ failed: string[] }>>(
       `/machines/quality-issues/${id(issueId)}/recheck`,
-      jsonBody("POST", { measurements }),
+      jsonBody("POST", { measurements }, options),
     ),
-  holdIssueRun: (issueId: string) =>
+  holdIssueRun: (issueId: string, options?: ApiClientOptions) =>
     apiClient<ApiItem<{ productionRunId: string; status: string }>>(
       `/machines/quality-issues/${id(issueId)}/hold`,
-      jsonBody("POST"),
+      jsonBody("POST", undefined, options),
     ),
 };
 
 export function useMachinesQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.machines.list(),
-    queryFn: async () => (await machinesApi.list()).data,
+    queryFn: async (options) => (await machinesApi.list(options)).data,
   });
 }
 
 export function useMachineLookupsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.machines.lookups(),
-    queryFn: async () => (await machinesApi.lookups()).data,
+    queryFn: async (options) => (await machinesApi.lookups(options)).data,
   });
 }
 
 export function useMaintenanceTasksQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.machines.tasks(),
-    queryFn: async () => (await machinesApi.tasks()).data,
+    queryFn: async (options) => (await machinesApi.tasks(options)).data,
   });
 }
 
 export function useInspectionRoundsQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.machines.inspectionRounds(),
-    queryFn: async () => (await machinesApi.inspectionRounds()).data,
+    queryFn: async (options) => (await machinesApi.inspectionRounds(options)).data,
   });
 }
 
 export function useQualityIssuesQuery(enabled = true) {
-  return useQuery({
+  return useContextQuery({
     enabled,
     queryKey: queryKeys.machines.qualityIssues(),
-    queryFn: async () => (await machinesApi.qualityIssues()).data,
+    queryFn: async (options) => (await machinesApi.qualityIssues(options)).data,
   });
 }
 
 export function useCreateMachine() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateMachinePayload) => (await machinesApi.create(payload)).data,
+    mutationFn: async (payload: CreateMachinePayload, options: ApiClientOptions) => (await machinesApi.create(payload, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
 
 export function useAssignMechanic() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateMachineAssignmentPayload) =>
-      (await machinesApi.assign(payload)).data,
+    mutationFn: async (payload: CreateMachineAssignmentPayload, options: ApiClientOptions) =>
+      (await machinesApi.assign(payload, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
 
 export function useCreatePieceRate() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateMachinePieceRatePayload) =>
-      (await machinesApi.createPieceRate(payload)).data,
+    mutationFn: async (payload: CreateMachinePieceRatePayload, options: ApiClientOptions) =>
+      (await machinesApi.createPieceRate(payload, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
 
 export function useCreateMaintenanceTask() {
   return useGuardedMutation({
-    mutationFn: async (payload: CreateMaintenanceTaskPayload) =>
-      (await machinesApi.createTask(payload)).data,
+    mutationFn: async (payload: CreateMaintenanceTaskPayload, options: ApiClientOptions) =>
+      (await machinesApi.createTask(payload, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
 
 export function useUpdateMaintenanceTask() {
   return useGuardedMutation({
-    mutationFn: async (variables: UpdateMaintenanceTaskPayload & { taskId: string }) =>
-      (await machinesApi.updateTask(variables)).data,
+    mutationFn: async (variables: UpdateMaintenanceTaskPayload & { taskId: string }, options: ApiClientOptions) =>
+      (await machinesApi.updateTask(variables, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
 
 export function useConfigureInspectionSlots() {
   return useGuardedMutation({
-    mutationFn: async (payload: ConfigureInspectionSlotsPayload) =>
-      (await machinesApi.configureInspectionSlots(payload)).data,
+    mutationFn: async (payload: ConfigureInspectionSlotsPayload, options: ApiClientOptions) =>
+      (await machinesApi.configureInspectionSlots(payload, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
@@ -162,9 +162,9 @@ export function useConfigureInspectionSlots() {
  */
 export function useCreateAndActivateSpecification() {
   return useGuardedMutation({
-    mutationFn: async (variables: { productId: string; metrics: MeasurementMetricPayload[] }) => {
-      const created = await machinesApi.createSpecification(variables.productId, variables.metrics);
-      await machinesApi.activateSpecification(created.data.id);
+    mutationFn: async (variables: { productId: string; metrics: MeasurementMetricPayload[] }, options: ApiClientOptions) => {
+      const created = await machinesApi.createSpecification(variables.productId, variables.metrics, options);
+      await machinesApi.activateSpecification(created.data.id, options);
       return created.data;
     },
     invalidate: invalidationGroups.machines,
@@ -173,16 +173,16 @@ export function useCreateAndActivateSpecification() {
 
 export function useSubmitMeasurements() {
   return useGuardedMutation({
-    mutationFn: async (variables: { roundId: string; measurements: MeasurementValuePayload[] }) =>
-      (await machinesApi.submitMeasurements(variables.roundId, variables.measurements)).data,
+    mutationFn: async (variables: { roundId: string; measurements: MeasurementValuePayload[] }, options: ApiClientOptions) =>
+      (await machinesApi.submitMeasurements(variables.roundId, variables.measurements, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
 
 export function useRecheckIssue() {
   return useGuardedMutation({
-    mutationFn: async (variables: { issueId: string; measurements: MeasurementValuePayload[] }) =>
-      (await machinesApi.recheckIssue(variables.issueId, variables.measurements)).data,
+    mutationFn: async (variables: { issueId: string; measurements: MeasurementValuePayload[] }, options: ApiClientOptions) =>
+      (await machinesApi.recheckIssue(variables.issueId, variables.measurements, options)).data,
     invalidate: invalidationGroups.machines,
   });
 }
@@ -190,7 +190,7 @@ export function useRecheckIssue() {
 /** Putting a run on HOLD changes the run list on the production side as well. */
 export function useHoldIssueRun() {
   return useGuardedMutation({
-    mutationFn: async (issueId: string) => (await machinesApi.holdIssueRun(issueId)).data,
+    mutationFn: async (issueId: string, options: ApiClientOptions) => (await machinesApi.holdIssueRun(issueId, options)).data,
     invalidate: invalidationGroups.productionAndMachines,
   });
 }

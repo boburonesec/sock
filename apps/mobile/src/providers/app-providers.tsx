@@ -1,5 +1,6 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
+import { AppState } from "react-native";
 
 import { mobileQueryClient } from "@/providers/query-cache";
 import { LoadingScreen } from "@/shared/ui/loading-screen";
@@ -20,6 +21,17 @@ export function AppProviders({ children }: { children: ReactNode }) {
     setHasStarted(true);
     void initializeSession();
   }, [hasStarted, initializeSession]);
+
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", (state) => {
+      focusManager.setFocused(state === "active");
+      if (state === "active" && useAuthStore.getState().isAuthenticated) {
+        // Revalidate actual access on resume. Transient failures retain PR 01 state.
+        void useAuthStore.getState().loadMe().catch(() => undefined);
+      }
+    });
+    return () => listener.remove();
+  }, []);
 
   return (
     <QueryClientProvider client={mobileQueryClient}>
