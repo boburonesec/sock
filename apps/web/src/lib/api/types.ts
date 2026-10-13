@@ -1,26 +1,12 @@
 /**
  * HTTP responses serialize backend Date values as ISO strings. Decimal values
  * are intentionally represented as strings to preserve database precision.
+ * Defined once in @paypoq/shared so Web and Native Mobile share the contract.
  */
-export type ApiDateTime = string;
-
-export interface ApiCollection<T> {
-  data: T[];
-}
-
-export interface NamedReference {
-  id: string;
-  name: string;
-  /** Present for product master-data references where the API exposes it. */
-  code?: string | null;
-}
-
-export interface ProductVariantReference {
-  id: string;
-  product: NamedReference;
-  color: NamedReference;
-  material: NamedReference;
-  season: NamedReference;
-}
-
-export interface UserReference extends NamedReference {}
+export type {
+  ApiCollection,
+  ApiDateTime,
+  NamedReference,
+  ProductVariantReference,
+  UserReference,
+} from "@paypoq/shared";

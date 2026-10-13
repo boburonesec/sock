@@ -33,9 +33,25 @@ interface AuthState {
   refreshSession: () => Promise<boolean>;
   loadMe: () => Promise<boolean>;
   clearSession: () => Promise<void>;
+  /** Switches the factory every request is scoped to (multi-factory users). */
+  setActiveFactory: (factoryId: string) => void;
 }
 
 let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * The API answers /auth/me and /auth/refresh with the user's default factory.
+ * A factory the user picked on this device is kept while it is still
+ * accessible, so a background token refresh does not silently move a
+ * multi-factory operator back to another factory mid-task.
+ */
+function withPreferredFactory(context: AuthContext, preferredFactoryId: string | null): AuthContext {
+  const isStillAccessible =
+    preferredFactoryId !== null &&
+    context.accessibleFactories.some((factory) => factory.id === preferredFactoryId);
+
+  return isStillAccessible ? { ...context, activeFactoryId: preferredFactoryId } : context;
+}
 
 function applyApiContext(context: AuthContext): void {
   setApiActiveFactoryId(context.activeFactoryId);
@@ -157,16 +173,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           response.data.accessToken,
           response.data.accessTokenExpiresInSeconds,
         );
+        const context = withPreferredFactory(response.data, get().activeFactoryId);
 
         setApiAccessToken(response.data.accessToken);
-        applyApiContext(response.data);
-        set(
-          buildAuthenticatedState(
-            response.data,
-            response.data.accessToken,
-            accessTokenExpiresAt,
-          ),
-        );
+        applyApiContext(context);
+        set(buildAuthenticatedState(context, response.data.accessToken, accessTokenExpiresAt));
 
         return true;
       })
@@ -194,13 +205,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const response = await authApi.me();
-      applyApiContext(response.data);
-      set(buildAuthenticatedState(response.data, accessToken, get().accessTokenExpiresAt));
+      const context = withPreferredFactory(response.data, get().activeFactoryId);
+      applyApiContext(context);
+      set(buildAuthenticatedState(context, accessToken, get().accessTokenExpiresAt));
       return true;
     } catch {
       await get().clearSession();
       return false;
     }
+  },
+  setActiveFactory: (factoryId) => {
+    if (
+      factoryId === get().activeFactoryId ||
+      !get().accessibleFactories.some((factory) => factory.id === factoryId)
+    ) {
+      return;
+    }
+
+    setApiActiveFactoryId(factoryId);
+    // Every cached list belongs to the previous factory.
+    clearMobileQueryCache();
+    set({ activeFactoryId: factoryId });
   },
   clearSession: async () => {
     await clearStoredSession().catch(() => undefined);

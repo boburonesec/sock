@@ -35,6 +35,7 @@ import {
   warehouseApi,
   type FinishedProductReceiptPayload,
 } from "@/lib/api/warehouse";
+import { selectWarehouseHandoffInventory } from "@paypoq/shared";
 import { formatNumber } from "@/lib/utils";
 import { formatWarehouseZoneName } from "@/lib/status-labels";
 import { useAuthStore } from "@/stores/auth-store";
@@ -78,6 +79,12 @@ export function ProductionBoard() {
     queryFn: productionApi.getLookupEmployees,
   });
   const activitiesQuery = useQuery({ queryKey: queryKeys.production.workerActivities(), queryFn: productionApi.getWorkerActivities });
+  // The API receives finished goods from the factory's configured handoff
+  // stage, so the receipt form must list that stage — not a stage named "Ombor".
+  const handoffStageQuery = useQuery({
+    queryKey: queryKeys.production.warehouseHandoffStage(),
+    queryFn: productionApi.getWarehouseHandoffStage,
+  });
   // Warehouse zones need warehouse.view — Shift Receiver must not trigger 403.
   const warehouseZonesQuery = useQuery({
     queryKey: queryKeys.warehouse.zones(),
@@ -211,9 +218,10 @@ export function ProductionBoard() {
       id: variant.id,
       label: variant.label,
     })) ?? [];
-  const omborProductVariantOptions: ProductVariantOption[] = inventory
-    .filter((item) => item.stage.name === "Ombor" && item.quantity > 0)
-    .map((item) => ({
+  const omborProductVariantOptions: ProductVariantOption[] = selectWarehouseHandoffInventory(
+    inventory,
+    handoffStageQuery.data?.data,
+  ).map((item) => ({
       id: item.productVariant.id,
       label: `${item.productVariant.product.name} · ${item.productVariant.color.name} · ${item.productVariant.material.name} · ${item.productVariant.season.name} — ${formatNumber(item.quantity)} dona`,
     }));

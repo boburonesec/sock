@@ -66,6 +66,8 @@ if (isProduction) {
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Workspace contracts shared with Native Mobile ship as TypeScript source.
+  transpilePackages: ["@paypoq/shared"],
   async headers() {
     return [
       {

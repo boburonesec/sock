@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { currentWorkDate } from "@paypoq/shared";
 import { Button } from "@/components/ui/button";
 import { productionApi, type ProductionStageReference } from "@/lib/api/production";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -20,7 +21,7 @@ export function ShiftReconciliationPanel({ stages }: { stages: ProductionStageRe
   const contextQuery = useQuery({ queryKey: ["production", "shift-context"], queryFn: productionApi.getShiftContext });
   const shifts = shiftsQuery.data?.data ?? [];
   const [workShiftId, setWorkShiftId] = useState("");
-  const [workDate, setWorkDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [workDate, setWorkDate] = useState(() => currentWorkDate());
   const [reason, setReason] = useState("");
   const [stageId, setStageId] = useState("");
   const [message, setMessage] = useState<string | null>(null);

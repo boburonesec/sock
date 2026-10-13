@@ -1,4 +1,12 @@
+import {
+  TENANT_AREAS,
+  hasAllPermissions,
+  hasAnyPermission,
+  hasPermission,
+} from "@paypoq/shared";
 import { getPilotHomePath, isPilotPathVisible } from "@/lib/pilot-scope";
+
+export { hasAllPermissions, hasAnyPermission, hasPermission };
 
 /**
  * Frontend access control — mirror of backend permission gates.
@@ -33,68 +41,68 @@ const ROUTE_PERMISSION_RULES: Array<{
   },
   {
     match: (p) => p.startsWith("/dashboard"),
-    requiredPermissions: ["dashboard.view"],
+    requiredPermissions: [...TENANT_AREAS.dashboardExecutive.requiredPermissions],
     label: "Boshqaruv paneli",
   },
   {
     match: (p) => p.startsWith("/reports"),
-    requiredPermissions: ["reports.view"],
+    requiredPermissions: [...TENANT_AREAS.reports.requiredPermissions],
     label: "Hisobotlar",
   },
   {
     match: (p) => p.startsWith("/audit"),
-    requiredPermissions: ["audit.view"],
+    requiredPermissions: [...TENANT_AREAS.audit.requiredPermissions],
     label: "Audit jurnali",
   },
   {
     match: (p) => p.startsWith("/mechanic"),
-    requiredPermissions: ["maintenance.view", "quality.view"],
+    requiredPermissions: [...TENANT_AREAS.mechanic.requiredPermissions],
     label: "Mexanik ish maydoni",
   },
   {
     match: (p) => p.startsWith("/machines"),
-    requiredPermissions: ["machines.view"],
+    requiredPermissions: [...TENANT_AREAS.machines.requiredPermissions],
     label: "Stanoklar",
   },
   {
     match: (p) => p.startsWith("/production"),
-    requiredPermissions: ["production.view"],
+    requiredPermissions: [...TENANT_AREAS.production.requiredPermissions],
     label: "Ishlab chiqarish",
   },
   {
     match: (p) => p.startsWith("/warehouse"),
-    requiredPermissions: ["warehouse.view"],
+    requiredPermissions: [...TENANT_AREAS.warehouse.requiredPermissions],
     label: "Ombor",
   },
   {
     match: (p) => p.startsWith("/sales"),
-    requiredPermissions: ["sales.view"],
+    requiredPermissions: [...TENANT_AREAS.sales.requiredPermissions],
     label: "Sotuvlar",
   },
   {
     match: (p) => p.startsWith("/finance"),
-    requiredPermissions: ["finance.view"],
+    requiredPermissions: [...TENANT_AREAS.finance.requiredPermissions],
     label: "Moliya",
   },
   {
     match: (p) => p.startsWith("/attendance"),
-    requiredPermissions: ["attendance.view"],
+    requiredPermissions: [...TENANT_AREAS.attendance.requiredPermissions],
     label: "Davomat",
   },
   {
     match: (p) => p.startsWith("/employees"),
-    requiredPermissions: ["employees.view"],
+    requiredPermissions: [...TENANT_AREAS.employees.requiredPermissions],
     label: "Xodimlar",
   },
   {
     match: (p) => p === "/settings/company" || p.startsWith("/settings/company/"),
-    requiredPermissions: ["settings.view"],
+    requiredPermissions: [...TENANT_AREAS.settings.requiredPermissions],
     ownerOnly: true,
     label: "Korxona sozlamalari",
   },
   {
     match: (p) => p.startsWith("/settings"),
-    requiredPermissions: ["settings.view"],
+    requiredPermissions: [...TENANT_AREAS.settings.requiredPermissions],
     label: "Sozlamalar",
   },
   {
@@ -118,29 +126,6 @@ const HOME_CANDIDATES: Array<{ href: string; permission?: string }> = [
   { href: "/settings", permission: "settings.view" },
   { href: "/profile" },
 ];
-
-export function hasPermission(
-  permissions: readonly string[],
-  required: string,
-): boolean {
-  return permissions.includes(required);
-}
-
-export function hasAllPermissions(
-  permissions: readonly string[],
-  required: readonly string[],
-): boolean {
-  if (required.length === 0) return true;
-  return required.every((key) => permissions.includes(key));
-}
-
-export function hasAnyPermission(
-  permissions: readonly string[],
-  required: readonly string[],
-): boolean {
-  if (required.length === 0) return true;
-  return required.some((key) => permissions.includes(key));
-}
 
 export function resolveRouteAccess(
   pathname: string,

@@ -55,8 +55,9 @@ commit SHA.
 | Product scope (pilot) | **Closed** — Mobile UX phases 1–8, Day-0 onboarding, production run closure, mechanic provisioning, tenant suspension, payroll UI lifecycle, supplier lifecycle all accepted |
 | Deployment/infrastructure | **Hardened** — see §7 invariants and `docs/RELEASE_RUNBOOK_V1.md` |
 | Real deployment | **Not performed.** No provider selected; no production environment exists yet |
+| Native Mobile | **First-class tenant client.** Must reach functional parity with tenant Web (§15). Wave 1 (Production, Warehouse, Machines/Mechanic) delivered; Sales, Finance & People, Settings/Reports/Notifications pending — see `docs/WEB_MOBILE_PARITY_V1.md` |
 | Open product decision | **Mechanic Master** role — unresolved product/scope decision, do not implement |
-| Physical devices | iPhone Safari / Android Chrome — never tested on real hardware |
+| Physical devices | iPhone Safari / Android Chrome and the Native Mobile app — never tested on real hardware. Simulator/emulator results are not device proof |
 
 Known non-blocking follow-ups: audit event-label localization (P2), payment date
 `05:00` display (P3), in-memory auth rate limiter (P2, multi-instance only),
@@ -84,6 +85,7 @@ Read before any product or architecture decision:
 - `docs/BUSINESS_ACCEPTANCE_WALKTHROUGH_V1.md` (requirements vs reality)
 - `docs/MVP_KNOWN_LIMITATIONS_V2.md` (what is intentionally missing)
 - `docs/RELEASE_RUNBOOK_V1.md` (release, rollback, backup, admin recovery)
+- `docs/WEB_MOBILE_PARITY_V1.md` (Web ↔ Native Mobile capability matrix; release checklist)
 
 If a required rule is missing or ambiguous, **ask** — do not invent business
 logic. Do not recreate deleted historical QA/audit docs; keep `docs/` lean.
@@ -99,8 +101,8 @@ paypoq-os/
 │   ├── api/              # NestJS + Prisma backend (:3001)
 │   ├── web/              # Next.js App Router frontend (:3000)
 │   ├── bot/              # Telegram employee/client bot
-│   └── mobile/           # Expo React Native foundation
-├── packages/shared/      # shared types, constants, Zod schemas, enums
+│   └── mobile/           # Expo React Native tenant client (parity with web, §15)
+├── packages/shared/      # @paypoq/shared: client contracts shared by web + mobile
 ├── scripts/              # acceptance suites, smoke tests, backup/restore
 ├── configs/              # nginx / PM2 / backup-cron examples
 ├── docker-compose.yml    # self-hosted runtime (supported)
@@ -159,10 +161,35 @@ NestJS · PostgreSQL · Prisma · Redis only when genuinely needed.
   transaction as the mutation.
 - No microservices, no Kafka, no IoT in V1.
 
-### Shared (`packages/shared`)
+### Native Mobile (`apps/mobile`)
 
-Only shared types, constants, Zod schemas, domain enums. No business services, no
-React components, no database logic.
+Expo · Expo Router · TypeScript · TanStack Query for API state · Zustand for
+auth/UI state only.
+
+- Same rule as Web: never calculate business values on the device. Render what
+  the API returns; decimal strings are formatted, never parsed into floats.
+- Navigation: five role-aware tabs (Home, Amallar, Savdo, Moliya, Yana), each
+  with a nested stack. Do not add tabs for new screens.
+- API access by domain in `src/lib/api/<domain>.ts`; query keys only in
+  `src/lib/api/query-keys.ts`; writes go through `useGuardedMutation`
+  (double-submit guard + domain invalidation).
+- Every screen under an operational area is wrapped in `<AreaGuard>` — hiding
+  a link is not authorization, and the API still enforces every request.
+- Native patterns, not shrunken tables: cards, searchable lists, sheets, pinned
+  primary action, confirmation for irreversible actions.
+
+### Shared (`packages/shared` — `@paypoq/shared`)
+
+Client-facing contracts consumed by Web **and** Mobile: permission keys, area
+access + pilot role scope, endpoint → permission map, request/response types,
+status enums, Uzbek labels, pure input helpers. TypeScript source, no build
+step, erasable syntax only.
+
+No business services, no React/React Native components, no HTTP clients, no
+database logic. The API does not import it at runtime; `pnpm
+test:shared-contracts` reads the API sources and fails on drift. A Dockerfile
+that runs `pnpm install` must copy `packages/shared/package.json` with the
+other workspace manifests.
 
 ### Cross-domain read models
 
@@ -339,9 +366,18 @@ Run with API (:3001) + production web (:3000) up, unless marked static.
 | Tenant suspension | `node scripts/pilot-tenant-suspension-acceptance.mjs` | |
 | Day-0 onboarding closure | `node scripts/day0-onboarding-closure-acceptance.mjs` | fresh tenants |
 | **Production hardening** | `pnpm test:prod-hardening` | static + disposable DB |
+| Shared contracts | `pnpm test:shared-contracts` | static; API permissions/routes/enums vs `@paypoq/shared` |
+| Mobile types | `pnpm mobile:typecheck` | static |
+| Mobile lint | `pnpm mobile:lint` | static |
+| Mobile unit | `pnpm mobile:test` | static; errors, idempotency, routes, deep-route guards |
+| Mobile bundle | `pnpm --filter @paypoq/mobile export:android` | static; proves Metro resolves the workspace |
+| Mobile Wave 1 API | `pnpm test:mobile-wave1-api` | live API only (no web); disposable tenant; every Wave 1 endpoint × role |
 
 Full regression = every row above exits 0. Report the table with exit codes; use
 "FULL REGRESSION GREEN" only when all rows are 0.
+
+The Mobile gates prove contracts, permissions and API behaviour. They are **not**
+simulator, emulator or physical-device proof — report those separately.
 
 CI (`.github/workflows/ci.yml`) enforces three jobs: `build-and-smoke`,
 `production-hardening`, and `pilot-acceptance` (Chromium + WebKit browser gates,
@@ -427,6 +463,33 @@ Never mask failures, weaken assertions, or claim automation that is not installe
 
 Default stage chain:
 `Averlog → Dazmol → Sifat → Kiydirish → Par Dazmol → Parlash → Bezak → Etiketka → Qadoqlash → Ombor`
+
+---
+
+## 15. Web ↔ Native Mobile parity (multi-client by default)
+
+Tenant-facing product capabilities are **multi-client by default**. If a tenant
+user can perform a business operation in Web, they must be able to perform the
+equivalent operation in Native Mobile under the same role/permission and
+business rules. UI may differ; capability, validation, state transitions and
+outcomes may not. Backend business rules remain authoritative.
+
+1. A material Web feature or change must evaluate Native Mobile and, unless
+   explicitly exempted, update Mobile **in the same change**. An exemption is a
+   row in `docs/WEB_MOBILE_PARITY_V1.md` with the reason — never silence.
+2. Expected PR shape: backend contract/business rule (if needed) →
+   `packages/shared` contract → Web → Mobile → parity matrix → tests.
+3. Contracts are defined once in `@paypoq/shared`. Do not re-declare API
+   types, status enums, permission keys or status labels in a client.
+4. A read-only summary is not parity for a Web write workflow. Mark the matrix
+   row `COMPLETE` only when it meets the definition in the matrix document.
+5. Do not share React DOM and React Native components, and do not move business
+   logic into a shared frontend package to make parity easier.
+6. Out of scope: Factory TV kiosk, Platform Super Admin, and the unresolved
+   Mechanic Master role.
+7. A new or changed API route in a delivered parity domain must be added to
+   `packages/shared/src/endpoints.ts` or classified in
+   `packages/shared/scripts/contract-test.mjs`; the gate fails otherwise.
 
 ---
 

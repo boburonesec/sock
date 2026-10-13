@@ -1,13 +1,19 @@
+import type {
+  InspectionRound,
+  Machine,
+  MaintenanceTask,
+  QualityIssue,
+} from "@paypoq/shared";
 import { apiClient } from "./client";
 import type { ApiCollection } from "./types";
 
-export interface Machine {
-  id: string; code: string; name: string; status: "ACTIVE" | "MAINTENANCE" | "INACTIVE"; note: string | null;
-  assignments: Array<{ id: string; mechanic: { id: string; name: string }; workShift: { id: string; name: string } }>;
-}
-export interface MaintenanceTask { id: string; type: string; priority: string; status: string; description: string; resolution: string | null; dueAt: string | null; machine: Machine; assignee: { id: string; name: string } }
-export interface InspectionRound { id: string; status: string; scheduledAt: string; machine: Machine; productionRun: { id: string; status: string; productVariant: { product: { name: string } } }; specification: { metrics: Array<{ id: string; name: string; code: string; unit: string; target: string; min: string; max: string }> }; measurements: unknown[] }
-export interface QualityIssue { id: string; status: string; recheckDueAt: string; details: unknown; machine: Machine; mechanic: { id: string; name: string }; productionRun: { id: string; status: string }; inspectionRound: { specification: { metrics: Array<{ id: string; name: string; unit: string; target: string; min: string; max: string }> } } }
+// Contract types live in @paypoq/shared (shared with Native Mobile).
+export type {
+  InspectionRound,
+  Machine,
+  MaintenanceTask,
+  QualityIssue,
+};
 
 export const machinesApi = {
   lookups: () => apiClient<{ data: { employees: Array<{ id: string; name: string; workProfile: "MECHANIC" | "MACHINE_OPERATOR"; workShiftId: string | null }>; shifts: Array<{ id: string; name: string; code: string; inspectionSlots: Array<{ slotNumber: number; minuteOffset: number }> }>; products: Array<{ id: string; name: string }> } }>("/machines/lookups"),

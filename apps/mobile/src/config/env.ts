@@ -3,6 +3,8 @@ import Constants from "expo-constants";
 export interface MobileEnv {
   apiBaseUrl: string;
   environment: "development" | "staging" | "production";
+  /** Mirrors Web NEXT_PUBLIC_PILOT_SCOPE_MODE: role-scoped areas unless set to "false". */
+  pilotScopeEnabled: boolean;
 }
 
 function readExtraValue(key: string): string | undefined {
@@ -27,6 +29,7 @@ export function getMobileEnv(): MobileEnv {
   return {
     apiBaseUrl: apiBaseUrl.replace(/\/+$/, ""),
     environment: environment as MobileEnv["environment"],
+    pilotScopeEnabled: process.env.EXPO_PUBLIC_PILOT_SCOPE_MODE !== "false",
   };
 }
 

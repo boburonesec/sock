@@ -1,0 +1,51 @@
+import type { TenantAreaKey } from "@paypoq/shared";
+
+/** Static in-app routes. Dynamic routes are built at the call site with params. */
+export const routes = {
+  home: "/(app)/home",
+  executive: "/(app)/home/executive",
+  operationsSummary: "/(app)/home/operations-summary",
+  operations: "/(app)/operations",
+  production: "/(app)/operations/production",
+  productionMove: "/(app)/operations/production/move",
+  productionActivity: "/(app)/operations/production/activity",
+  productionDefect: "/(app)/operations/production/defect",
+  productionReceive: "/(app)/operations/production/receive-finished",
+  productionHistory: "/(app)/operations/production/history",
+  productionShiftClose: "/(app)/operations/production/shift-close",
+  productionCorrections: "/(app)/operations/production/corrections",
+  machines: "/(app)/operations/machines",
+  machinesStartRun: "/(app)/operations/machines/start-run",
+  machinesNew: "/(app)/operations/machines/new",
+  machinesAssign: "/(app)/operations/machines/assign",
+  machinesPieceRate: "/(app)/operations/machines/piece-rate",
+  machinesTask: "/(app)/operations/machines/task",
+  machinesInspectionSlots: "/(app)/operations/machines/inspection-slots",
+  machinesMeasurementSpec: "/(app)/operations/machines/measurement-spec",
+  mechanic: "/(app)/operations/mechanic",
+  warehouse: "/(app)/operations/warehouse",
+  warehouseMaterials: "/(app)/operations/warehouse/materials",
+  warehouseReceiveMaterial: "/(app)/operations/warehouse/receive-material",
+  warehouseCorrect: "/(app)/operations/warehouse/correct",
+  warehouseMovements: "/(app)/operations/warehouse/movements",
+  warehouseZones: "/(app)/operations/warehouse/zones",
+  sales: "/(app)/sales",
+  finance: "/(app)/finance",
+  more: "/(app)/more",
+  profile: "/(app)/more/profile",
+  activities: "/(app)/more/activities",
+  payroll: "/(app)/more/payroll",
+  advances: "/(app)/more/advances",
+} as const;
+
+/** Where each operational area lives on Mobile (Web keeps its own route prefixes). */
+export const areaRoutes = {
+  production: routes.production,
+  machines: routes.machines,
+  mechanic: routes.mechanic,
+  warehouse: routes.warehouse,
+  sales: routes.sales,
+  finance: routes.finance,
+  dashboardExecutive: routes.executive,
+  dashboardOperations: routes.operationsSummary,
+} as const satisfies Partial<Record<TenantAreaKey, string>>;
