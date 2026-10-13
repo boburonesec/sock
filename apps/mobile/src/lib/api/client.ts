@@ -122,3 +122,12 @@ export async function apiClient<T>(
   }
 }
 
+
+/** Request options for a JSON write. Keeps every domain client free of header boilerplate. */
+export function jsonBody(method: "POST" | "PATCH" | "PUT", body?: unknown): ApiClientOptions {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  };
+}

@@ -10,9 +10,11 @@
     "export:android": "expo export --platform android",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "deps:check": "expo install --check"
+    "deps:check": "expo install --check",
+    "test": "node --no-warnings --experimental-strip-types scripts/unit-test.mjs"
   },
   "dependencies": {
+    "@paypoq/shared": "workspace:*",
     "@expo/vector-icons": "^15.0.3",
     "@tanstack/react-query": "^5.80.7",
     "expo": "~54.0.35",

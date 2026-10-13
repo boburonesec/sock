@@ -1,3 +1,5 @@
+import { PILOT_ROLE_AREAS, TENANT_AREAS } from "@paypoq/shared";
+
 export const PILOT_SCOPE_ENABLED =
   process.env.NEXT_PUBLIC_PILOT_SCOPE_MODE !== "false";
 
@@ -10,41 +12,14 @@ export const PILOT_SCOPE_ENABLED =
 // no UI links Manager to it, and leaving it here means an unauthorized visit
 // falls through to the real permission check (accurate "ruxsatingiz yo'q")
 // instead of the generic "not in pilot" message.
-const PILOT_ROLE_PATHS: Record<string, readonly string[]> = {
-  Owner: [
-    "/dashboard/executive",
-    "/dashboard/operations",
-    "/production",
-    "/machines",
-    "/warehouse",
-    "/sales",
-    "/finance",
-    "/employees",
-    "/attendance",
-    "/reports",
-    "/audit",
-    "/settings",
-  ],
-  Manager: [
-    "/dashboard/executive",
-    "/dashboard/operations",
-    "/production",
-    "/machines",
-    "/warehouse",
-    "/sales",
-    "/finance",
-    "/employees",
-    "/attendance",
-    "/reports",
-    "/audit",
-    "/settings",
-  ],
-  "Shift Receiver": ["/production", "/machines"],
-  "Warehouse Operator": ["/warehouse"],
-  Seller: ["/sales"],
-  Accountant: ["/finance"],
-  Mechanic: ["/mechanic"],
-};
+// The role → area scope is defined once in @paypoq/shared so Native Mobile
+// applies the same pilot scope; Web only maps each area to its route prefix.
+const PILOT_ROLE_PATHS: Record<string, readonly string[]> = Object.fromEntries(
+  Object.entries(PILOT_ROLE_AREAS).map(([role, areas]) => [
+    role,
+    areas.map((area) => TENANT_AREAS[area].webPath),
+  ]),
+);
 
 const ALWAYS_VISIBLE_PATHS = ["/profile", "/notifications"] as const;
 

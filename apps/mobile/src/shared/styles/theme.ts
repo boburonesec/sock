@@ -6,14 +6,20 @@ export const colors = {
   text: "#f8fafc",
   textMuted: "#9ca3af",
   accent: "#38bdf8",
+  accentSurface: "#0c2a3d",
   buttonText: "#06111f",
   dangerSurface: "#3f121b",
   dangerBorder: "#7f1d1d",
   dangerText: "#fecdd3",
+  danger: "#f43f5e",
   warningSurface: "#33250b",
   warningBorder: "#92400e",
   warningText: "#fde68a",
   success: "#22c55e",
+  successSurface: "#0c2a1b",
+  successBorder: "#166534",
+  successText: "#bbf7d0",
+  overlay: "rgba(2, 6, 14, 0.72)",
 };
 
 export const spacing = {
@@ -33,5 +39,9 @@ export const radius = {
 export const typography = {
   caption: 13,
   body: 16,
+  heading: 20,
   title: 32,
 };
+
+/** Minimum touch target for anything an operator taps on the factory floor. */
+export const touchTarget = 48;

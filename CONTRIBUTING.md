@@ -6,8 +6,10 @@
   before changing product or architecture. Release/rollback procedure lives in
   `docs/RELEASE_RUNBOOK_V1.md`.
 - Keep Paypoq OS focused on sock factory operations.
-- Do not add generic ERP, IoT, mobile, FaceID, or accounting-ledger scope unless
+- Do not add generic ERP, IoT, FaceID, or accounting-ledger scope unless
   explicitly approved.
+- Native Mobile is a first-class tenant client: a tenant-facing Web change also
+  updates Mobile and `docs/WEB_MOBILE_PARITY_V1.md` (see `AGENTS.md` §15).
 - Keep business-critical calculations in the backend.
 - Keep frontend and Telegram bot read/write behavior aligned with API rules.
 

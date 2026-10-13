@@ -33,7 +33,7 @@ paypoq-os/
 ├── apps/
 │   ├── api/           # NestJS + Prisma backend
 │   ├── bot/           # Telegram employee/client read-only bot
-│   ├── mobile/        # Expo React Native mobile foundation
+│   ├── mobile/        # Expo React Native tenant client (Web bilan paritet)
 │   └── web/           # Next.js App Router frontend
 ├── packages/
 │   └── shared/        # Kelajakdagi shared types/constants/schemas
@@ -108,9 +108,14 @@ Bot:
 
 ## apps/mobile vazifasi
 
-`apps/mobile` — Paypoq Mobile uchun Expo React Native foundation.
+`apps/mobile` — Paypoq Native Mobile: tenant foydalanuvchilari uchun Web bilan
+funksional paritetdagi birinchi darajali klient. Holat va reja:
+`docs/WEB_MOBILE_PARITY_V1.md`.
 
 Mobile:
+
+- Ishlab chiqarish, Ombor, Stanoklar/Mexanik bo‘limlarida Web’dagi barcha amallarni bajaradi (Wave 1)
+- ruxsatlar va pilot rol doirasini `@paypoq/shared` orqali Web bilan bir xil qo‘llaydi
 
 - mavjud `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` va `GET /auth/me` APIlarini ishlatadi
 - Expo Router bilan auth/protected route guard beradi
@@ -118,18 +123,18 @@ Mobile:
 - Zustand’dan faqat auth va UI state uchun foydalanadi
 - token session metadatasini Expo SecureStore’da saqlaydi
 - business-critical qiymatlarni hisoblamaydi
-- V1’da FaceID, IoT, offline writes, push notification va client mobile auth o‘zgarishlarini kiritmaydi
+- FaceID, IoT, offline writes, push notification va client mobile auth o‘zgarishlarini kiritmaydi
 
 ## packages/shared vazifasi
 
-`packages/shared` hozircha minimal placeholder.
+`packages/shared` (`@paypoq/shared`) — Web va Mobile birga ishlatadigan klient
+kontraktlari. Batafsil: `packages/shared/README.md`.
 
-Kelajakda faqat quyidagilar uchun ishlatiladi:
+Faqat quyidagilar uchun ishlatiladi:
 
-- shared TypeScript types
-- shared constants
-- shared Zod schemas
-- shared domain enums
+- ruxsat kalitlari, bo‘lim ruxsatlari va pilot rol doirasi
+- endpoint → ruxsat xaritasi, API turlari va status enumlari
+- o‘zbekcha status yorliqlari va sof (pure) yordamchi funksiyalar
 
 Bu yerga frontend component, backend service yoki database logic qo‘yilmaydi.
 

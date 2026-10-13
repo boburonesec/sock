@@ -47,7 +47,7 @@ export function AccessDeniedState() {
     <View style={[styles.infoCard, styles.deniedCard]}>
       <Text style={styles.deniedTitle}>{"Ruxsat yo'q"}</Text>
       <Text style={styles.deniedText}>
-        {"Bu bo'limni ko'rish uchun manager ruxsatlari kerak."}
+        {"Bu bo'limni ko'rish uchun ruxsatingiz yetarli emas."}
       </Text>
     </View>
   );

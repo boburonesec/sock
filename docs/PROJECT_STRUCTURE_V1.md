@@ -18,7 +18,7 @@ paypoq-os/
 │   ├── api/        # NestJS + Prisma backend
 │   ├── web/        # Next.js frontend
 │   ├── bot/        # Telegram bot
-│   └── mobile/     # Expo React Native
+│   └── mobile/     # Expo React Native tenant client
 ├── packages/
 │   └── shared/
 ├── scripts/
@@ -235,20 +235,28 @@ API’ni `BOT_INTERNAL_API_KEY` orqali chaqiradi. Business hisob-kitob qilmaydi.
 
 ## Mobile: `apps/mobile`
 
-Expo Router foundation: login, employee self-service, manager read dashboards.
+Tenant foydalanuvchilari uchun Web bilan funksional paritetdagi klient
+(`docs/WEB_MOBILE_PARITY_V1.md`). Tuzilishi:
 
-Mavjud tenant auth endpointlarini ishlatadi; offline write va push V1’da yo‘q.
+- `app/(app)/` — 5 ta tab (`home`, `operations`, `sales`, `finance`, `more`), har biri ichki stack
+- `src/lib/api/<domain>.ts` — domen bo‘yicha API va TanStack Query hooklari
+- `src/lib/api/query-keys.ts` — markaziy query kalitlari va invalidatsiya guruhlari
+- `src/lib/access/` — `@paypoq/shared` qoidalari asosida ruxsat tekshiruvi
+- `src/shared/ui/` — native UI kit (Screen, forma elementlari, sheet, ro‘yxatlar, AreaGuard)
+
+Mavjud tenant auth endpointlarini ishlatadi; offline write va push yo‘q.
 
 ## Shared package: `packages/shared`
 
-Hozircha placeholder.
+`@paypoq/shared` — Web va Mobile birga ishlatadigan klient kontraktlari
+(build bosqichisiz TypeScript manba).
 
 Faqat quyidagilar uchun ishlatiladi:
 
-- shared TypeScript types
-- constants
-- Zod schemas
-- domain enums
+- ruxsat kalitlari, bo‘lim (area) ruxsatlari va pilot rol doirasi
+- endpoint → ruxsat xaritasi
+- API request/response turlari va status enumlari
+- o‘zbekcha status yorliqlari, sof (pure) kiritish yordamchilari
 
 Quyidagilar taqiqlanadi:
 

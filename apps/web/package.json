@@ -14,6 +14,7 @@
     "test:auth-proxy-forwarding": "node --no-warnings --experimental-strip-types scripts/auth-proxy-forwarding-test.mjs"
   },
   "dependencies": {
+    "@paypoq/shared": "workspace:*",
     "@hookform/resolvers": "^5.1.1",
     "@tanstack/react-query": "^5.80.7",
     "class-variance-authority": "^0.7.1",

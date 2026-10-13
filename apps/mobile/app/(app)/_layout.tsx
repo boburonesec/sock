@@ -1,31 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 
-import { isApiError } from "@/lib/api/errors";
-import { useEmployeeMeQuery } from "@/lib/api/mobile-employee";
+import { OPERATIONS_AREAS, useAccess } from "@/lib/access/use-access";
 import { LoadingScreen } from "@/shared/ui/loading-screen";
 import { colors } from "@/shared/styles/theme";
 import { useAuthStore } from "@/stores/auth-store";
 
-const managerPermissionKeys = [
-  "dashboard.view",
-  "production.view",
-  "warehouse.view",
-  "sales.view",
-  "finance.view",
-];
-
+/**
+ * Five role-aware tabs. Each tab owns a nested stack, so a domain can grow to
+ * dozens of screens without adding tabs. A tab is hidden (`href: null`) when
+ * the user cannot open any area inside it; the screens themselves re-check
+ * access because a hidden tab is still reachable by deep link.
+ */
 export default function ProtectedLayout() {
   const hasLoadedSession = useAuthStore((state) => state.hasLoadedSession);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const permissions = useAuthStore((state) => state.permissions);
-  const canOpenManagerTab = managerPermissionKeys.some((permission) =>
-    permissions.includes(permission),
-  );
-  const employeeMeQuery = useEmployeeMeQuery({ enabled: isAuthenticated });
-  // Owners/managers without an employee profile get 403 from /mobile/employee/*;
-  // hide the employee-only tabs instead of showing them an error on every tab.
-  const hasEmployeeProfile = !isApiError(employeeMeQuery.error, 403);
+  const access = useAccess();
 
   if (!hasLoadedSession) {
     return <LoadingScreen label="Sessiya tiklanmoqda" />;
@@ -34,6 +24,10 @@ export default function ProtectedLayout() {
   if (!isAuthenticated) {
     return <Redirect href="/(auth)/login" />;
   }
+
+  const canOpenOperations = OPERATIONS_AREAS.some((area) => access.area(area).allowed);
+  const canOpenSales = access.area("sales").allowed;
+  const canOpenFinance = access.area("finance").allowed;
 
   return (
     <Tabs
@@ -57,55 +51,44 @@ export default function ProtectedLayout() {
         }}
       />
       <Tabs.Screen
-        name="activities"
+        name="operations"
         options={{
-          href: hasEmployeeProfile ? "/(app)/activities" : null,
-          title: "Ishlar",
+          href: canOpenOperations ? "/(app)/operations" : null,
+          title: "Amallar",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons color={color} name="list-outline" size={size} />
+            <Ionicons color={color} name="construct-outline" size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="payroll"
+        name="sales"
         options={{
-          href: hasEmployeeProfile ? "/(app)/payroll" : null,
-          title: "Oylik",
+          href: canOpenSales ? "/(app)/sales" : null,
+          title: "Savdo",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons color={color} name="wallet-outline" size={size} />
+            <Ionicons color={color} name="receipt-outline" size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="manager"
+        name="finance"
         options={{
-          href: canOpenManagerTab ? "/(app)/manager" : null,
-          title: "Boshqaruv",
+          href: canOpenFinance ? "/(app)/finance" : null,
+          title: "Moliya",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons color={color} name="speedometer-outline" size={size} />
+            <Ionicons color={color} name="card-outline" size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="more"
         options={{
-          title: "Profil",
+          title: "Yana",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons color={color} name="person-outline" size={size} />
+            <Ionicons color={color} name="ellipsis-horizontal-circle-outline" size={size} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="advances"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen name="manager-executive" options={{ href: null }} />
-      <Tabs.Screen name="manager-production" options={{ href: null }} />
-      <Tabs.Screen name="manager-warehouse" options={{ href: null }} />
-      <Tabs.Screen name="manager-sales" options={{ href: null }} />
-      <Tabs.Screen name="manager-finance" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,3 +1,5 @@
+import { visibleStatusLabels } from "@paypoq/shared";
+
 // Factories operate in Asia/Tashkent; pin display so a phone set to another
 // zone (or UTC) does not shift late-evening records to the previous day.
 const FACTORY_TIME_ZONE = "Asia/Tashkent";
@@ -61,8 +63,11 @@ export function formatAmount(value: string | null | undefined): string {
   return `${sign}${grouped}${cents} so'm`;
 }
 
-/** Uzbek labels for backend enum values; mirrors apps/web/src/lib/status-labels.ts. */
-const statusLabels: Record<string, string> = {
+/**
+ * Labels the dashboards need that Web renders through page-specific maps.
+ * Everything else comes from @paypoq/shared, which Web uses too.
+ */
+const localStatusLabels: Record<string, string> = {
   // Lifecycle
   ACTIVE: "Faol",
   INACTIVE: "Nofaol",
@@ -106,5 +111,68 @@ export function formatStatus(value: string | null | undefined): string {
     return "-";
   }
 
-  return statusLabels[value] ?? value.replaceAll("_", " ");
+  return visibleStatusLabels[value] ?? localStatusLabels[value] ?? value.replaceAll("_", " ");
+}
+
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return formatInFactoryZone(date, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
+ * Groups the whole part of a backend number for reading ("12500" → "12 500").
+ * Display only: decimal strings are never parsed into floats.
+ */
+export function formatQuantity(value: number | string | null | undefined, unit?: string): string {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const text = String(value).trim();
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(text);
+  const suffix = unit ? ` ${unit}` : "";
+
+  if (!match) {
+    return `${text}${suffix}`;
+  }
+
+  const [, sign = "", whole = "", fraction] = match;
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const decimals = fraction && /[1-9]/.test(fraction) ? `.${fraction.replace(/0+$/, "")}` : "";
+
+  return `${sign}${grouped}${decimals}${suffix}`;
+}
+
+/** Shifts a YYYY-MM-DD calendar date by whole days without time-zone drift. */
+export function shiftIsoDate(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Renders a YYYY-MM-DD calendar day as DD.MM.YYYY with no time-zone conversion. */
+export function formatIsoDay(isoDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : isoDate;
 }

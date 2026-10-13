@@ -91,12 +91,16 @@ jobs:
           pnpm test:factory-tv-secret
           pnpm test:notification-contract
           pnpm --filter @paypoq/bot test:shutdown
+          pnpm test:shared-contracts
 
       - name: Mobile typecheck
         run: pnpm mobile:typecheck
 
       - name: Mobile lint
         run: pnpm mobile:lint
+
+      - name: Mobile unit tests
+        run: pnpm mobile:test
 
       - name: Validate Expo config
         run: pnpm --filter @paypoq/mobile exec expo config --type public
@@ -144,6 +148,9 @@ jobs:
 
       - name: Run employee self-service smoke suite
         run: node apps/api/scripts/employee-self-service-smoke-test.mjs
+
+      - name: Run Mobile Wave 1 API acceptance
+        run: pnpm test:mobile-wave1-api
 
       - name: Stop API
         if: always()
